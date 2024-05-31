@@ -28,7 +28,7 @@ linters-settings:
     sections:
       - standard
       - default
-      - localmodule
+      - prefix(github.com/zestagio/chat-service)
     skip-generated: false
     custom-order: true
 
