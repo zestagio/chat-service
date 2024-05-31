@@ -12,6 +12,9 @@ vars:
   GOLANGCI_LINT_CACHE:
     sh: echo "$HOME/.goci/lint/cache"
 
+  TOOLS_DIR:
+    sh: echo "$(pwd)/tools"
+
   DEV_TOOLS: |
     github.com/daixiang0/gci@v0.13.4
     mvdan.cc/gofumpt@v0.6.0
@@ -36,15 +39,15 @@ tasks:
 
   fmt:
     - echo "- Format"
-    - gofumpt -w {{.GO_FILES}}
-    - gci write {{.GO_FILES}} -s standard -s default -s "prefix({{.GO_MODULE}})"
+    - export PATH="${PATH}:{{.TOOLS_DIR}}" && gofumpt -w {{.GO_FILES}}
+    - export PATH="${PATH}:{{.TOOLS_DIR}}" && gci write {{.GO_FILES}} -s standard -s default -s "prefix({{.GO_MODULE}})"
 
   lint:
     cmds:
       - echo "- Lint"
       - mkdir -p {{.GOLANGCI_LINT_CACHE}}
       - task: lint:cmd
-        vars: {CLI_ARGS: "run -v --fix --timeout=5m ./..."}
+        vars: {CLI_ARGS: "run --fix --timeout=5m ./..."}
 
   lint:cmd:
     cmds:
@@ -69,6 +72,7 @@ tasks:
     cmds:
       - echo "- Install dev tools"
       - |
+        export GOBIN="{{.TOOLS_DIR}}"
         {{range $tool := .DEV_TOOLS | splitLines -}}
         {{if $tool}}go install {{$tool}}{{end}}
         {{end}}
