@@ -18,6 +18,7 @@ vars:
   DEV_TOOLS: |
     github.com/daixiang0/gci@v0.13.4
     mvdan.cc/gofumpt@v0.6.0
+    github.com/kazhuravlev/options-gen/cmd/options-gen@v0.32.0
 
 tasks:
   default:
@@ -79,5 +80,4 @@ tasks:
 
   generate:
     - echo "Run go generate..."
-    - go generate ./...
-    # Пригодится для выполнения задачи со "звездочкой" ниже. Или попозже.
+    - export PATH="${PATH}:{{.TOOLS_DIR}}" && go generate ./...
