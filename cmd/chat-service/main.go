@@ -36,7 +36,6 @@ func run() (errReturned error) {
 	}
 
 	logger.MustInit(logger.NewOptions(cfg.Log.Level, logger.WithProductionMode(cfg.Global.Env == "prod")))
-	logger.Sync()
 
 	srvDebug, err := serverdebug.New(serverdebug.NewOptions(cfg.Servers.Debug.Addr))
 	if err != nil {
@@ -47,6 +46,14 @@ func run() (errReturned error) {
 
 	// Run servers.
 	eg.Go(func() error { return srvDebug.Run(ctx) })
+
+	eg.Go(
+		func() error {
+			<-ctx.Done()
+			logger.Sync()
+			return nil
+		},
+	)
 
 	// Run services.
 	// Ждут своего часа.
