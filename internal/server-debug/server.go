@@ -55,20 +55,20 @@ func New(opts Options) (*Server, error) {
 	e.GET("/version", s.Version)
 	index.addPage("/version", "Get build information")
 
-	e.PUT("/log/level", s.LogLevel)
+	e.PUT("/log/level", echo.WrapHandler(logger.Level))
 
-	e.GET("/debug/pprof/", s.PprofIndex)
-	e.GET("/debug/pprof/allocs", s.PprofAllocs)
-	e.GET("/debug/pprof/block", s.PprofBlock)
-	e.GET("/debug/pprof/cmdline", s.PprofCmdline)
-	e.GET("/debug/pprof/goroutine", s.PprofGoroutine)
-	e.GET("/debug/pprof/heap", s.PprofHeap)
-	e.GET("/debug/pprof/mutex", s.PprofMutex)
-	e.GET("/debug/pprof/profile", s.PprofProfile)
-	e.GET("/debug/pprof/threadcreate", s.PprofThreadcreate)
-	e.GET("/debug/pprof/trace", s.PprofTrace)
-	index.addPage("/debug/pprof/", "Go std profiler")
-	index.addPage("/debug/pprof/profile?seconds=30", "Take half-min profile")
+	{
+		pprofMux := http.NewServeMux()
+		pprofMux.HandleFunc("/debug/pprof/", pprof.Index)
+		pprofMux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		pprofMux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		pprofMux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		pprofMux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+		e.GET("/debug/pprof/*", echo.WrapHandler(pprofMux))
+		index.addPage("/debug/pprof/", "Go std profiler")
+		index.addPage("/debug/pprof/profile?seconds=30", "Take half-min profile")
+	}
 
 	e.GET("/", index.handler)
 	return s, nil
@@ -104,60 +104,4 @@ func (s *Server) Run(ctx context.Context) error {
 
 func (s *Server) Version(eCtx echo.Context) error {
 	return eCtx.JSON(http.StatusOK, buildinfo.BuildInfo)
-}
-
-func (s *Server) LogLevel(eCtx echo.Context) error {
-	logger.LogLevel.ServeHTTP(eCtx.Response().Writer, eCtx.Request())
-
-	return nil
-}
-
-func (s *Server) PprofIndex(eCtx echo.Context) error {
-	pprof.Index(eCtx.Response().Writer, eCtx.Request())
-	return nil
-}
-
-func (s *Server) PprofAllocs(eCtx echo.Context) error {
-	pprof.Handler("allocs").ServeHTTP(eCtx.Response().Writer, eCtx.Request())
-	return nil
-}
-
-func (s *Server) PprofBlock(eCtx echo.Context) error {
-	pprof.Handler("block").ServeHTTP(eCtx.Response().Writer, eCtx.Request())
-	return nil
-}
-
-func (s *Server) PprofCmdline(eCtx echo.Context) error {
-	pprof.Cmdline(eCtx.Response().Writer, eCtx.Request())
-	return nil
-}
-
-func (s *Server) PprofGoroutine(eCtx echo.Context) error {
-	pprof.Handler("goroutine").ServeHTTP(eCtx.Response().Writer, eCtx.Request())
-	return nil
-}
-
-func (s *Server) PprofHeap(eCtx echo.Context) error {
-	pprof.Handler("heap").ServeHTTP(eCtx.Response().Writer, eCtx.Request())
-	return nil
-}
-
-func (s *Server) PprofMutex(eCtx echo.Context) error {
-	pprof.Handler("mutex").ServeHTTP(eCtx.Response().Writer, eCtx.Request())
-	return nil
-}
-
-func (s *Server) PprofProfile(eCtx echo.Context) error {
-	pprof.Profile(eCtx.Response().Writer, eCtx.Request())
-	return nil
-}
-
-func (s *Server) PprofThreadcreate(eCtx echo.Context) error {
-	pprof.Handler("threadcreate").ServeHTTP(eCtx.Response().Writer, eCtx.Request())
-	return nil
-}
-
-func (s *Server) PprofTrace(eCtx echo.Context) error {
-	pprof.Trace(eCtx.Response().Writer, eCtx.Request())
-	return nil
 }

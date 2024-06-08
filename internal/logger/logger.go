@@ -11,7 +11,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-var LogLevel = zap.NewAtomicLevel()
+var Level zap.AtomicLevel
 
 //go:generate options-gen -out-filename=logger_options.gen.go -from-struct=Options
 type Options struct {
@@ -30,30 +30,28 @@ func Init(opts Options) error {
 		return fmt.Errorf("validate options: %v", err)
 	}
 
-	level, err := zapcore.ParseLevel(opts.level)
+	var err error
+	Level, err = zap.ParseAtomicLevel(opts.level)
 	if err != nil {
-		return fmt.Errorf("invalid logger level: %v", err)
-	}
-	LogLevel.SetLevel(level)
-
-	encoder := zapcore.NewConsoleEncoder
-	encoderCfg := zapcore.EncoderConfig{
-		MessageKey:     "msg",
-		LevelKey:       "level",
-		NameKey:        "component",
-		TimeKey:        "T",
-		EncodeLevel:    zapcore.CapitalColorLevelEncoder,
-		EncodeTime:     zapcore.ISO8601TimeEncoder,
-		EncodeDuration: zapcore.StringDurationEncoder,
+		return fmt.Errorf("parse level: %v", err)
 	}
 
+	cfg := zap.NewProductionEncoderConfig()
+	cfg.NameKey = "component"
+	cfg.TimeKey = "T"
+	cfg.EncodeTime = zapcore.ISO8601TimeEncoder
+
+	var encoder zapcore.Encoder
 	if opts.productionMode {
-		encoder = zapcore.NewJSONEncoder
-		encoderCfg.EncodeLevel = zapcore.CapitalLevelEncoder
+		cfg.EncodeLevel = zapcore.CapitalLevelEncoder
+		encoder = zapcore.NewJSONEncoder(cfg)
+	} else {
+		cfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
+		encoder = zapcore.NewConsoleEncoder(cfg)
 	}
 
 	cores := []zapcore.Core{
-		zapcore.NewCore(encoder(encoderCfg), os.Stdout, LogLevel),
+		zapcore.NewCore(encoder, os.Stdout, Level),
 	}
 	l := zap.New(zapcore.NewTee(cores...))
 	zap.ReplaceGlobals(l)

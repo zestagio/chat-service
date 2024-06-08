@@ -35,7 +35,8 @@ func run() (errReturned error) {
 		return fmt.Errorf("parse and validate config %q: %v", *configPath, err)
 	}
 
-	logger.MustInit(logger.NewOptions(cfg.Log.Level, logger.WithProductionMode(cfg.Global.Env == "prod")))
+	logger.MustInit(logger.NewOptions(cfg.Log.Level, logger.WithProductionMode(cfg.Global.IsProduction())))
+	defer logger.Sync()
 
 	srvDebug, err := serverdebug.New(serverdebug.NewOptions(cfg.Servers.Debug.Addr))
 	if err != nil {
@@ -46,14 +47,6 @@ func run() (errReturned error) {
 
 	// Run servers.
 	eg.Go(func() error { return srvDebug.Run(ctx) })
-
-	eg.Go(
-		func() error {
-			<-ctx.Done()
-			logger.Sync()
-			return nil
-		},
-	)
 
 	// Run services.
 	// Ждут своего часа.
