@@ -4,6 +4,9 @@ env = "dev"
 [log]
 level = "info"
 
+[sentry]
+dsn = "http://4c3d121c461747148f16f7820a9c0959@127.0.0.1:9000/3"
+
 [servers]
 [servers.debug]
 addr = ":8079"

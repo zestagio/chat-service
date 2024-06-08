@@ -20,6 +20,12 @@ vars:
     mvdan.cc/gofumpt@v0.6.0
     github.com/kazhuravlev/options-gen/cmd/options-gen@v0.32.0
 
+  DOCKER_COMPOSE_PATHS: |
+    ./deploy/local/docker-compose.yml
+    ./deploy/local/docker-compose.sentry.yml
+
+  DOCKER_COMPOSE_CMD: docker compose{{ range .DOCKER_COMPOSE_PATHS | trim | splitLines }} -f {{.}}{{end}}
+
 tasks:
   default:
     cmds:
@@ -74,10 +80,42 @@ tasks:
       - echo "- Install dev tools"
       - |
         export GOBIN="{{.TOOLS_DIR}}"
-        {{range $tool := .DEV_TOOLS | splitLines -}}
-        {{if $tool}}go install {{$tool}}{{end}}
-        {{end}}
+        {{ range .DEV_TOOLS | trim | splitLines -}}
+        go install {{ . }}
+        {{ end }}
 
   generate:
-    - echo "Run go generate..."
-    - export PATH="${PATH}:{{.TOOLS_DIR}}" && go generate ./...
+    cmds:
+      - echo "Run go generate..."
+      - export PATH="${PATH}:{{.TOOLS_DIR}}" && go generate ./...
+
+  deps:
+    cmds:
+      - "{{.DOCKER_COMPOSE_CMD}} up -d"
+
+  deps:cmd:
+    cmds:
+      - "{{.DOCKER_COMPOSE_CMD}} {{.CLI_ARGS}}"
+
+  deps:status:
+    cmds:
+      - "{{.DOCKER_COMPOSE_CMD}} ps"
+
+  deps:logs:
+    cmds:
+      - "{{.DOCKER_COMPOSE_CMD}} logs {{.CLI_ARGS}}"
+
+  deps:stop:
+    cmds:
+      - "{{.DOCKER_COMPOSE_CMD}} stop"
+
+  deps:reset-psql:
+    cmds:
+      - task: deps:reset
+        vars:
+          SERVICE: postgres
+
+  deps:reset:
+    cmds:
+      - "{{.DOCKER_COMPOSE_CMD}} rm -fsv {{.SERVICE}}"
+      - "{{.DOCKER_COMPOSE_CMD}} up -d {{.SERVICE}}"

@@ -7,15 +7,20 @@ import (
 	"os"
 	"syscall"
 
+	"github.com/TheZeroSlave/zapsentry"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/zestagio/chat-service/internal/buildinfo"
 )
 
 var Level zap.AtomicLevel
 
 //go:generate options-gen -out-filename=logger_options.gen.go -from-struct=Options
 type Options struct {
+	env            string `option:"mandatory" validate:"required,oneof=dev stage prod"`
 	level          string `option:"mandatory" validate:"required,oneof=debug info warn error"`
+	sentryDsn      string `validate:"omitempty,http_url"`
 	productionMode bool
 }
 
@@ -54,6 +59,28 @@ func Init(opts Options) error {
 		zapcore.NewCore(encoder, os.Stdout, Level),
 	}
 	l := zap.New(zapcore.NewTee(cores...))
+
+	if opts.sentryDsn != "" {
+		sentryClient, err := NewSentryClient(opts.sentryDsn, opts.env, buildinfo.BuildInfo.GoVersion)
+		if err != nil {
+			return fmt.Errorf("new sentry client: %v", err)
+		}
+
+		cfg := zapsentry.Configuration{
+			Level:             zapcore.WarnLevel,
+			EnableBreadcrumbs: true,
+			BreadcrumbLevel:   zapcore.WarnLevel,
+			Tags:              map[string]string{"component": "system"},
+		}
+
+		core, err := zapsentry.NewCore(cfg, zapsentry.NewSentryClientFromClient(sentryClient))
+		if err != nil {
+			return fmt.Errorf("zapsentry new core: %v", err)
+		}
+
+		l = zapsentry.AttachCoreToLogger(core, l)
+	}
+
 	zap.ReplaceGlobals(l)
 
 	return nil

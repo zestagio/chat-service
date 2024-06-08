@@ -3,6 +3,7 @@ package config
 type Config struct {
 	Global  GlobalConfig  `toml:"global"`
 	Log     LogConfig     `toml:"log"`
+	Sentry  SentryConfig  `toml:"sentry"`
 	Servers ServersConfig `toml:"servers"`
 }
 
@@ -16,6 +17,10 @@ func (c GlobalConfig) IsProduction() bool {
 
 type LogConfig struct {
 	Level string `toml:"level" validate:"required,oneof=debug info warn error"`
+}
+
+type SentryConfig struct {
+	Dsn string `toml:"dsn" validate:"omitempty,http_url"`
 }
 
 type ServersConfig struct {

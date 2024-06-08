@@ -70,6 +70,9 @@ func New(opts Options) (*Server, error) {
 		index.addPage("/debug/pprof/profile?seconds=30", "Take half-min profile")
 	}
 
+	e.GET("/debug/error", s.DebugError)
+	index.addPage("/debug/error", "Debug Sentry error event")
+
 	e.GET("/", index.handler)
 	return s, nil
 }
@@ -104,4 +107,10 @@ func (s *Server) Run(ctx context.Context) error {
 
 func (s *Server) Version(eCtx echo.Context) error {
 	return eCtx.JSON(http.StatusOK, buildinfo.BuildInfo)
+}
+
+func (s *Server) DebugError(eCtx echo.Context) error {
+	s.lg.Error("look for me in the sentry")
+
+	return eCtx.String(http.StatusOK, "event sent")
 }
