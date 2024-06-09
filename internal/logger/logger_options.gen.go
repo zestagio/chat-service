@@ -20,6 +20,7 @@ func NewOptions(
 	// Setting defaults from field tag (if present)
 
 	o.env = env
+
 	o.level = level
 
 	for _, opt := range options {
@@ -31,12 +32,14 @@ func NewOptions(
 func WithSentryDsn(opt string) OptOptionsSetter {
 	return func(o *Options) {
 		o.sentryDsn = opt
+
 	}
 }
 
 func WithProductionMode(opt bool) OptOptionsSetter {
 	return func(o *Options) {
 		o.productionMode = opt
+
 	}
 }
 
