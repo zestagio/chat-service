@@ -1,11 +1,13 @@
 package schema
 
 import (
+	"time"
+
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+
 	"github.com/zestagio/chat-service/internal/types"
-	"time"
 )
 
 // Problem holds the schema definition for the Problem entity.
