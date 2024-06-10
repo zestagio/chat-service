@@ -73,6 +73,18 @@ tasks:
       - echo "- Tests"
       - go test -ldflags=-extldflags=-Wl,-ld_classic -race ./...
 
+  tests:integration:
+    env:
+      TEST_LOG_LEVEL: info
+      TEST_KEYCLOAK_REALM: Bank
+      TEST_KEYCLOAK_CLIENT_ID: integration-testing
+      TEST_KEYCLOAK_CLIENT_SECRET: EgtIXJ4Ztu32CpSvFi3IvrT9C8xKeaAB
+      TEST_KEYCLOAK_TEST_USER: integration-testing
+      TEST_KEYCLOAK_TEST_PASSWORD: integration-testing
+    cmds:
+      - echo "- Integration tests"
+      - go test -ldflags=-extldflags=-Wl,-ld_classic -tags integration -count 1 -race ./...
+
   build:
     cmds:
       - echo "- Build"
@@ -143,3 +155,10 @@ tasks:
     cmds:
       - "{{.DOCKER_COMPOSE_CMD}} rm -fsv {{.SERVICE}}"
       - "{{.DOCKER_COMPOSE_CMD}} up -d {{.SERVICE}}"
+
+  kc:export:
+    vars:
+      SERVICE: keycloak
+    cmds:
+      - "{{.DOCKER_COMPOSE_CMD}} exec {{.SERVICE}} /opt/keycloak/bin/kc.sh export --file /tmp/bank-realm.json --realm Bank"
+      - "{{.DOCKER_COMPOSE_CMD}} cp {{.SERVICE}}:/tmp/bank-realm.json $(pwd)/deploy/local/bank-realm1.json"

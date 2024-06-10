@@ -18,9 +18,9 @@ var Level zap.AtomicLevel
 
 //go:generate options-gen -out-filename=logger_options.gen.go -from-struct=Options
 type Options struct {
-	env            string `option:"mandatory" validate:"required,oneof=dev stage prod"`
 	level          string `option:"mandatory" validate:"required,oneof=debug info warn error"`
 	sentryDsn      string `validate:"omitempty,http_url"`
+	env            string `validate:"omitempty,oneof=dev stage prod"`
 	productionMode bool
 }
 

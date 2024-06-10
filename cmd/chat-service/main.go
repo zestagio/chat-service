@@ -37,8 +37,8 @@ func run() (errReturned error) {
 
 	logger.MustInit(
 		logger.NewOptions(
-			cfg.Global.Env,
 			cfg.Log.Level,
+			logger.WithEnv(cfg.Global.Env),
 			logger.WithSentryDsn(cfg.Sentry.Dsn),
 			logger.WithProductionMode(cfg.Global.IsProduction()),
 		),
