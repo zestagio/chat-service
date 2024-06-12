@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/go-resty/resty/v2"
+
+	"github.com/zestagio/chat-service/internal/buildinfo"
 )
 
 //go:generate options-gen -out-filename=client_options.gen.go -from-struct=Options
@@ -32,6 +34,8 @@ func New(opts Options) (*Client, error) {
 	cli := resty.New()
 	cli.SetDebug(opts.debugMode)
 	cli.SetBaseURL(opts.basePath)
+	cli.SetDebug(opts.debugMode)
+	cli.SetHeader("User-Agent", "chat-service/"+buildinfo.BuildInfo.Main.Version)
 
 	return &Client{
 		clientID:     opts.clientID,

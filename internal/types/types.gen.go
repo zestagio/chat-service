@@ -148,6 +148,53 @@ func (id ProblemID) Validate() error {
 	return nil
 }
 
+type RequestID uuid.UUID
+
+var RequestIDNil RequestID
+
+func NewRequestID() RequestID {
+	return RequestID(uuid.New())
+}
+
+func (id RequestID) String() string {
+	return (uuid.UUID)(id).String()
+}
+
+func (id *RequestID) Scan(src interface{}) error {
+	return (*uuid.UUID)(id).Scan(src)
+}
+
+func (id RequestID) Value() (driver.Value, error) {
+	return (uuid.UUID)(id).Value()
+}
+
+func (id RequestID) MarshalText() ([]byte, error) {
+	return (uuid.UUID)(id).MarshalText()
+}
+
+func (id *RequestID) UnmarshalText(data []byte) error {
+	return (*uuid.UUID)(id).UnmarshalText(data)
+}
+
+func (id RequestID) IsZero() bool {
+	return id.String() == uuid.Nil.String()
+}
+
+func (id RequestID) Matches(x interface{}) bool {
+	switch x := x.(type) {
+	case RequestID:
+		return id.String() == x.String()
+	}
+	return false
+}
+
+func (id RequestID) Validate() error {
+	if id.IsZero() {
+		return fmt.Errorf("id has invalid value: %v", id.String())
+	}
+	return nil
+}
+
 type UserID uuid.UUID
 
 var UserIDNil UserID
@@ -195,12 +242,12 @@ func (id UserID) Validate() error {
 	return nil
 }
 
-func Parse[T ChatID | MessageID | ProblemID | UserID](s string) (T, error) {
+func Parse[T ChatID | MessageID | ProblemID | RequestID | UserID](s string) (T, error) {
 	id, err := uuid.Parse(s)
 
 	return T(id), err
 }
 
-func MustParse[T ChatID | MessageID | ProblemID | UserID](s string) T {
+func MustParse[T ChatID | MessageID | ProblemID | RequestID | UserID](s string) T {
 	return T(uuid.MustParse(s))
 }

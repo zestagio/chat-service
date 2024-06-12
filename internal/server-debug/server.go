@@ -15,6 +15,7 @@ import (
 
 	"github.com/zestagio/chat-service/internal/buildinfo"
 	"github.com/zestagio/chat-service/internal/logger"
+	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 )
 
 const (
@@ -40,6 +41,33 @@ func New(opts Options) (*Server, error) {
 	lg := zap.L().Named("server-debug")
 
 	e := echo.New()
+	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogLatency:   true,
+		LogRemoteIP:  true,
+		LogHost:      true,
+		LogMethod:    true,
+		LogURIPath:   true,
+		LogRequestID: true,
+		LogUserAgent: true,
+		LogStatus:    true,
+		HandleError:  true,
+		Skipper: func(eCtx echo.Context) bool {
+			return eCtx.Request().Method == http.MethodOptions
+		},
+		LogValuesFunc: func(_ echo.Context, v middleware.RequestLoggerValues) error {
+			zap.L().Info("request",
+				zap.Duration("latency", v.Latency),
+				zap.String("remote_ip", v.RemoteIP),
+				zap.String("host", v.Host),
+				zap.String("method", v.Method),
+				zap.String("path", v.URIPath),
+				zap.String("request_id", v.RequestID),
+				zap.String("user_agent", v.UserAgent),
+				zap.Int("status", v.Status),
+			)
+			return nil
+		},
+	}))
 	e.Use(middleware.Recover())
 
 	s := &Server{
@@ -72,6 +100,9 @@ func New(opts Options) (*Server, error) {
 
 	e.GET("/debug/error", s.DebugError)
 	index.addPage("/debug/error", "Debug Sentry error event")
+
+	e.GET("/schema/client", s.SchemaClient)
+	index.addPage("/schema/client", "Get client OpenAPI specification")
 
 	e.GET("/", index.handler)
 	return s, nil
@@ -113,4 +144,10 @@ func (s *Server) DebugError(eCtx echo.Context) error {
 	s.lg.Error("look for me in the sentry")
 
 	return eCtx.String(http.StatusOK, "event sent")
+}
+
+func (s *Server) SchemaClient(eCtx echo.Context) error {
+	swagger, _ := clientv1.GetSwagger()
+
+	return eCtx.JSON(http.StatusOK, swagger)
 }
