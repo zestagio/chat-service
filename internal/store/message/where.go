@@ -186,6 +186,16 @@ func AuthorIDLTE(v types.UserID) predicate.Message {
 	return predicate.Message(sql.FieldLTE(FieldAuthorID, v))
 }
 
+// AuthorIDIsNil applies the IsNil predicate on the "author_id" field.
+func AuthorIDIsNil() predicate.Message {
+	return predicate.Message(sql.FieldIsNull(FieldAuthorID))
+}
+
+// AuthorIDNotNil applies the NotNil predicate on the "author_id" field.
+func AuthorIDNotNil() predicate.Message {
+	return predicate.Message(sql.FieldNotNull(FieldAuthorID))
+}
+
 // IsVisibleForClientEQ applies the EQ predicate on the "is_visible_for_client" field.
 func IsVisibleForClientEQ(v bool) predicate.Message {
 	return predicate.Message(sql.FieldEQ(FieldIsVisibleForClient, v))

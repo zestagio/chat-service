@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/zestagio/chat-service/internal/store/message"
 	"github.com/zestagio/chat-service/internal/store/predicate"
+	"github.com/zestagio/chat-service/internal/types"
 )
 
 // MessageUpdate is the builder for updating Message entities.
@@ -25,6 +26,26 @@ type MessageUpdate struct {
 // Where appends a list predicates to the MessageUpdate builder.
 func (mu *MessageUpdate) Where(ps ...predicate.Message) *MessageUpdate {
 	mu.mutation.Where(ps...)
+	return mu
+}
+
+// SetAuthorID sets the "author_id" field.
+func (mu *MessageUpdate) SetAuthorID(ti types.UserID) *MessageUpdate {
+	mu.mutation.SetAuthorID(ti)
+	return mu
+}
+
+// SetNillableAuthorID sets the "author_id" field if the given value is not nil.
+func (mu *MessageUpdate) SetNillableAuthorID(ti *types.UserID) *MessageUpdate {
+	if ti != nil {
+		mu.SetAuthorID(*ti)
+	}
+	return mu
+}
+
+// ClearAuthorID clears the value of the "author_id" field.
+func (mu *MessageUpdate) ClearAuthorID() *MessageUpdate {
+	mu.mutation.ClearAuthorID()
 	return mu
 }
 
@@ -90,34 +111,6 @@ func (mu *MessageUpdate) ClearCheckedAt() *MessageUpdate {
 	return mu
 }
 
-// SetIsBlocked sets the "is_blocked" field.
-func (mu *MessageUpdate) SetIsBlocked(b bool) *MessageUpdate {
-	mu.mutation.SetIsBlocked(b)
-	return mu
-}
-
-// SetNillableIsBlocked sets the "is_blocked" field if the given value is not nil.
-func (mu *MessageUpdate) SetNillableIsBlocked(b *bool) *MessageUpdate {
-	if b != nil {
-		mu.SetIsBlocked(*b)
-	}
-	return mu
-}
-
-// SetIsService sets the "is_service" field.
-func (mu *MessageUpdate) SetIsService(b bool) *MessageUpdate {
-	mu.mutation.SetIsService(b)
-	return mu
-}
-
-// SetNillableIsService sets the "is_service" field if the given value is not nil.
-func (mu *MessageUpdate) SetNillableIsService(b *bool) *MessageUpdate {
-	if b != nil {
-		mu.SetIsService(*b)
-	}
-	return mu
-}
-
 // Mutation returns the MessageMutation object of the builder.
 func (mu *MessageUpdate) Mutation() *MessageMutation {
 	return mu.mutation
@@ -152,6 +145,11 @@ func (mu *MessageUpdate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (mu *MessageUpdate) check() error {
+	if v, ok := mu.mutation.AuthorID(); ok {
+		if err := v.Validate(); err != nil {
+			return &ValidationError{Name: "author_id", err: fmt.Errorf(`store: validator failed for field "Message.author_id": %w`, err)}
+		}
+	}
 	if v, ok := mu.mutation.Body(); ok {
 		if err := message.BodyValidator(v); err != nil {
 			return &ValidationError{Name: "body", err: fmt.Errorf(`store: validator failed for field "Message.body": %w`, err)}
@@ -178,6 +176,12 @@ func (mu *MessageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
+	if value, ok := mu.mutation.AuthorID(); ok {
+		_spec.SetField(message.FieldAuthorID, field.TypeUUID, value)
+	}
+	if mu.mutation.AuthorIDCleared() {
+		_spec.ClearField(message.FieldAuthorID, field.TypeUUID)
+	}
 	if value, ok := mu.mutation.IsVisibleForClient(); ok {
 		_spec.SetField(message.FieldIsVisibleForClient, field.TypeBool, value)
 	}
@@ -192,12 +196,6 @@ func (mu *MessageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if mu.mutation.CheckedAtCleared() {
 		_spec.ClearField(message.FieldCheckedAt, field.TypeTime)
-	}
-	if value, ok := mu.mutation.IsBlocked(); ok {
-		_spec.SetField(message.FieldIsBlocked, field.TypeBool, value)
-	}
-	if value, ok := mu.mutation.IsService(); ok {
-		_spec.SetField(message.FieldIsService, field.TypeBool, value)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, mu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -217,6 +215,26 @@ type MessageUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *MessageMutation
+}
+
+// SetAuthorID sets the "author_id" field.
+func (muo *MessageUpdateOne) SetAuthorID(ti types.UserID) *MessageUpdateOne {
+	muo.mutation.SetAuthorID(ti)
+	return muo
+}
+
+// SetNillableAuthorID sets the "author_id" field if the given value is not nil.
+func (muo *MessageUpdateOne) SetNillableAuthorID(ti *types.UserID) *MessageUpdateOne {
+	if ti != nil {
+		muo.SetAuthorID(*ti)
+	}
+	return muo
+}
+
+// ClearAuthorID clears the value of the "author_id" field.
+func (muo *MessageUpdateOne) ClearAuthorID() *MessageUpdateOne {
+	muo.mutation.ClearAuthorID()
+	return muo
 }
 
 // SetIsVisibleForClient sets the "is_visible_for_client" field.
@@ -281,34 +299,6 @@ func (muo *MessageUpdateOne) ClearCheckedAt() *MessageUpdateOne {
 	return muo
 }
 
-// SetIsBlocked sets the "is_blocked" field.
-func (muo *MessageUpdateOne) SetIsBlocked(b bool) *MessageUpdateOne {
-	muo.mutation.SetIsBlocked(b)
-	return muo
-}
-
-// SetNillableIsBlocked sets the "is_blocked" field if the given value is not nil.
-func (muo *MessageUpdateOne) SetNillableIsBlocked(b *bool) *MessageUpdateOne {
-	if b != nil {
-		muo.SetIsBlocked(*b)
-	}
-	return muo
-}
-
-// SetIsService sets the "is_service" field.
-func (muo *MessageUpdateOne) SetIsService(b bool) *MessageUpdateOne {
-	muo.mutation.SetIsService(b)
-	return muo
-}
-
-// SetNillableIsService sets the "is_service" field if the given value is not nil.
-func (muo *MessageUpdateOne) SetNillableIsService(b *bool) *MessageUpdateOne {
-	if b != nil {
-		muo.SetIsService(*b)
-	}
-	return muo
-}
-
 // Mutation returns the MessageMutation object of the builder.
 func (muo *MessageUpdateOne) Mutation() *MessageMutation {
 	return muo.mutation
@@ -356,6 +346,11 @@ func (muo *MessageUpdateOne) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (muo *MessageUpdateOne) check() error {
+	if v, ok := muo.mutation.AuthorID(); ok {
+		if err := v.Validate(); err != nil {
+			return &ValidationError{Name: "author_id", err: fmt.Errorf(`store: validator failed for field "Message.author_id": %w`, err)}
+		}
+	}
 	if v, ok := muo.mutation.Body(); ok {
 		if err := message.BodyValidator(v); err != nil {
 			return &ValidationError{Name: "body", err: fmt.Errorf(`store: validator failed for field "Message.body": %w`, err)}
@@ -399,6 +394,12 @@ func (muo *MessageUpdateOne) sqlSave(ctx context.Context) (_node *Message, err e
 			}
 		}
 	}
+	if value, ok := muo.mutation.AuthorID(); ok {
+		_spec.SetField(message.FieldAuthorID, field.TypeUUID, value)
+	}
+	if muo.mutation.AuthorIDCleared() {
+		_spec.ClearField(message.FieldAuthorID, field.TypeUUID)
+	}
 	if value, ok := muo.mutation.IsVisibleForClient(); ok {
 		_spec.SetField(message.FieldIsVisibleForClient, field.TypeBool, value)
 	}
@@ -413,12 +414,6 @@ func (muo *MessageUpdateOne) sqlSave(ctx context.Context) (_node *Message, err e
 	}
 	if muo.mutation.CheckedAtCleared() {
 		_spec.ClearField(message.FieldCheckedAt, field.TypeTime)
-	}
-	if value, ok := muo.mutation.IsBlocked(); ok {
-		_spec.SetField(message.FieldIsBlocked, field.TypeBool, value)
-	}
-	if value, ok := muo.mutation.IsService(); ok {
-		_spec.SetField(message.FieldIsService, field.TypeBool, value)
 	}
 	_node = &Message{config: muo.config}
 	_spec.Assign = _node.assignValues

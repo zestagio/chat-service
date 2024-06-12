@@ -33,7 +33,7 @@ type Message struct {
 	// Body holds the value of the "body" field.
 	Body string `json:"body,omitempty"`
 	// CheckedAt holds the value of the "checked_at" field.
-	CheckedAt *time.Time `json:"checked_at,omitempty"`
+	CheckedAt time.Time `json:"checked_at,omitempty"`
 	// IsBlocked holds the value of the "is_blocked" field.
 	IsBlocked bool `json:"is_blocked,omitempty"`
 	// IsService holds the value of the "is_service" field.
@@ -159,8 +159,7 @@ func (m *Message) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field checked_at", values[i])
 			} else if value.Valid {
-				m.CheckedAt = new(time.Time)
-				*m.CheckedAt = value.Time
+				m.CheckedAt = value.Time
 			}
 		case message.FieldIsBlocked:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -244,10 +243,8 @@ func (m *Message) String() string {
 	builder.WriteString("body=")
 	builder.WriteString(m.Body)
 	builder.WriteString(", ")
-	if v := m.CheckedAt; v != nil {
-		builder.WriteString("checked_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("checked_at=")
+	builder.WriteString(m.CheckedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("is_blocked=")
 	builder.WriteString(fmt.Sprintf("%v", m.IsBlocked))

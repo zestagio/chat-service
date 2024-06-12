@@ -22,9 +22,9 @@ type Problem struct {
 	// ChatID holds the value of the "chat_id" field.
 	ChatID types.ChatID `json:"chat_id,omitempty"`
 	// ManagerID holds the value of the "manager_id" field.
-	ManagerID *types.UserID `json:"manager_id,omitempty"`
+	ManagerID types.UserID `json:"manager_id,omitempty"`
 	// ResolvedAt holds the value of the "resolved_at" field.
-	ResolvedAt *time.Time `json:"resolved_at,omitempty"`
+	ResolvedAt time.Time `json:"resolved_at,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -69,14 +69,14 @@ func (*Problem) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case problem.FieldManagerID:
-			values[i] = &sql.NullScanner{S: new(types.UserID)}
 		case problem.FieldResolvedAt, problem.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
 		case problem.FieldChatID:
 			values[i] = new(types.ChatID)
 		case problem.FieldID:
 			values[i] = new(types.ProblemID)
+		case problem.FieldManagerID:
+			values[i] = new(types.UserID)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -105,18 +105,16 @@ func (pr *Problem) assignValues(columns []string, values []any) error {
 				pr.ChatID = *value
 			}
 		case problem.FieldManagerID:
-			if value, ok := values[i].(*sql.NullScanner); !ok {
+			if value, ok := values[i].(*types.UserID); !ok {
 				return fmt.Errorf("unexpected type %T for field manager_id", values[i])
-			} else if value.Valid {
-				pr.ManagerID = new(types.UserID)
-				*pr.ManagerID = *value.S.(*types.UserID)
+			} else if value != nil {
+				pr.ManagerID = *value
 			}
 		case problem.FieldResolvedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field resolved_at", values[i])
 			} else if value.Valid {
-				pr.ResolvedAt = new(time.Time)
-				*pr.ResolvedAt = value.Time
+				pr.ResolvedAt = value.Time
 			}
 		case problem.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -173,15 +171,11 @@ func (pr *Problem) String() string {
 	builder.WriteString("chat_id=")
 	builder.WriteString(fmt.Sprintf("%v", pr.ChatID))
 	builder.WriteString(", ")
-	if v := pr.ManagerID; v != nil {
-		builder.WriteString("manager_id=")
-		builder.WriteString(fmt.Sprintf("%v", *v))
-	}
+	builder.WriteString("manager_id=")
+	builder.WriteString(fmt.Sprintf("%v", pr.ManagerID))
 	builder.WriteString(", ")
-	if v := pr.ResolvedAt; v != nil {
-		builder.WriteString("resolved_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("resolved_at=")
+	builder.WriteString(pr.ResolvedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(pr.CreatedAt.Format(time.ANSIC))
