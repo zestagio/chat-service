@@ -48,40 +48,12 @@ func New(opts Options) (*Server, error) {
 	}
 
 	e := echo.New()
-	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
-		LogLatency:   true,
-		LogRemoteIP:  true,
-		LogHost:      true,
-		LogMethod:    true,
-		LogURIPath:   true,
-		LogRequestID: true,
-		LogUserAgent: true,
-		LogStatus:    true,
-		HandleError:  true,
-		Skipper: func(eCtx echo.Context) bool {
-			return eCtx.Request().Method == http.MethodOptions
-		},
-		LogValuesFunc: func(_ echo.Context, v middleware.RequestLoggerValues) error {
-			zap.L().Info("request",
-				zap.Duration("latency", v.Latency),
-				zap.String("remote_ip", v.RemoteIP),
-				zap.String("host", v.Host),
-				zap.String("method", v.Method),
-				zap.String("path", v.URIPath),
-				zap.String("request_id", v.RequestID),
-				zap.String("user_agent", v.UserAgent),
-				zap.Int("status", v.Status),
-			)
-			return nil
-		},
-	}))
-	e.Use(middleware.Recover())
-	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: opts.allowOrigins,
-		AllowMethods: []string{echo.POST},
-	}))
+	e.Use(middlewares.NewRequestLogger(opts.logger))
+	e.Use(middlewares.NewRecover(opts.logger))
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{AllowOrigins: opts.allowOrigins, AllowMethods: []string{echo.POST}}))
 	e.Use(middlewares.NewKeycloakTokenAuth(opts.keycloakClient, opts.resource, opts.role))
-	e.Use(middleware.BodyLimit("12K"))
+	// 3000 unicode chars. Each 4 bytes max. 3000 * 4 = 12 kilobytes. +1 kilobyte reserved for JSON extra chars.
+	e.Use(middleware.BodyLimit("13K"))
 
 	s := &Server{
 		lg: opts.logger,
