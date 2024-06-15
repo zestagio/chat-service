@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"entgo.io/ent/schema/index"
 	"time"
 
 	"entgo.io/ent"
@@ -39,5 +40,12 @@ func (Message) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("chat", Chat.Type).Ref("messages").Field("chat_id").Required().Unique(),
 		edge.From("problem", Problem.Type).Ref("messages").Field("problem_id").Required().Unique(),
+	}
+}
+
+func (Message) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("chat_id"),
+		index.Fields("created_at"),
 	}
 }
