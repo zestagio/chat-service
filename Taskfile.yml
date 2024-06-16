@@ -39,6 +39,7 @@ vars:
   DOCKER_COMPOSE_CMD: docker compose -f {{ .DOCKER_COMPOSE_PATHS | trim | splitLines | join " -f " }}
 
   ENT_SCHEMA: ./internal/store/schema
+  ENT_TEMPLATES: ./internal/store/templates/*.tmpl
 
   KEYCLOAK_REALM_PATH: ./deploy/local/bank-realm.json
 
@@ -93,6 +94,9 @@ tasks:
   tests:integration:
     env:
       TEST_LOG_LEVEL: info
+      TEST_PSQL_USER: chat-service
+      TEST_PSQL_PASSWORD: chat-service
+      TEST_PSQL_DEBUG: true
       TEST_KEYCLOAK_REALM: Bank
       TEST_KEYCLOAK_CLIENT_ID: integration-testing
       TEST_KEYCLOAK_CLIENT_SECRET: EgtIXJ4Ztu32CpSvFi3IvrT9C8xKeaAB
@@ -161,7 +165,7 @@ tasks:
 
   ent:gen:
     cmds:
-      - export PATH="${PATH}:{{.TOOLS_DIR}}" && ent generate {{.ENT_SCHEMA}}
+      - export PATH="${PATH}:{{.TOOLS_DIR}}" && ent generate --template {{.ENT_TEMPLATES}} {{.ENT_SCHEMA}}
       - task: tidy
 
   ent:describe:
