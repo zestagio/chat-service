@@ -16,7 +16,7 @@ var templates embed.FS
 
 var tpl = template.Must(template.ParseFS(templates, "templates/types.go.tpl"))
 
-//nolint:forbidigo // not directly related single checks
+
 func main() {
 	if len(os.Args) != 4 {
 		log.Fatalf("invalid args count: %d", len(os.Args)-1)

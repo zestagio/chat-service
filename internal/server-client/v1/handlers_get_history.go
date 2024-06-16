@@ -24,12 +24,6 @@ var stub = MessagesPage{Messages: []Message{
 	},
 }}
 
-func (h Handlers) PostGetHistory(eCtx echo.Context, params PostGetHistoryParams) error {
-	h.logger.Info(params.XRequestID.String())
-
-	return eCtx.JSON(http.StatusOK, struct {
-		Data MessagesPage `json:"data"`
-	}{
-		Data: stub,
-	})
+func (h Handlers) PostGetHistory(eCtx echo.Context, _ PostGetHistoryParams) error {
+	return eCtx.JSON(http.StatusOK, GetHistoryResponse{Data: stub})
 }

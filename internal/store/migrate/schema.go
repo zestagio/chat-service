@@ -24,7 +24,7 @@ var (
 	MessagesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true},
 		{Name: "author_id", Type: field.TypeUUID, Nullable: true},
-		{Name: "is_visible_for_client", Type: field.TypeBool, Default: true},
+		{Name: "is_visible_for_client", Type: field.TypeBool, Default: false},
 		{Name: "is_visible_for_manager", Type: field.TypeBool, Default: false},
 		{Name: "body", Type: field.TypeString, Size: 3000},
 		{Name: "checked_at", Type: field.TypeTime, Nullable: true},

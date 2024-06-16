@@ -14,12 +14,13 @@ import (
 const nameServerClient = "server-client"
 
 func initServerClient(
-	keycloakClient *keycloakclient.Client,
 	addr string,
-	resource string,
-	role string,
 	allowOrigins []string,
 	v1Swagger *openapi3.T,
+
+	keycloak *keycloakclient.Client,
+	requiredResource string,
+	requiredRole string,
 ) (*serverclient.Server, error) {
 	lg := zap.L().Named(nameServerClient)
 
@@ -30,11 +31,11 @@ func initServerClient(
 
 	srv, err := serverclient.New(serverclient.NewOptions(
 		lg,
-		keycloakClient,
 		addr,
-		resource,
-		role,
 		allowOrigins,
+		keycloak,
+		requiredResource,
+		requiredRole,
 		v1Swagger,
 		v1Handlers,
 	))

@@ -49,16 +49,14 @@ func TestValidate_TrickyNils(t *testing.T) {
 	}
 
 	for _, tt := range cases {
-		t.Run(
-			"", func(t *testing.T) {
-				err := validator.Validator.Struct(tt.in)
-				if tt.wantErr {
-					assert.Error(t, err)
-				} else {
-					assert.NoError(t, err)
-				}
-			},
-		)
+		t.Run("", func(t *testing.T) {
+			err := validator.Validator.Struct(tt.in)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
 }
 

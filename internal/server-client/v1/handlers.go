@@ -20,6 +20,5 @@ func NewHandlers(opts Options) (Handlers, error) {
 	if err := opts.Validate(); err != nil {
 		return Handlers{}, fmt.Errorf("validate options: %v", err)
 	}
-
 	return Handlers{Options: opts}, nil
 }

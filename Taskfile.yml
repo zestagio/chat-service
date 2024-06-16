@@ -16,21 +16,12 @@ vars:
     sh: echo "$(pwd)/tools"
 
   DEV_TOOLS: |
-    github.com/daixiang0/gci@v0.13.4
-    mvdan.cc/gofumpt@v0.6.0
-    github.com/kazhuravlev/options-gen/cmd/options-gen@v0.33.0
     entgo.io/ent/cmd/ent@v0.13.1
-    github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@v2.2.0
+    github.com/daixiang0/gci@v0.13.4
     github.com/golang/mock/mockgen@v1.6.0
-
-  DOCKER_COMPOSE_PATHS: |
-    ./deploy/local/docker-compose.yml
-    ./deploy/local/docker-compose.sentry.yml
-    ./deploy/local/docker-compose.swagger-ui.yml
-
-  DOCKER_COMPOSE_CMD: docker compose{{ range .DOCKER_COMPOSE_PATHS | trim | splitLines }} -f {{.}}{{end}}
-
-  ENT_SCHEMA: ./internal/store/schema
+    github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@v2.2.0
+    github.com/kazhuravlev/options-gen/cmd/options-gen@v0.33.0
+    mvdan.cc/gofumpt@v0.6.0
 
   TYPES: |
     ChatID
@@ -38,6 +29,18 @@ vars:
     ProblemID
     RequestID
     UserID
+  TYPES_PKG: types
+  TYPES_DST: ./internal/types/types.gen.go
+
+  DOCKER_COMPOSE_PATHS: |
+    ./deploy/local/docker-compose.yml
+    ./deploy/local/docker-compose.sentry.yml
+    ./deploy/local/docker-compose.swagger-ui.yml
+  DOCKER_COMPOSE_CMD: docker compose -f {{ .DOCKER_COMPOSE_PATHS | trim | splitLines | join " -f " }}
+
+  ENT_SCHEMA: ./internal/store/schema
+
+  KEYCLOAK_REALM_PATH: ./deploy/local/bank-realm.json
 
   CLIENT_V1_SRC: ./api/client.v1.swagger.yml
   CLIENT_V1_DST: ./internal/server-client/v1/server.gen.go
@@ -64,7 +67,7 @@ tasks:
   fmt:
     - echo "- Format"
     - export PATH="${PATH}:{{.TOOLS_DIR}}" && gofumpt -w {{.GO_FILES}}
-    - export PATH="${PATH}:{{.TOOLS_DIR}}" && gci write {{.GO_FILES}} -s standard -s default -s "prefix({{.GO_MODULE}})"
+    - export PATH="${PATH}:{{.TOOLS_DIR}}" && gci write -s standard -s default -s "Prefix({{.GO_MODULE}})" {{.GO_FILES}} 2> /dev/null
 
   lint:
     cmds:
@@ -113,40 +116,6 @@ tasks:
         go install {{ . }}
         {{ end }}
 
-  generate:
-    cmds:
-      - echo "Run go generate..."
-      - export PATH="${PATH}:{{.TOOLS_DIR}}" && go generate ./...
-      - task: gen:types
-      - task: ent:gen
-
-  gen:types:
-    cmds:
-      - echo "Generate types..."
-      - go run ./cmd/gen-types types {{.TYPES | catLines | trim | replace " " "," }} internal/types/types.gen.go
-
-  gen:api:
-    cmds:
-      - |
-        export PATH="${PATH}:{{.TOOLS_DIR}}" && oapi-codegen \
-        -package=clientv1 \
-        -generate "echo-server,models,spec" \
-        ./api/client.v1.swagger.yml > ./internal/server-client/v1/server.gen.go
-
-  ent:new:
-    cmds:
-      - export PATH="${PATH}:{{.TOOLS_DIR}}" && ent new --target internal/store/schema {{.CLI_ARGS}}
-      - task: tidy
-
-  ent:gen:
-    cmds:
-      - export PATH="${PATH}:{{.TOOLS_DIR}}" && go generate ./internal/store
-      - task: tidy
-
-  ent:describe:
-    cmds:
-      - export PATH="${PATH}:{{.TOOLS_DIR}}" && ent describe ./internal/store/schema
-
   deps:
     cmds:
       - "{{.DOCKER_COMPOSE_CMD}} up -d"
@@ -161,7 +130,7 @@ tasks:
 
   deps:logs:
     cmds:
-      - "{{.DOCKER_COMPOSE_CMD}} logs {{.CLI_ARGS}}"
+      - "{{.DOCKER_COMPOSE_CMD}} logs -f {{.CLI_ARGS}}"
 
   deps:stop:
     cmds:
@@ -178,9 +147,42 @@ tasks:
       - "{{.DOCKER_COMPOSE_CMD}} rm -fsv {{.SERVICE}}"
       - "{{.DOCKER_COMPOSE_CMD}} up -d {{.SERVICE}}"
 
+  generate:
+    - echo "Run go generate..."
+    - export PATH="${PATH}:{{.TOOLS_DIR}}" && go generate ./...
+    - task: gen:types
+    - task: ent:gen
+    - task: gen:api
+
+  ent:new:
+    cmds:
+      - export PATH="${PATH}:{{.TOOLS_DIR}}" && ent new --target {{.ENT_SCHEMA}} {{.CLI_ARGS}}
+      - task: tidy
+
+  ent:gen:
+    cmds:
+      - export PATH="${PATH}:{{.TOOLS_DIR}}" && ent generate {{.ENT_SCHEMA}}
+      - task: tidy
+
+  ent:describe:
+    cmds:
+      - export PATH="${PATH}:{{.TOOLS_DIR}}" && ent describe {{.ENT_SCHEMA}}
+
+  gen:types:
+    cmds:
+      - echo "Generate types..."
+      - go run ./cmd/gen-types {{.TYPES_PKG}} {{ .TYPES | trim | splitLines | join "," }} {{.TYPES_DST}}
+
+  gen:api:
+    cmds:
+      - echo "Generate client server..."
+      - export PATH="${PATH}:{{.TOOLS_DIR}}" && oapi-codegen -generate types,server,spec -package {{.CLIENT_V1_PKG}} {{.CLIENT_V1_SRC}} > {{.CLIENT_V1_DST}}
+      - task: tidy
+
   kc:export:
     vars:
       SERVICE: keycloak
     cmds:
+      - echo "Dump Keycloak Bank realm..."
       - "{{.DOCKER_COMPOSE_CMD}} exec {{.SERVICE}} /opt/keycloak/bin/kc.sh export --file /tmp/bank-realm.json --realm Bank"
       - "{{.DOCKER_COMPOSE_CMD}} cp {{.SERVICE}}:/tmp/bank-realm.json $(pwd)/deploy/local/bank-realm.json"

@@ -11,3 +11,7 @@ func init() {
 		panic("cannot read build info")
 	}
 }
+
+func Version() string {
+	return BuildInfo.Main.Version
+}

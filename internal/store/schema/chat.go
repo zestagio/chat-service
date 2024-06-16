@@ -1,11 +1,10 @@
 package schema
 
 import (
-	"time"
-
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"time"
 
 	"github.com/zestagio/chat-service/internal/types"
 )
@@ -18,9 +17,9 @@ type Chat struct {
 // Fields of the Chat.
 func (Chat) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", types.ChatID{}).Immutable().Default(types.NewChatID).Unique(),
-		field.UUID("client_id", types.UserID{}).Immutable().Unique(),
-		field.Time("created_at").Immutable().Default(time.Now),
+		field.UUID("id", types.ChatID{}).Default(types.NewChatID).Unique().Immutable(),
+		field.UUID("client_id", types.UserID{}).Unique().Immutable(),
+		field.Time("created_at").Default(time.Now).Immutable(),
 	}
 }
 

@@ -7,7 +7,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	errors461e464ebed9 "github.com/kazhuravlev/options-gen/pkg/errors"
 	validator461e464ebed9 "github.com/kazhuravlev/options-gen/pkg/validator"
-	keycloakclient "github.com/zestagio/chat-service/internal/clients/keycloak"
+	"github.com/zestagio/chat-service/internal/middlewares"
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 	"go.uber.org/zap"
 )
@@ -16,11 +16,11 @@ type OptOptionsSetter func(o *Options)
 
 func NewOptions(
 	logger *zap.Logger,
-	keycloakClient *keycloakclient.Client,
 	addr string,
-	resource string,
-	role string,
 	allowOrigins []string,
+	introspector middlewares.Introspector,
+	requiredResource string,
+	requiredRole string,
 	v1Swagger *openapi3.T,
 	v1Handlers clientv1.ServerInterface,
 	options ...OptOptionsSetter,
@@ -31,15 +31,15 @@ func NewOptions(
 
 	o.logger = logger
 
-	o.keycloakClient = keycloakClient
-
 	o.addr = addr
 
-	o.resource = resource
-
-	o.role = role
-
 	o.allowOrigins = allowOrigins
+
+	o.introspector = introspector
+
+	o.requiredResource = requiredResource
+
+	o.requiredRole = requiredRole
 
 	o.v1Swagger = v1Swagger
 
@@ -54,11 +54,11 @@ func NewOptions(
 func (o *Options) Validate() error {
 	errs := new(errors461e464ebed9.ValidationErrors)
 	errs.Add(errors461e464ebed9.NewValidationError("logger", _validate_Options_logger(o)))
-	errs.Add(errors461e464ebed9.NewValidationError("keycloakClient", _validate_Options_keycloakClient(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("addr", _validate_Options_addr(o)))
-	errs.Add(errors461e464ebed9.NewValidationError("resource", _validate_Options_resource(o)))
-	errs.Add(errors461e464ebed9.NewValidationError("role", _validate_Options_role(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("allowOrigins", _validate_Options_allowOrigins(o)))
+	errs.Add(errors461e464ebed9.NewValidationError("introspector", _validate_Options_introspector(o)))
+	errs.Add(errors461e464ebed9.NewValidationError("requiredResource", _validate_Options_requiredResource(o)))
+	errs.Add(errors461e464ebed9.NewValidationError("requiredRole", _validate_Options_requiredRole(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("v1Swagger", _validate_Options_v1Swagger(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("v1Handlers", _validate_Options_v1Handlers(o)))
 	return errs.AsError()
@@ -71,13 +71,6 @@ func _validate_Options_logger(o *Options) error {
 	return nil
 }
 
-func _validate_Options_keycloakClient(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.keycloakClient, "required"); err != nil {
-		return fmt461e464ebed9.Errorf("field `keycloakClient` did not pass the test: %w", err)
-	}
-	return nil
-}
-
 func _validate_Options_addr(o *Options) error {
 	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.addr, "required,hostname_port"); err != nil {
 		return fmt461e464ebed9.Errorf("field `addr` did not pass the test: %w", err)
@@ -85,23 +78,30 @@ func _validate_Options_addr(o *Options) error {
 	return nil
 }
 
-func _validate_Options_resource(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.resource, "required"); err != nil {
-		return fmt461e464ebed9.Errorf("field `resource` did not pass the test: %w", err)
-	}
-	return nil
-}
-
-func _validate_Options_role(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.role, "required"); err != nil {
-		return fmt461e464ebed9.Errorf("field `role` did not pass the test: %w", err)
-	}
-	return nil
-}
-
 func _validate_Options_allowOrigins(o *Options) error {
 	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.allowOrigins, "min=1"); err != nil {
 		return fmt461e464ebed9.Errorf("field `allowOrigins` did not pass the test: %w", err)
+	}
+	return nil
+}
+
+func _validate_Options_introspector(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.introspector, "required"); err != nil {
+		return fmt461e464ebed9.Errorf("field `introspector` did not pass the test: %w", err)
+	}
+	return nil
+}
+
+func _validate_Options_requiredResource(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.requiredResource, "required"); err != nil {
+		return fmt461e464ebed9.Errorf("field `requiredResource` did not pass the test: %w", err)
+	}
+	return nil
+}
+
+func _validate_Options_requiredRole(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.requiredRole, "required"); err != nil {
+		return fmt461e464ebed9.Errorf("field `requiredRole` did not pass the test: %w", err)
 	}
 	return nil
 }

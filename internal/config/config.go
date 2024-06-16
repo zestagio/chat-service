@@ -21,37 +21,37 @@ type LogConfig struct {
 }
 
 type SentryConfig struct {
-	Dsn string `toml:"dsn" validate:"omitempty,http_url"`
+	Dsn string `toml:"dsn" validate:"omitempty,url"`
 }
 
 type ServersConfig struct {
-	Debug  DebugServerConfig  `toml:"debug"`
-	Client ClientServerConfig `toml:"client"`
+	Debug  DebugServerConfig `toml:"debug"`
+	Client APIServerConfig   `toml:"client"`
 }
 
 type DebugServerConfig struct {
 	Addr string `toml:"addr" validate:"required,hostname_port"`
 }
 
-type ClientServerConfig struct {
-	Addr           string                           `toml:"addr" validate:"required,hostname_port"`
-	AllowOrigins   []string                         `toml:"allow_origins" validate:"required,dive,min=1,http_url"`
-	RequiredAccess ClientServerRequiredAccessConfig `toml:"required_access"`
+type APIServerConfig struct {
+	Addr           string               `toml:"addr" validate:"required,hostname_port"`
+	AllowOrigins   []string             `toml:"allow_origins" validate:"required"`
+	RequiredAccess RequiredAccessConfig `toml:"required_access"`
 }
 
-type ClientServerRequiredAccessConfig struct {
+type RequiredAccessConfig struct {
 	Resource string `toml:"resource" validate:"required"`
 	Role     string `toml:"role" validate:"required"`
 }
 
 type ClientsConfig struct {
-	Keycloak KeycloakClientsConfig `toml:"keycloak"`
+	Keycloak KeycloakConfig `toml:"keycloak"`
 }
 
-type KeycloakClientsConfig struct {
-	BasePath     string `toml:"base_path" validate:"required,http_url"`
+type KeycloakConfig struct {
+	BasePath     string `toml:"base_path" validate:"required,url"`
 	Realm        string `toml:"realm" validate:"required"`
 	ClientID     string `toml:"client_id" validate:"required"`
-	ClientSecret string `toml:"client_secret" validate:"required"`
+	ClientSecret string `toml:"client_secret" validate:"required,alphanum"`
 	DebugMode    bool   `toml:"debug_mode"`
 }

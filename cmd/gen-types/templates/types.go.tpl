@@ -3,7 +3,8 @@ package {{ .pkg }}
 
 import (
 	"database/sql/driver"
-	"fmt"
+	"errors"
+
 	"github.com/google/uuid"
 )
 {{range .types}}
@@ -49,7 +50,7 @@ func (id {{ . }}) Matches(x interface{}) bool {
 
 func (id {{ . }}) Validate() error {
 	if id.IsZero() {
-		return fmt.Errorf("id has invalid value: %v", id.String())
+		return errors.New("zero {{ . }}")
 	}
 	return nil
 }
