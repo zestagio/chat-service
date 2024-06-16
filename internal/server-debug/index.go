@@ -4,7 +4,8 @@ import (
 	"html/template"
 
 	"github.com/labstack/echo/v4"
-	"go.uber.org/zap"
+
+	"github.com/zestagio/chat-service/internal/logger"
 )
 
 type page struct {
@@ -40,10 +41,10 @@ func (i indexPage) handler(eCtx echo.Context) error {
 	<h2>Log Level</h2>
 	<form onSubmit="putLogLevel()">
 		<select id="log-level-select">
-			<option{{ if eq .LogLevel "DEBUG" }} selected{{ end }}>DEBUG</option>
-			<option{{ if eq .LogLevel "INFO" }} selected{{ end }}>INFO</option>
-			<option{{ if eq .LogLevel "WARN" }} selected{{ end }}>WARN</option>
-			<option{{ if eq .LogLevel "ERROR" }} selected{{ end }}>ERROR</option>
+			<option value="debug" {{ if eq .LogLevel "debug" }}selected{{ end }}>DEBUG</option>
+			<option value="info" {{ if eq .LogLevel "info" }}selected{{ end }}>INFO</option>
+			<option value="warn" {{ if eq .LogLevel "warn" }}selected{{ end }}>WARN</option>
+			<option value="error" {{ if eq .LogLevel "error" }}selected{{ end }}>ERROR</option>
 		</select>
 		<input type="submit" value="Change"></input>
 	</form>
@@ -52,9 +53,10 @@ func (i indexPage) handler(eCtx echo.Context) error {
 		function putLogLevel() {
 			const req = new XMLHttpRequest();
 			req.open('PUT', '/log/level', false);
-			req.setRequestHeader('Content-Type', 'application/json');
+			req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+			req.setRequestHeader('Accept', 'application/json');
 			req.onload = function() { window.location.reload(); };
-			req.send(JSON.stringify({"level": document.getElementById('log-level-select').value}));
+			req.send('level='+document.getElementById('log-level-select').value);
 		};
 	</script>
 </body>
@@ -67,7 +69,7 @@ func (i indexPage) handler(eCtx echo.Context) error {
 			LogLevel string
 		}{
 			Pages:    i.pages,
-			LogLevel: zap.L().Level().CapitalString(),
+			LogLevel: logger.Level.String(),
 		},
 	)
 }

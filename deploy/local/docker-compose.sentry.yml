@@ -1,0 +1,46 @@
+version: "3.8"
+
+services:
+  sentry:
+    image: &sentry-image sentry:9.1.2
+    platform: &sentry-platform linux/amd64
+    environment:
+      &sentry-environment
+      SENTRY_SECRET_KEY: 'secret-key'
+      SENTRY_POSTGRES_HOST: postgres
+      SENTRY_DB_NAME: sentry
+      SENTRY_DB_USER: sentry
+      SENTRY_DB_PASSWORD: sentry
+      SENTRY_REDIS_HOST: redis
+    depends_on:
+      - redis
+      - postgres
+    profiles: &sentry-profile [sentry]
+    ports:
+      - "127.0.0.1:9000:9000"
+
+  sentry_cron:
+    image: *sentry-image
+    platform: *sentry-platform
+    command: "sentry run cron"
+    environment:
+      << : *sentry-environment
+    depends_on:
+      - redis
+      - postgres
+    profiles: *sentry-profile
+
+  sentry_worker:
+    image: *sentry-image
+    platform: *sentry-platform
+    command: "sentry run worker"
+    environment:
+      << : *sentry-environment
+    depends_on:
+      - redis
+      - postgres
+    profiles: *sentry-profile
+
+  redis:
+    image: redis:7.0.15-alpine3.20
+    profiles: *sentry-profile

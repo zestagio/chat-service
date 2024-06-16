@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  swagger-ui:
+    image: swaggerapi/swagger-ui
+    environment:
+      URLS_PRIMARY_NAME: "CheckServer"
+      URLS: "[{ url: 'doc/client.v1.swagger.yml', name: 'Client v1' }]"
+    profiles: [ swagger-ui ]
+    volumes:
+      - ./../../api:/usr/share/nginx/html/doc
+    ports:
+      - "127.0.0.1:3011:8080"

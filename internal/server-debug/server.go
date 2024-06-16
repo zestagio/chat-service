@@ -9,12 +9,13 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/zestagio/chat-service/internal/buildinfo"
 	"github.com/zestagio/chat-service/internal/logger"
+	"github.com/zestagio/chat-service/internal/middlewares"
+	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 )
 
 const (
@@ -40,7 +41,8 @@ func New(opts Options) (*Server, error) {
 	lg := zap.L().Named("server-debug")
 
 	e := echo.New()
-	e.Use(middleware.Recover())
+	e.Use(middlewares.NewRequestLogger(lg))
+	e.Use(middlewares.NewRecover(lg))
 
 	s := &Server{
 		lg: lg,
@@ -55,20 +57,26 @@ func New(opts Options) (*Server, error) {
 	e.GET("/version", s.Version)
 	index.addPage("/version", "Get build information")
 
-	e.PUT("/log/level", s.LogLevel)
+	e.PUT("/log/level", echo.WrapHandler(logger.Level))
 
-	e.GET("/debug/pprof/", s.PprofIndex)
-	e.GET("/debug/pprof/allocs", s.PprofAllocs)
-	e.GET("/debug/pprof/block", s.PprofBlock)
-	e.GET("/debug/pprof/cmdline", s.PprofCmdline)
-	e.GET("/debug/pprof/goroutine", s.PprofGoroutine)
-	e.GET("/debug/pprof/heap", s.PprofHeap)
-	e.GET("/debug/pprof/mutex", s.PprofMutex)
-	e.GET("/debug/pprof/profile", s.PprofProfile)
-	e.GET("/debug/pprof/threadcreate", s.PprofThreadcreate)
-	e.GET("/debug/pprof/trace", s.PprofTrace)
-	index.addPage("/debug/pprof/", "Go std profiler")
-	index.addPage("/debug/pprof/profile?seconds=30", "Take half-min profile")
+	{
+		pprofMux := http.NewServeMux()
+		pprofMux.HandleFunc("/debug/pprof/", pprof.Index)
+		pprofMux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		pprofMux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		pprofMux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		pprofMux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+		e.GET("/debug/pprof/*", echo.WrapHandler(pprofMux))
+		index.addPage("/debug/pprof/", "Go std profiler")
+		index.addPage("/debug/pprof/profile?seconds=30", "Take half-min profile")
+	}
+
+	e.GET("/debug/error", s.DebugError)
+	index.addPage("/debug/error", "Debug Sentry error event")
+
+	e.GET("/schema/client", s.SchemaClient)
+	index.addPage("/schema/client", "Get client OpenAPI specification")
 
 	e.GET("/", index.handler)
 	return s, nil
@@ -106,58 +114,14 @@ func (s *Server) Version(eCtx echo.Context) error {
 	return eCtx.JSON(http.StatusOK, buildinfo.BuildInfo)
 }
 
-func (s *Server) LogLevel(eCtx echo.Context) error {
-	logger.LogLevel.ServeHTTP(eCtx.Response().Writer, eCtx.Request())
+func (s *Server) DebugError(eCtx echo.Context) error {
+	s.lg.Error("look for me in the sentry")
 
-	return nil
+	return eCtx.String(http.StatusOK, "event sent")
 }
 
-func (s *Server) PprofIndex(eCtx echo.Context) error {
-	pprof.Index(eCtx.Response().Writer, eCtx.Request())
-	return nil
-}
+func (s *Server) SchemaClient(eCtx echo.Context) error {
+	swagger, _ := clientv1.GetSwagger()
 
-func (s *Server) PprofAllocs(eCtx echo.Context) error {
-	pprof.Handler("allocs").ServeHTTP(eCtx.Response().Writer, eCtx.Request())
-	return nil
-}
-
-func (s *Server) PprofBlock(eCtx echo.Context) error {
-	pprof.Handler("block").ServeHTTP(eCtx.Response().Writer, eCtx.Request())
-	return nil
-}
-
-func (s *Server) PprofCmdline(eCtx echo.Context) error {
-	pprof.Cmdline(eCtx.Response().Writer, eCtx.Request())
-	return nil
-}
-
-func (s *Server) PprofGoroutine(eCtx echo.Context) error {
-	pprof.Handler("goroutine").ServeHTTP(eCtx.Response().Writer, eCtx.Request())
-	return nil
-}
-
-func (s *Server) PprofHeap(eCtx echo.Context) error {
-	pprof.Handler("heap").ServeHTTP(eCtx.Response().Writer, eCtx.Request())
-	return nil
-}
-
-func (s *Server) PprofMutex(eCtx echo.Context) error {
-	pprof.Handler("mutex").ServeHTTP(eCtx.Response().Writer, eCtx.Request())
-	return nil
-}
-
-func (s *Server) PprofProfile(eCtx echo.Context) error {
-	pprof.Profile(eCtx.Response().Writer, eCtx.Request())
-	return nil
-}
-
-func (s *Server) PprofThreadcreate(eCtx echo.Context) error {
-	pprof.Handler("threadcreate").ServeHTTP(eCtx.Response().Writer, eCtx.Request())
-	return nil
-}
-
-func (s *Server) PprofTrace(eCtx echo.Context) error {
-	pprof.Trace(eCtx.Response().Writer, eCtx.Request())
-	return nil
+	return eCtx.JSON(http.StatusOK, swagger)
 }
