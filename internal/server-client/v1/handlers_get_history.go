@@ -1,29 +1,60 @@
 package clientv1
 
 import (
+	"errors"
 	"net/http"
-	"time"
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/zestagio/chat-service/internal/types"
+	internalerrors "github.com/zestagio/chat-service/internal/errors"
+	"github.com/zestagio/chat-service/internal/middlewares"
+	gethistory "github.com/zestagio/chat-service/internal/usecases/client/get-history"
+	"github.com/zestagio/chat-service/pkg/pointer"
 )
 
-var stub = MessagesPage{Messages: []Message{
-	{
-		AuthorId:  types.NewUserID(),
-		Body:      "Здравствуйте! Разберёмся.",
-		CreatedAt: time.Now(),
-		Id:        types.NewMessageID(),
-	},
-	{
-		AuthorId:  types.MustParse[types.UserID]("7ea8cd64-df5c-497b-a29e-f82c537260f9"),
-		Body:      "Привет! Не могу снять денег с карты,\nпишет 'карта заблокирована'",
-		CreatedAt: time.Now().Add(-time.Minute),
-		Id:        types.NewMessageID(),
-	},
-}}
+func (h Handlers) PostGetHistory(eCtx echo.Context, params PostGetHistoryParams) error {
+	ctx := eCtx.Request().Context()
+	clientID := middlewares.MustUserID(eCtx)
 
-func (h Handlers) PostGetHistory(eCtx echo.Context, _ PostGetHistoryParams) error {
-	return eCtx.JSON(http.StatusOK, GetHistoryResponse{Data: stub})
+	var req GetHistoryRequest
+	err := eCtx.Bind(&req)
+	if err != nil {
+		return internalerrors.NewServerError(http.StatusBadRequest, "bind request error", err)
+	}
+
+	result, err := h.getHistory.Handle(ctx, gethistory.Request{
+		ID:       params.XRequestID,
+		ClientID: clientID,
+		PageSize: pointer.Indirect(req.PageSize),
+		Cursor:   pointer.Indirect(req.Cursor),
+	})
+	if err != nil {
+		if errors.Is(err, gethistory.ErrInvalidRequest) {
+			return internalerrors.NewServerError(http.StatusBadRequest, "get history invalid request", err)
+		}
+		if errors.Is(err, gethistory.ErrInvalidCursor) {
+			return internalerrors.NewServerError(http.StatusBadRequest, "get history invalid cursor", err)
+		}
+		return internalerrors.NewServerError(http.StatusInternalServerError, "get history unknown error", err)
+	}
+
+	return eCtx.JSON(http.StatusOK, h.response(result))
+}
+
+func (h Handlers) response(resp gethistory.Response) GetHistoryResponse {
+	msgPage := MessagesPage{Messages: make([]Message, 0, len(resp.Messages)), Next: resp.NextCursor}
+
+	for _, msg := range resp.Messages {
+		msgPage.Messages = append(msgPage.Messages, Message{
+			Id:         msg.ID,
+			Body:       msg.Body,
+			AuthorId:   pointer.PtrWithZeroAsNil(msg.AuthorID),
+			CreatedAt:  msg.CreatedAt,
+			IsReceived: msg.IsReceived,
+			IsBlocked:  msg.IsBlocked,
+			IsService:  msg.IsService,
+		})
+	}
+
+	return GetHistoryResponse{Data: &msgPage}
 }

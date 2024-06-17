@@ -7,6 +7,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	errors461e464ebed9 "github.com/kazhuravlev/options-gen/pkg/errors"
 	validator461e464ebed9 "github.com/kazhuravlev/options-gen/pkg/validator"
+	"github.com/labstack/echo/v4"
 	"github.com/zestagio/chat-service/internal/middlewares"
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 	"go.uber.org/zap"
@@ -23,6 +24,7 @@ func NewOptions(
 	requiredRole string,
 	v1Swagger *openapi3.T,
 	v1Handlers clientv1.ServerInterface,
+	errHandler echo.HTTPErrorHandler,
 	options ...OptOptionsSetter,
 ) Options {
 	o := Options{}
@@ -45,6 +47,8 @@ func NewOptions(
 
 	o.v1Handlers = v1Handlers
 
+	o.errHandler = errHandler
+
 	for _, opt := range options {
 		opt(&o)
 	}
@@ -61,6 +65,7 @@ func (o *Options) Validate() error {
 	errs.Add(errors461e464ebed9.NewValidationError("requiredRole", _validate_Options_requiredRole(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("v1Swagger", _validate_Options_v1Swagger(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("v1Handlers", _validate_Options_v1Handlers(o)))
+	errs.Add(errors461e464ebed9.NewValidationError("errHandler", _validate_Options_errHandler(o)))
 	return errs.AsError()
 }
 
@@ -116,6 +121,13 @@ func _validate_Options_v1Swagger(o *Options) error {
 func _validate_Options_v1Handlers(o *Options) error {
 	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.v1Handlers, "required"); err != nil {
 		return fmt461e464ebed9.Errorf("field `v1Handlers` did not pass the test: %w", err)
+	}
+	return nil
+}
+
+func _validate_Options_errHandler(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.errHandler, "required"); err != nil {
+		return fmt461e464ebed9.Errorf("field `errHandler` did not pass the test: %w", err)
 	}
 	return nil
 }

@@ -15,8 +15,11 @@ import (
 	keycloakclient "github.com/zestagio/chat-service/internal/clients/keycloak"
 	"github.com/zestagio/chat-service/internal/config"
 	"github.com/zestagio/chat-service/internal/logger"
+	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 	serverdebug "github.com/zestagio/chat-service/internal/server-debug"
+	"github.com/zestagio/chat-service/internal/store"
+	"github.com/zestagio/chat-service/internal/store/migrate"
 )
 
 var configPath = flag.String("config", "configs/config.toml", "Path to config file")
@@ -67,6 +70,31 @@ func run() (errReturned error) {
 		return fmt.Errorf("get client v1 swagger: %v", err)
 	}
 
+	dbClient, err := store.NewPSQLClient(store.NewPSQLOptions(
+		cfg.DB.Addr,
+		cfg.DB.User,
+		cfg.DB.Password,
+		cfg.DB.Database,
+		store.WithDebug(cfg.DB.DebugMode),
+	))
+	if err != nil {
+		return fmt.Errorf("create db client: %v", err)
+	}
+	defer func() {
+		_ = dbClient.Close()
+	}()
+
+	if err := runMigration(dbClient); err != nil {
+		return fmt.Errorf("run migration: %v", err)
+	}
+
+	db := store.NewDatabase(dbClient)
+
+	msgRepo, err := messagesrepo.New(messagesrepo.NewOptions(db))
+	if err != nil {
+		return fmt.Errorf("create messages repo: %v", err)
+	}
+
 	srvClient, err := initServerClient(
 		cfg.Servers.Client.Addr,
 		cfg.Servers.Client.AllowOrigins,
@@ -74,6 +102,8 @@ func run() (errReturned error) {
 		kc,
 		cfg.Servers.Client.RequiredAccess.Resource,
 		cfg.Servers.Client.RequiredAccess.Role,
+		msgRepo,
+		cfg.Global.IsProduction(),
 	)
 	if err != nil {
 		return fmt.Errorf("init client server: %v", err)
@@ -98,5 +128,17 @@ func run() (errReturned error) {
 		return fmt.Errorf("wait app stop: %v", err)
 	}
 
+	return nil
+}
+
+func runMigration(dbClient *store.Client) error {
+	err := dbClient.Schema.Create(
+		context.Background(),
+		migrate.WithDropIndex(true),
+		migrate.WithDropColumn(true),
+	)
+	if err != nil {
+		return err
+	}
 	return nil
 }

@@ -13,8 +13,8 @@
       </ENTRIES>
     </EXTENSION>
     <kind value="PACKAGE" />
-    <package value="github.com/zestagio/chat-service/cmd/ui-client" />
-    <directory value="$PROJECT_DIR$/cmd/chat-service" />
+    <package value="github.com/zestagio/chat-service/cmd/chat-service" />
+    <directory value="$PROJECT_DIR$" />
     <filePath value="$PROJECT_DIR$/cmd/chat-service/main.go" />
     <method v="2" />
   </configuration>
