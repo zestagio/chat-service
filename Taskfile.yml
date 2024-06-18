@@ -12,6 +12,8 @@ vars:
   GOLANGCI_LINT_CACHE:
     sh: echo "$HOME/.goci/lint/cache"
 
+  DEV_TOOLS_PATH: /tools
+
   TOOLS_DIR:
     sh: echo "$(pwd)/tools"
 
@@ -21,6 +23,7 @@ vars:
     github.com/golang/mock/mockgen@v1.6.0
     github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@v2.2.0
     github.com/kazhuravlev/options-gen/cmd/options-gen@v0.33.0
+    github.com/onsi/ginkgo/v2/ginkgo@v2.19.0
     mvdan.cc/gofumpt@v0.6.0
 
   TYPES: |
@@ -47,6 +50,9 @@ vars:
   CLIENT_V1_DST: ./internal/server-client/v1/server.gen.go
   CLIENT_V1_PKG: clientv1
 
+  E2E_CLIENT_V1_DST: ./tests/e2e/api/client/v1/client.gen.go
+  E2E_CLIENT_V1_PKG: apiclientv1
+
 tasks:
   default:
     cmds:
@@ -67,8 +73,8 @@ tasks:
 
   fmt:
     - echo "- Format"
-    - export PATH="${PATH}:{{.TOOLS_DIR}}" && gofumpt -w {{.GO_FILES}}
-    - export PATH="${PATH}:{{.TOOLS_DIR}}" && gci write -s standard -s default -s "Prefix({{.GO_MODULE}})" {{.GO_FILES}} 2> /dev/null
+    - .{{.DEV_TOOLS_PATH}}/gofumpt -w {{.GO_FILES}}
+    - .{{.DEV_TOOLS_PATH}}/gci write -s standard -s default -s "Prefix({{.GO_MODULE}})" {{.GO_FILES}} 2> /dev/null
 
   lint:
     cmds:
@@ -92,19 +98,19 @@ tasks:
       - go test -ldflags=-extldflags=-Wl,-ld_classic -race ./...
 
   tests:integration:
-    env:
-      TEST_LOG_LEVEL: info
-      TEST_PSQL_USER: chat-service
-      TEST_PSQL_PASSWORD: chat-service
-      TEST_PSQL_DEBUG: true
-      TEST_KEYCLOAK_REALM: Bank
-      TEST_KEYCLOAK_CLIENT_ID: integration-testing
-      TEST_KEYCLOAK_CLIENT_SECRET: EgtIXJ4Ztu32CpSvFi3IvrT9C8xKeaAB
-      TEST_KEYCLOAK_TEST_USER: integration-testing
-      TEST_KEYCLOAK_TEST_PASSWORD: integration-testing
+    dotenv:
+      - .env
     cmds:
       - echo "- Integration tests"
       - go test -ldflags=-extldflags=-Wl,-ld_classic -tags integration -count 1 -race ./...
+
+  tests:e2e:
+    dotenv:
+      - .env
+    cmds:
+      - echo "- End-to-end tests..."
+      # NOTE: It's important to run tests serial (without `-p` flag) – for correct `clientsPool` sharing.
+      - .{{.DEV_TOOLS_PATH}}/ginkgo --fail-fast --timeout=1m --tags e2e tests {{.CLI_ARGS}} ./tests/e2e
 
   build:
     cmds:
@@ -157,20 +163,21 @@ tasks:
     - task: gen:types
     - task: ent:gen
     - task: gen:api
+    - task: gen:e2e
 
   ent:new:
     cmds:
-      - export PATH="${PATH}:{{.TOOLS_DIR}}" && ent new --target {{.ENT_SCHEMA}} {{.CLI_ARGS}}
+      - .{{.DEV_TOOLS_PATH}}/ent new --target {{.ENT_SCHEMA}} {{.CLI_ARGS}}
       - task: tidy
 
   ent:gen:
     cmds:
-      - export PATH="${PATH}:{{.TOOLS_DIR}}" && ent generate --template {{.ENT_TEMPLATES}} {{.ENT_SCHEMA}}
+      - .{{.DEV_TOOLS_PATH}}/ent generate --template {{.ENT_TEMPLATES}} {{.ENT_SCHEMA}}
       - task: tidy
 
   ent:describe:
     cmds:
-      - export PATH="${PATH}:{{.TOOLS_DIR}}" && ent describe {{.ENT_SCHEMA}}
+      - .{{.DEV_TOOLS_PATH}}/ent describe {{.ENT_SCHEMA}}
 
   gen:types:
     cmds:
@@ -180,8 +187,13 @@ tasks:
   gen:api:
     cmds:
       - echo "Generate client server..."
-      - export PATH="${PATH}:{{.TOOLS_DIR}}" && oapi-codegen -generate types,server,spec -package {{.CLIENT_V1_PKG}} {{.CLIENT_V1_SRC}} > {{.CLIENT_V1_DST}}
+      - .{{.DEV_TOOLS_PATH}}/oapi-codegen -generate types,server,spec -package {{.CLIENT_V1_PKG}} {{.CLIENT_V1_SRC}} > {{.CLIENT_V1_DST}}
       - task: tidy
+
+  gen:e2e:
+    cmds:
+      - echo "[E2E] Generate client API..."
+      - .{{.DEV_TOOLS_PATH}}/oapi-codegen --old-config-style -generate types,client -package {{.E2E_CLIENT_V1_PKG}} {{.CLIENT_V1_SRC}} > {{.E2E_CLIENT_V1_DST}}
 
   kc:export:
     vars:
