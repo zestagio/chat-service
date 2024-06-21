@@ -77,12 +77,12 @@ func (u UseCase) Handle(ctx context.Context, req Request) (Response, error) {
 
 		chatID, err := u.chatRepo.CreateIfNotExists(ctx, req.ClientID)
 		if err != nil {
-			return ErrChatNotCreated
+			return fmt.Errorf("%w: %v", ErrChatNotCreated, err)
 		}
 
 		problemID, err := u.problemRepo.CreateIfNotExists(ctx, chatID)
 		if err != nil {
-			return ErrProblemNotCreated
+			return fmt.Errorf("%w: %v", ErrProblemNotCreated, err)
 		}
 
 		message, err = u.msgRepo.CreateClientVisible(ctx, req.ID, problemID, chatID, req.ClientID, req.MessageBody)

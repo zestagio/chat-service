@@ -46,20 +46,20 @@ func (u UseCase) Handle(ctx context.Context, req Request) (Response, error) {
 	resp := Response{}
 
 	if err := req.Validate(); err != nil {
-		return resp, ErrInvalidRequest
+		return resp, fmt.Errorf("%w: %v", ErrInvalidRequest, err)
 	}
 
 	var cur *messagesrepo.Cursor
 	if req.Cursor != "" {
 		if err := cursor.Decode(req.Cursor, &cur); err != nil {
-			return resp, ErrInvalidCursor
+			return resp, fmt.Errorf("%w: %v", ErrInvalidCursor, err)
 		}
 	}
 
 	messages, nextCur, err := u.Options.msgRepo.GetClientChatMessages(ctx, req.ClientID, req.PageSize, cur)
 	if err != nil {
 		if errors.Is(err, messagesrepo.ErrInvalidCursor) {
-			return resp, ErrInvalidCursor
+			return resp, fmt.Errorf("%w: %v", ErrInvalidCursor, err)
 		}
 		return resp, err
 	}

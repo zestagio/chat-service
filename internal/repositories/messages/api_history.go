@@ -14,6 +14,12 @@ import (
 	"github.com/zestagio/chat-service/internal/types"
 )
 
+const (
+	emptyPageSize = 0
+	minPageSize   = 10
+	maxPageSize   = 100
+)
+
 var (
 	ErrInvalidPageSize = errors.New("invalid page size")
 	ErrInvalidCursor   = errors.New("invalid cursor")
@@ -74,10 +80,10 @@ func (r *Repo) GetClientChatMessages(
 }
 
 func (r *Repo) validatePageSize(pageSize int) error {
-	if pageSize == 0 {
+	if pageSize == emptyPageSize {
 		return nil
 	}
-	if pageSize < 10 || pageSize > 100 {
+	if pageSize < minPageSize || pageSize > maxPageSize {
 		return ErrInvalidPageSize
 	}
 	return nil

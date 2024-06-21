@@ -31,10 +31,10 @@ func (h Handlers) PostSendMessage(eCtx echo.Context, params PostSendMessageParam
 		return internalerrors.NewServerError(http.StatusBadRequest, "invalid request", err)
 	}
 	if errors.Is(err, sendmessage.ErrChatNotCreated) {
-		return internalerrors.NewServerError(ErrorCodeCreateChatError, "create chat", err)
+		return internalerrors.NewServerError(ErrorCodeCreateChatError, "create chat error", err)
 	}
 	if errors.Is(err, sendmessage.ErrProblemNotCreated) {
-		return internalerrors.NewServerError(ErrorCodeCreateProblemError, "create problem", err)
+		return internalerrors.NewServerError(ErrorCodeCreateProblemError, "create problem error", err)
 	}
 
 	return eCtx.JSON(http.StatusOK, &SendMessageResponse{
