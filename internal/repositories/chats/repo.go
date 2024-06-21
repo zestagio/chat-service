@@ -1,4 +1,4 @@
-package messagesrepo
+package chatsrepo
 
 import (
 	"fmt"

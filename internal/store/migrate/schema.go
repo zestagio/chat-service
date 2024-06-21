@@ -23,6 +23,7 @@ var (
 	// MessagesColumns holds the columns for the "messages" table.
 	MessagesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "initial_request_id", Type: field.TypeUUID, Unique: true, Nullable: true},
 		{Name: "author_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "is_visible_for_client", Type: field.TypeBool, Default: false},
 		{Name: "is_visible_for_manager", Type: field.TypeBool, Default: false},
@@ -42,13 +43,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "messages_chats_messages",
-				Columns:    []*schema.Column{MessagesColumns[9]},
+				Columns:    []*schema.Column{MessagesColumns[10]},
 				RefColumns: []*schema.Column{ChatsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "messages_problems_messages",
-				Columns:    []*schema.Column{MessagesColumns[10]},
+				Columns:    []*schema.Column{MessagesColumns[11]},
 				RefColumns: []*schema.Column{ProblemsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -57,12 +58,17 @@ var (
 			{
 				Name:    "message_chat_id",
 				Unique:  false,
-				Columns: []*schema.Column{MessagesColumns[9]},
+				Columns: []*schema.Column{MessagesColumns[10]},
+			},
+			{
+				Name:    "message_initial_request_id",
+				Unique:  false,
+				Columns: []*schema.Column{MessagesColumns[1]},
 			},
 			{
 				Name:    "message_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{MessagesColumns[8]},
+				Columns: []*schema.Column{MessagesColumns[9]},
 			},
 		},
 	}
@@ -85,6 +91,13 @@ var (
 				Columns:    []*schema.Column{ProblemsColumns[4]},
 				RefColumns: []*schema.Column{ChatsColumns[0]},
 				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "problem_chat_id_resolved_at",
+				Unique:  true,
+				Columns: []*schema.Column{ProblemsColumns[4], ProblemsColumns[2]},
 			},
 		},
 	}

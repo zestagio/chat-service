@@ -35,6 +35,20 @@ func (mc *MessageCreate) SetProblemID(ti types.ProblemID) *MessageCreate {
 	return mc
 }
 
+// SetInitialRequestID sets the "initial_request_id" field.
+func (mc *MessageCreate) SetInitialRequestID(ti types.RequestID) *MessageCreate {
+	mc.mutation.SetInitialRequestID(ti)
+	return mc
+}
+
+// SetNillableInitialRequestID sets the "initial_request_id" field if the given value is not nil.
+func (mc *MessageCreate) SetNillableInitialRequestID(ti *types.RequestID) *MessageCreate {
+	if ti != nil {
+		mc.SetInitialRequestID(*ti)
+	}
+	return mc
+}
+
 // SetAuthorID sets the "author_id" field.
 func (mc *MessageCreate) SetAuthorID(ti types.UserID) *MessageCreate {
 	mc.mutation.SetAuthorID(ti)
@@ -242,6 +256,11 @@ func (mc *MessageCreate) check() error {
 			return &ValidationError{Name: "problem_id", err: fmt.Errorf(`store: validator failed for field "Message.problem_id": %w`, err)}
 		}
 	}
+	if v, ok := mc.mutation.InitialRequestID(); ok {
+		if err := v.Validate(); err != nil {
+			return &ValidationError{Name: "initial_request_id", err: fmt.Errorf(`store: validator failed for field "Message.initial_request_id": %w`, err)}
+		}
+	}
 	if v, ok := mc.mutation.AuthorID(); ok {
 		if err := v.Validate(); err != nil {
 			return &ValidationError{Name: "author_id", err: fmt.Errorf(`store: validator failed for field "Message.author_id": %w`, err)}
@@ -315,6 +334,10 @@ func (mc *MessageCreate) createSpec() (*Message, *sqlgraph.CreateSpec) {
 	if id, ok := mc.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = &id
+	}
+	if value, ok := mc.mutation.InitialRequestID(); ok {
+		_spec.SetField(message.FieldInitialRequestID, field.TypeUUID, value)
+		_node.InitialRequestID = value
 	}
 	if value, ok := mc.mutation.AuthorID(); ok {
 		_spec.SetField(message.FieldAuthorID, field.TypeUUID, value)

@@ -2,6 +2,7 @@ run:
   tests: true
   build-tags:
     - integration
+    - e2e
   skip-dirs:
     - internal/store/*
 
@@ -68,6 +69,7 @@ linters-settings:
     severity: error
     rules:
       - name: argument-limit
+        arguments: [11]
       - name: atomic
       - name: bare-return
       - name: blank-imports

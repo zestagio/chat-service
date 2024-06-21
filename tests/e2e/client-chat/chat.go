@@ -1,26 +1,15 @@
-//go:build e2e
-
 package clientchat
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
-	"os"
-	"strconv"
-	"strings"
 	"sync"
-	"testing"
+	"time"
 
-	"github.com/golang-jwt/jwt"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-
-	keycloakclient "github.com/zestagio/chat-service/internal/clients/keycloak"
 	"github.com/zestagio/chat-service/internal/types"
+	"github.com/zestagio/chat-service/pkg/pointer"
 	apiclientv1 "github.com/zestagio/chat-service/tests/e2e/api/client/v1"
-	clientchat "github.com/zestagio/chat-service/tests/e2e/client-chat"
 )
 
 const pageSize = 10

@@ -19,6 +19,8 @@ const (
 	FieldChatID = "chat_id"
 	// FieldProblemID holds the string denoting the problem_id field in the database.
 	FieldProblemID = "problem_id"
+	// FieldInitialRequestID holds the string denoting the initial_request_id field in the database.
+	FieldInitialRequestID = "initial_request_id"
 	// FieldAuthorID holds the string denoting the author_id field in the database.
 	FieldAuthorID = "author_id"
 	// FieldIsVisibleForClient holds the string denoting the is_visible_for_client field in the database.
@@ -62,6 +64,7 @@ var Columns = []string{
 	FieldID,
 	FieldChatID,
 	FieldProblemID,
+	FieldInitialRequestID,
 	FieldAuthorID,
 	FieldIsVisibleForClient,
 	FieldIsVisibleForManager,
@@ -115,6 +118,11 @@ func ByChatID(opts ...sql.OrderTermOption) OrderOption {
 // ByProblemID orders the results by the problem_id field.
 func ByProblemID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldProblemID, opts...).ToFunc()
+}
+
+// ByInitialRequestID orders the results by the initial_request_id field.
+func ByInitialRequestID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldInitialRequestID, opts...).ToFunc()
 }
 
 // ByAuthorID orders the results by the author_id field.

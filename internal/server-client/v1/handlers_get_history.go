@@ -17,8 +17,7 @@ func (h Handlers) PostGetHistory(eCtx echo.Context, params PostGetHistoryParams)
 	clientID := middlewares.MustUserID(eCtx)
 
 	var req GetHistoryRequest
-	err := eCtx.Bind(&req)
-	if err != nil {
+	if err := eCtx.Bind(&req); err != nil {
 		return internalerrors.NewServerError(http.StatusBadRequest, "bind request error", err)
 	}
 

@@ -15,7 +15,9 @@ import (
 	keycloakclient "github.com/zestagio/chat-service/internal/clients/keycloak"
 	"github.com/zestagio/chat-service/internal/config"
 	"github.com/zestagio/chat-service/internal/logger"
+	chatsrepo "github.com/zestagio/chat-service/internal/repositories/chats"
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
+	problemsrepo "github.com/zestagio/chat-service/internal/repositories/problems"
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 	serverdebug "github.com/zestagio/chat-service/internal/server-debug"
 	"github.com/zestagio/chat-service/internal/store"
@@ -95,6 +97,16 @@ func run() (errReturned error) {
 		return fmt.Errorf("create messages repo: %v", err)
 	}
 
+	chatRepo, err := chatsrepo.New(chatsrepo.NewOptions(db))
+	if err != nil {
+		return fmt.Errorf("init chats repo: %v", err)
+	}
+
+	problemRepo, err := problemsrepo.New(problemsrepo.NewOptions(db))
+	if err != nil {
+		return fmt.Errorf("init problems repo: %v", err)
+	}
+
 	srvClient, err := initServerClient(
 		cfg.Servers.Client.Addr,
 		cfg.Servers.Client.AllowOrigins,
@@ -103,6 +115,9 @@ func run() (errReturned error) {
 		cfg.Servers.Client.RequiredAccess.Resource,
 		cfg.Servers.Client.RequiredAccess.Role,
 		msgRepo,
+		chatRepo,
+		problemRepo,
+		db,
 		cfg.Global.IsProduction(),
 	)
 	if err != nil {

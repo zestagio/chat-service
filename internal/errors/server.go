@@ -17,9 +17,9 @@ type ServerError struct {
 	cause   error
 }
 
-func NewServerError(code int, msg string, err error) *ServerError {
+func NewServerError[T ~int](code T, msg string, err error) *ServerError {
 	return &ServerError{
-		Code:    code,
+		Code:    int(code),
 		Message: msg,
 		cause:   err,
 	}
