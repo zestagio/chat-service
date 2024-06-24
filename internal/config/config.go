@@ -5,8 +5,8 @@ type Config struct {
 	Log     LogConfig     `toml:"log"`
 	Sentry  SentryConfig  `toml:"sentry"`
 	Servers ServersConfig `toml:"servers"`
+	Stores  StoresConfig  `toml:"stores"`
 	Clients ClientsConfig `toml:"clients"`
-	DB      DBConfig      `toml:"db"`
 }
 
 type GlobalConfig struct {
@@ -45,6 +45,18 @@ type RequiredAccessConfig struct {
 	Role     string `toml:"role" validate:"required"`
 }
 
+type StoresConfig struct {
+	PSQL PSQLConfig `toml:"psql"`
+}
+
+type PSQLConfig struct {
+	Addr     string `toml:"addr" validate:"required,hostname_port"`
+	Username string `toml:"username" validate:"required"`
+	Password string `toml:"password" validate:"required"`
+	Database string `toml:"database" validate:"required"`
+	Debug    bool   `toml:"debug"`
+}
+
 type ClientsConfig struct {
 	Keycloak KeycloakConfig `toml:"keycloak"`
 }
@@ -55,12 +67,4 @@ type KeycloakConfig struct {
 	ClientID     string `toml:"client_id" validate:"required"`
 	ClientSecret string `toml:"client_secret" validate:"required,alphanum"`
 	DebugMode    bool   `toml:"debug_mode"`
-}
-
-type DBConfig struct {
-	Addr      string `toml:"addr" validate:"required,hostname_port"`
-	User      string `toml:"user" validate:"required"`
-	Password  string `toml:"password" validate:"required"`
-	Database  string `toml:"database" validate:"required"`
-	DebugMode bool   `toml:"debug_mode"`
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 
-	"github.com/zestagio/chat-service/internal/errors"
+	internalerrors "github.com/zestagio/chat-service/internal/errors"
 )
 
 var _ echo.HTTPErrorHandler = Handler{}.Handle
@@ -29,6 +29,7 @@ func New(opts Options) (Handler, error) {
 	if err := opts.Validate(); err != nil {
 		return Handler{}, fmt.Errorf("validate options: %v", err)
 	}
+
 	return Handler{
 		lg:              opts.logger,
 		productionMode:  opts.productionMode,
@@ -37,12 +38,22 @@ func New(opts Options) (Handler, error) {
 }
 
 func (h Handler) Handle(err error, eCtx echo.Context) {
-	h.lg.Error(err.Error())
+	code, msg, details := h.processError(err)
 
-	code, msg, details := errors.ProcessServerError(err)
+	resp := h.responseBuilder(code, msg, details)
+
+	if err2 := eCtx.JSON(http.StatusOK, resp); err2 != nil {
+		h.lg.Error("error handler JSON", zap.Error(err))
+	}
+}
+
+func (h Handler) processError(err error) (code int, msg string, details string) {
+	code, msg, details = internalerrors.ProcessServerError(err)
+
+	// If production mode is ON method should return only code and message and hide details.
 	if h.productionMode {
 		details = ""
 	}
 
-	_ = eCtx.JSON(http.StatusOK, h.responseBuilder(code, msg, details))
+	return code, msg, details
 }

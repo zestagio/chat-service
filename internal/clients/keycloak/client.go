@@ -13,7 +13,7 @@ type Options struct {
 	basePath     string `option:"mandatory" validate:"required,url"`
 	realm        string `option:"mandatory" validate:"required"`
 	clientID     string `option:"mandatory" validate:"required"`
-	clientSecret string `option:"mandatory" validate:"required,alphanum"`
+	clientSecret string `option:"mandatory" validate:"required"`
 	debugMode    bool
 }
 

@@ -5,18 +5,20 @@ import (
 	"encoding/json"
 )
 
+var encoding = base64.URLEncoding
+
 func Encode(data any) (string, error) {
-	j, err := json.Marshal(data)
+	marshalled, err := json.Marshal(data)
 	if err != nil {
 		return "", err
 	}
-	return base64.StdEncoding.EncodeToString(j), nil
+	return encoding.EncodeToString(marshalled), nil
 }
 
 func Decode(in string, to any) error {
-	dec, err := base64.StdEncoding.DecodeString(in)
+	decoded, err := encoding.DecodeString(in)
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(dec, to)
+	return json.Unmarshal(decoded, to)
 }

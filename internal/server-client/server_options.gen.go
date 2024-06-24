@@ -24,7 +24,7 @@ func NewOptions(
 	requiredRole string,
 	v1Swagger *openapi3.T,
 	v1Handlers clientv1.ServerInterface,
-	errHandler echo.HTTPErrorHandler,
+	errorHandler echo.HTTPErrorHandler,
 	options ...OptOptionsSetter,
 ) Options {
 	o := Options{}
@@ -47,7 +47,7 @@ func NewOptions(
 
 	o.v1Handlers = v1Handlers
 
-	o.errHandler = errHandler
+	o.errorHandler = errorHandler
 
 	for _, opt := range options {
 		opt(&o)
@@ -65,7 +65,7 @@ func (o *Options) Validate() error {
 	errs.Add(errors461e464ebed9.NewValidationError("requiredRole", _validate_Options_requiredRole(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("v1Swagger", _validate_Options_v1Swagger(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("v1Handlers", _validate_Options_v1Handlers(o)))
-	errs.Add(errors461e464ebed9.NewValidationError("errHandler", _validate_Options_errHandler(o)))
+	errs.Add(errors461e464ebed9.NewValidationError("errorHandler", _validate_Options_errorHandler(o)))
 	return errs.AsError()
 }
 
@@ -125,9 +125,9 @@ func _validate_Options_v1Handlers(o *Options) error {
 	return nil
 }
 
-func _validate_Options_errHandler(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.errHandler, "required"); err != nil {
-		return fmt461e464ebed9.Errorf("field `errHandler` did not pass the test: %w", err)
+func _validate_Options_errorHandler(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.errorHandler, "required"); err != nil {
+		return fmt461e464ebed9.Errorf("field `errorHandler` did not pass the test: %w", err)
 	}
 	return nil
 }

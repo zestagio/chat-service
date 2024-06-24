@@ -36,54 +36,53 @@ type UseCase struct {
 }
 
 func New(opts Options) (UseCase, error) {
-	if err := opts.Validate(); err != nil {
-		return UseCase{}, fmt.Errorf("validate options: %v", err)
-	}
-	return UseCase{opts}, nil
+	return UseCase{Options: opts}, opts.Validate()
 }
 
 func (u UseCase) Handle(ctx context.Context, req Request) (Response, error) {
-	resp := Response{}
-
 	if err := req.Validate(); err != nil {
-		return resp, fmt.Errorf("%w: %v", ErrInvalidRequest, err)
+		return Response{}, fmt.Errorf("validate request: %w: %v", ErrInvalidRequest, err)
 	}
 
-	var cur *messagesrepo.Cursor
+	var c *messagesrepo.Cursor
 	if req.Cursor != "" {
-		if err := cursor.Decode(req.Cursor, &cur); err != nil {
-			return resp, fmt.Errorf("%w: %v", ErrInvalidCursor, err)
+		if err := cursor.Decode(req.Cursor, &c); err != nil {
+			return Response{}, fmt.Errorf("decode cursor: %w: %v", ErrInvalidCursor, err)
 		}
 	}
 
-	messages, nextCur, err := u.Options.msgRepo.GetClientChatMessages(ctx, req.ClientID, req.PageSize, cur)
+	msgs, next, err := u.msgRepo.GetClientChatMessages(ctx, req.ClientID, req.PageSize, c)
 	if err != nil {
 		if errors.Is(err, messagesrepo.ErrInvalidCursor) {
-			return resp, fmt.Errorf("%w: %v", ErrInvalidCursor, err)
+			return Response{}, fmt.Errorf("get client chat messages: %w: %v", ErrInvalidCursor, err)
 		}
-		return resp, err
+		return Response{}, fmt.Errorf("get client chat messages: %v", err)
 	}
 
-	resp.Messages = make([]Message, 0, len(messages))
-	for _, msg := range messages {
-		resp.Messages = append(resp.Messages, Message{
-			ID:                  msg.ID,
-			AuthorID:            msg.AuthorID,
-			Body:                msg.Body,
-			IsVisibleForManager: msg.IsVisibleForManager,
-			IsBlocked:           msg.IsBlocked,
-			IsReceived:          msg.IsVisibleForManager && !msg.IsBlocked,
-			IsService:           msg.IsService,
-			CreatedAt:           msg.CreatedAt,
+	var nextCursor string
+	if next != nil {
+		data, err := cursor.Encode(next)
+		if err != nil {
+			return Response{}, fmt.Errorf("encode next cursor: %v", err)
+		}
+		nextCursor = data
+	}
+
+	result := make([]Message, 0, len(msgs))
+	for _, m := range msgs {
+		result = append(result, Message{
+			ID:         m.ID,
+			AuthorID:   m.AuthorID,
+			Body:       m.Body,
+			CreatedAt:  m.CreatedAt,
+			IsReceived: m.IsVisibleForManager && !m.IsBlocked,
+			IsBlocked:  m.IsBlocked,
+			IsService:  m.IsService,
 		})
 	}
 
-	if nextCur != nil {
-		resp.NextCursor, err = cursor.Encode(nextCur)
-		if err != nil {
-			return resp, err
-		}
-	}
-
-	return resp, nil
+	return Response{
+		Messages:   result,
+		NextCursor: nextCursor,
+	}, nil
 }

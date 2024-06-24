@@ -24,8 +24,6 @@ type Message struct {
 	ChatID types.ChatID `json:"chat_id,omitempty"`
 	// ProblemID holds the value of the "problem_id" field.
 	ProblemID types.ProblemID `json:"problem_id,omitempty"`
-	// InitialRequestID holds the value of the "initial_request_id" field.
-	InitialRequestID types.RequestID `json:"initial_request_id,omitempty"`
 	// AuthorID holds the value of the "author_id" field.
 	AuthorID types.UserID `json:"author_id,omitempty"`
 	// IsVisibleForClient holds the value of the "is_visible_for_client" field.
@@ -40,6 +38,8 @@ type Message struct {
 	IsBlocked bool `json:"is_blocked,omitempty"`
 	// IsService holds the value of the "is_service" field.
 	IsService bool `json:"is_service,omitempty"`
+	// InitialRequestID holds the value of the "initial_request_id" field.
+	InitialRequestID types.RequestID `json:"initial_request_id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -135,12 +135,6 @@ func (m *Message) assignValues(columns []string, values []any) error {
 			} else if value != nil {
 				m.ProblemID = *value
 			}
-		case message.FieldInitialRequestID:
-			if value, ok := values[i].(*types.RequestID); !ok {
-				return fmt.Errorf("unexpected type %T for field initial_request_id", values[i])
-			} else if value != nil {
-				m.InitialRequestID = *value
-			}
 		case message.FieldAuthorID:
 			if value, ok := values[i].(*types.UserID); !ok {
 				return fmt.Errorf("unexpected type %T for field author_id", values[i])
@@ -182,6 +176,12 @@ func (m *Message) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field is_service", values[i])
 			} else if value.Valid {
 				m.IsService = value.Bool
+			}
+		case message.FieldInitialRequestID:
+			if value, ok := values[i].(*types.RequestID); !ok {
+				return fmt.Errorf("unexpected type %T for field initial_request_id", values[i])
+			} else if value != nil {
+				m.InitialRequestID = *value
 			}
 		case message.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -241,9 +241,6 @@ func (m *Message) String() string {
 	builder.WriteString("problem_id=")
 	builder.WriteString(fmt.Sprintf("%v", m.ProblemID))
 	builder.WriteString(", ")
-	builder.WriteString("initial_request_id=")
-	builder.WriteString(fmt.Sprintf("%v", m.InitialRequestID))
-	builder.WriteString(", ")
 	builder.WriteString("author_id=")
 	builder.WriteString(fmt.Sprintf("%v", m.AuthorID))
 	builder.WriteString(", ")
@@ -264,6 +261,9 @@ func (m *Message) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("is_service=")
 	builder.WriteString(fmt.Sprintf("%v", m.IsService))
+	builder.WriteString(", ")
+	builder.WriteString("initial_request_id=")
+	builder.WriteString(fmt.Sprintf("%v", m.InitialRequestID))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(m.CreatedAt.Format(time.ANSIC))

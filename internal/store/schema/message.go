@@ -1,12 +1,12 @@
 package schema
 
 import (
-	"entgo.io/ent/schema/index"
-	"time"
-
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
+	"time"
 
 	"github.com/zestagio/chat-service/internal/types"
 )
@@ -24,7 +24,6 @@ func (Message) Fields() []ent.Field {
 		field.UUID("id", types.MessageID{}).Default(types.NewMessageID).Unique().Immutable(),
 		field.UUID("chat_id", types.ChatID{}),
 		field.UUID("problem_id", types.ProblemID{}),
-		field.UUID("initial_request_id", types.RequestID{}).Optional().Unique(),
 		field.UUID("author_id", types.UserID{}).Optional().Immutable(),
 		field.Bool("is_visible_for_client").Default(false),
 		field.Bool("is_visible_for_manager").Default(false),
@@ -32,6 +31,7 @@ func (Message) Fields() []ent.Field {
 		field.Time("checked_at").Optional(),
 		field.Bool("is_blocked").Default(false),
 		field.Bool("is_service").Default(false).Immutable(),
+		field.UUID("initial_request_id", types.RequestID{}).Unique().Immutable(),
 		field.Time("created_at").Default(time.Now).Immutable(),
 	}
 }
@@ -39,15 +39,27 @@ func (Message) Fields() []ent.Field {
 // Edges of the Message.
 func (Message) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("chat", Chat.Type).Ref("messages").Field("chat_id").Required().Unique(),
-		edge.From("problem", Problem.Type).Ref("messages").Field("problem_id").Required().Unique(),
+		// The message has one chat.
+		edge.From("chat", Chat.Type).
+			Ref("messages").
+			Field("chat_id").
+			Required().Unique(),
+
+		// The message has one problem.
+		edge.From("problem", Problem.Type).
+			Ref("messages").
+			Field("problem_id").
+			Required().Unique(),
 	}
 }
 
 func (Message) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("chat_id"),
-		index.Fields("initial_request_id"),
-		index.Fields("created_at"),
+		// Getting history is based on created_at field.
+		index.Fields("created_at").
+			Annotations(
+				entsql.DescColumns("created_at"),
+				entsql.IndexType("BTREE"),
+			),
 	}
 }

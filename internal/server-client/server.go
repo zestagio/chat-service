@@ -36,7 +36,7 @@ type Options struct {
 	requiredRole     string                   `option:"mandatory" validate:"required"`
 	v1Swagger        *openapi3.T              `option:"mandatory" validate:"required"`
 	v1Handlers       clientv1.ServerInterface `option:"mandatory" validate:"required"`
-	errHandler       echo.HTTPErrorHandler    `option:"mandatory" validate:"required"`
+	errorHandler     echo.HTTPErrorHandler    `option:"mandatory" validate:"required"`
 }
 
 type Server struct {
@@ -50,14 +50,18 @@ func New(opts Options) (*Server, error) {
 	}
 
 	e := echo.New()
+	e.HTTPErrorHandler = opts.errorHandler
 
-	e.HTTPErrorHandler = opts.errHandler
-
-	e.Use(middlewares.NewRequestLogger(opts.logger))
-	e.Use(middlewares.NewRecovery(opts.logger))
-	e.Use(echomdlwr.CORSWithConfig(echomdlwr.CORSConfig{AllowOrigins: opts.allowOrigins, AllowMethods: []string{echo.POST}}))
-	e.Use(middlewares.NewKeycloakTokenAuth(opts.introspector, opts.requiredResource, opts.requiredRole))
-	e.Use(echomdlwr.BodyLimit(bodyLimit))
+	e.Use(
+		middlewares.NewRequestLogger(opts.logger),
+		middlewares.NewRecovery(opts.logger),
+		echomdlwr.CORSWithConfig(echomdlwr.CORSConfig{
+			AllowOrigins: opts.allowOrigins,
+			AllowMethods: []string{http.MethodPost},
+		}),
+		middlewares.NewKeycloakTokenAuth(opts.introspector, opts.requiredResource, opts.requiredRole),
+		echomdlwr.BodyLimit(bodyLimit),
+	)
 
 	v1 := e.Group("v1", oapimdlwr.OapiRequestValidatorWithOptions(opts.v1Swagger, &oapimdlwr.Options{
 		Options: openapi3filter.Options{

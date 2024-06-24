@@ -10,7 +10,7 @@ import (
 type Request struct {
 	ID          types.RequestID `validate:"required"`
 	ClientID    types.UserID    `validate:"required"`
-	MessageBody string          `validate:"min=1,max=3000"`
+	MessageBody string          `validate:"required,max=3000"`
 }
 
 func (r Request) Validate() error {
@@ -18,7 +18,7 @@ func (r Request) Validate() error {
 }
 
 type Response struct {
-	MessageID types.MessageID
 	AuthorID  types.UserID
+	MessageID types.MessageID
 	CreatedAt time.Time
 }

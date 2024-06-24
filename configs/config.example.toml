@@ -18,17 +18,18 @@ allow_origins = ["http://localhost:3011", "http://localhost:3000"]
 resource = "chat-ui-client"
 role = "support-chat-client"
 
+[stores]
+[stores.psql]
+addr = "127.0.0.1:5432"
+username = "chat-service"
+password = "chat-service"
+database = "chat-service"
+debug = false
+
 [clients]
 [clients.keycloak]
 base_path = "http://localhost:3010"
 realm = "Bank"
 client_id = "chat-service"
 client_secret = "BX6KbVXoZREf3hQI7mnRBwTW6wJ0SS8e"
-debug_mode = false
-
-[db]
-addr = "127.0.0.1:5432"
-user = "chat-service"
-password = "chat-service"
-database = "chat-service"
 debug_mode = false

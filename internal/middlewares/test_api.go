@@ -8,9 +8,17 @@ import (
 )
 
 func SetToken(c echo.Context, uid types.UserID) {
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims{
-		Subject: uid,
-	})
+	c.Set(tokenCtxKey, &jwt.Token{Claims: claimsMock{uid: uid}, Valid: true})
+}
 
-	c.Set(tokenCtxKey, token)
+type claimsMock struct {
+	uid types.UserID
+}
+
+func (m claimsMock) Valid() error {
+	return nil
+}
+
+func (m claimsMock) UserID() types.UserID {
+	return m.uid
 }

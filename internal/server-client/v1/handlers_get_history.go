@@ -2,6 +2,7 @@ package clientv1
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -18,42 +19,43 @@ func (h Handlers) PostGetHistory(eCtx echo.Context, params PostGetHistoryParams)
 
 	var req GetHistoryRequest
 	if err := eCtx.Bind(&req); err != nil {
-		return internalerrors.NewServerError(http.StatusBadRequest, "bind request error", err)
+		return fmt.Errorf("bind request: %w", err)
 	}
 
-	result, err := h.getHistory.Handle(ctx, gethistory.Request{
+	resp, err := h.getHistory.Handle(ctx, gethistory.Request{
 		ID:       params.XRequestID,
 		ClientID: clientID,
-		PageSize: pointer.Indirect(req.PageSize),
 		Cursor:   pointer.Indirect(req.Cursor),
+		PageSize: pointer.Indirect(req.PageSize),
 	})
 	if err != nil {
 		if errors.Is(err, gethistory.ErrInvalidRequest) {
-			return internalerrors.NewServerError(http.StatusBadRequest, "get history invalid request", err)
+			return internalerrors.NewServerError(http.StatusBadRequest, "invalid request", err)
 		}
+
 		if errors.Is(err, gethistory.ErrInvalidCursor) {
-			return internalerrors.NewServerError(http.StatusBadRequest, "get history invalid cursor", err)
+			return internalerrors.NewServerError(http.StatusBadRequest, "invalid cursor", err)
 		}
-		return internalerrors.NewServerError(http.StatusInternalServerError, "get history unknown error", err)
+
+		return fmt.Errorf("handle `get history`: %v", err)
 	}
 
-	return eCtx.JSON(http.StatusOK, h.response(result))
-}
-
-func (h Handlers) response(resp gethistory.Response) GetHistoryResponse {
-	msgPage := MessagesPage{Messages: make([]Message, 0, len(resp.Messages)), Next: resp.NextCursor}
-
-	for _, msg := range resp.Messages {
-		msgPage.Messages = append(msgPage.Messages, Message{
-			Id:         msg.ID,
-			Body:       msg.Body,
-			AuthorId:   pointer.PtrWithZeroAsNil(msg.AuthorID),
-			CreatedAt:  msg.CreatedAt,
-			IsReceived: msg.IsReceived,
-			IsBlocked:  msg.IsBlocked,
-			IsService:  msg.IsService,
-		})
+	page := make([]Message, 0, len(resp.Messages))
+	for _, m := range resp.Messages {
+		mm := Message{
+			AuthorId:   m.AuthorID.AsPointer(),
+			Body:       m.Body,
+			CreatedAt:  m.CreatedAt,
+			Id:         m.ID,
+			IsBlocked:  m.IsBlocked,
+			IsReceived: m.IsReceived,
+			IsService:  m.IsService,
+		}
+		page = append(page, mm)
 	}
 
-	return GetHistoryResponse{Data: &msgPage}
+	return eCtx.JSON(http.StatusOK, GetHistoryResponse{Data: &MessagesPage{
+		Messages: page,
+		Next:     resp.NextCursor,
+	}})
 }

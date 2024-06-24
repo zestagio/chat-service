@@ -3,6 +3,7 @@
 package migrate
 
 import (
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/schema/field"
 )
@@ -23,7 +24,6 @@ var (
 	// MessagesColumns holds the columns for the "messages" table.
 	MessagesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true},
-		{Name: "initial_request_id", Type: field.TypeUUID, Unique: true, Nullable: true},
 		{Name: "author_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "is_visible_for_client", Type: field.TypeBool, Default: false},
 		{Name: "is_visible_for_manager", Type: field.TypeBool, Default: false},
@@ -31,6 +31,7 @@ var (
 		{Name: "checked_at", Type: field.TypeTime, Nullable: true},
 		{Name: "is_blocked", Type: field.TypeBool, Default: false},
 		{Name: "is_service", Type: field.TypeBool, Default: false},
+		{Name: "initial_request_id", Type: field.TypeUUID, Unique: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "chat_id", Type: field.TypeUUID},
 		{Name: "problem_id", Type: field.TypeUUID},
@@ -56,19 +57,15 @@ var (
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "message_chat_id",
-				Unique:  false,
-				Columns: []*schema.Column{MessagesColumns[10]},
-			},
-			{
-				Name:    "message_initial_request_id",
-				Unique:  false,
-				Columns: []*schema.Column{MessagesColumns[1]},
-			},
-			{
 				Name:    "message_created_at",
 				Unique:  false,
 				Columns: []*schema.Column{MessagesColumns[9]},
+				Annotation: &entsql.IndexAnnotation{
+					DescColumns: map[string]bool{
+						MessagesColumns[9].Name: true,
+					},
+					Type: "BTREE",
+				},
 			},
 		},
 	}
@@ -91,13 +88,6 @@ var (
 				Columns:    []*schema.Column{ProblemsColumns[4]},
 				RefColumns: []*schema.Column{ChatsColumns[0]},
 				OnDelete:   schema.NoAction,
-			},
-		},
-		Indexes: []*schema.Index{
-			{
-				Name:    "problem_chat_id_resolved_at",
-				Unique:  true,
-				Columns: []*schema.Column{ProblemsColumns[4], ProblemsColumns[2]},
 			},
 		},
 	}

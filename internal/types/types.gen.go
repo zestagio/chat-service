@@ -55,6 +55,14 @@ func (id ChatID) Validate() error {
 	return nil
 }
 
+func (id ChatID) AsPointer() *ChatID {
+	if id.IsZero() {
+		return nil
+	}
+	return &id
+}
+
+
 type MessageID uuid.UUID
 
 var MessageIDNil MessageID
@@ -101,6 +109,14 @@ func (id MessageID) Validate() error {
 	}
 	return nil
 }
+
+func (id MessageID) AsPointer() *MessageID {
+	if id.IsZero() {
+		return nil
+	}
+	return &id
+}
+
 
 type ProblemID uuid.UUID
 
@@ -149,6 +165,14 @@ func (id ProblemID) Validate() error {
 	return nil
 }
 
+func (id ProblemID) AsPointer() *ProblemID {
+	if id.IsZero() {
+		return nil
+	}
+	return &id
+}
+
+
 type RequestID uuid.UUID
 
 var RequestIDNil RequestID
@@ -196,6 +220,14 @@ func (id RequestID) Validate() error {
 	return nil
 }
 
+func (id RequestID) AsPointer() *RequestID {
+	if id.IsZero() {
+		return nil
+	}
+	return &id
+}
+
+
 type UserID uuid.UUID
 
 var UserIDNil UserID
@@ -242,6 +274,14 @@ func (id UserID) Validate() error {
 	}
 	return nil
 }
+
+func (id UserID) AsPointer() *UserID {
+	if id.IsZero() {
+		return nil
+	}
+	return &id
+}
+
 
 func Parse[T ChatID | MessageID | ProblemID | RequestID | UserID](s string) (T, error) {
 	id, err := uuid.Parse(s)

@@ -59,26 +59,6 @@ func (mu *MessageUpdate) SetNillableProblemID(ti *types.ProblemID) *MessageUpdat
 	return mu
 }
 
-// SetInitialRequestID sets the "initial_request_id" field.
-func (mu *MessageUpdate) SetInitialRequestID(ti types.RequestID) *MessageUpdate {
-	mu.mutation.SetInitialRequestID(ti)
-	return mu
-}
-
-// SetNillableInitialRequestID sets the "initial_request_id" field if the given value is not nil.
-func (mu *MessageUpdate) SetNillableInitialRequestID(ti *types.RequestID) *MessageUpdate {
-	if ti != nil {
-		mu.SetInitialRequestID(*ti)
-	}
-	return mu
-}
-
-// ClearInitialRequestID clears the value of the "initial_request_id" field.
-func (mu *MessageUpdate) ClearInitialRequestID() *MessageUpdate {
-	mu.mutation.ClearInitialRequestID()
-	return mu
-}
-
 // SetIsVisibleForClient sets the "is_visible_for_client" field.
 func (mu *MessageUpdate) SetIsVisibleForClient(b bool) *MessageUpdate {
 	mu.mutation.SetIsVisibleForClient(b)
@@ -207,11 +187,6 @@ func (mu *MessageUpdate) check() error {
 			return &ValidationError{Name: "problem_id", err: fmt.Errorf(`store: validator failed for field "Message.problem_id": %w`, err)}
 		}
 	}
-	if v, ok := mu.mutation.InitialRequestID(); ok {
-		if err := v.Validate(); err != nil {
-			return &ValidationError{Name: "initial_request_id", err: fmt.Errorf(`store: validator failed for field "Message.initial_request_id": %w`, err)}
-		}
-	}
 	if _, ok := mu.mutation.ChatID(); mu.mutation.ChatCleared() && !ok {
 		return errors.New(`store: clearing a required unique edge "Message.chat"`)
 	}
@@ -232,12 +207,6 @@ func (mu *MessageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 				ps[i](selector)
 			}
 		}
-	}
-	if value, ok := mu.mutation.InitialRequestID(); ok {
-		_spec.SetField(message.FieldInitialRequestID, field.TypeUUID, value)
-	}
-	if mu.mutation.InitialRequestIDCleared() {
-		_spec.ClearField(message.FieldInitialRequestID, field.TypeUUID)
 	}
 	if mu.mutation.AuthorIDCleared() {
 		_spec.ClearField(message.FieldAuthorID, field.TypeUUID)
@@ -360,26 +329,6 @@ func (muo *MessageUpdateOne) SetNillableProblemID(ti *types.ProblemID) *MessageU
 	if ti != nil {
 		muo.SetProblemID(*ti)
 	}
-	return muo
-}
-
-// SetInitialRequestID sets the "initial_request_id" field.
-func (muo *MessageUpdateOne) SetInitialRequestID(ti types.RequestID) *MessageUpdateOne {
-	muo.mutation.SetInitialRequestID(ti)
-	return muo
-}
-
-// SetNillableInitialRequestID sets the "initial_request_id" field if the given value is not nil.
-func (muo *MessageUpdateOne) SetNillableInitialRequestID(ti *types.RequestID) *MessageUpdateOne {
-	if ti != nil {
-		muo.SetInitialRequestID(*ti)
-	}
-	return muo
-}
-
-// ClearInitialRequestID clears the value of the "initial_request_id" field.
-func (muo *MessageUpdateOne) ClearInitialRequestID() *MessageUpdateOne {
-	muo.mutation.ClearInitialRequestID()
 	return muo
 }
 
@@ -524,11 +473,6 @@ func (muo *MessageUpdateOne) check() error {
 			return &ValidationError{Name: "problem_id", err: fmt.Errorf(`store: validator failed for field "Message.problem_id": %w`, err)}
 		}
 	}
-	if v, ok := muo.mutation.InitialRequestID(); ok {
-		if err := v.Validate(); err != nil {
-			return &ValidationError{Name: "initial_request_id", err: fmt.Errorf(`store: validator failed for field "Message.initial_request_id": %w`, err)}
-		}
-	}
 	if _, ok := muo.mutation.ChatID(); muo.mutation.ChatCleared() && !ok {
 		return errors.New(`store: clearing a required unique edge "Message.chat"`)
 	}
@@ -566,12 +510,6 @@ func (muo *MessageUpdateOne) sqlSave(ctx context.Context) (_node *Message, err e
 				ps[i](selector)
 			}
 		}
-	}
-	if value, ok := muo.mutation.InitialRequestID(); ok {
-		_spec.SetField(message.FieldInitialRequestID, field.TypeUUID, value)
-	}
-	if muo.mutation.InitialRequestIDCleared() {
-		_spec.ClearField(message.FieldInitialRequestID, field.TypeUUID)
 	}
 	if muo.mutation.AuthorIDCleared() {
 		_spec.ClearField(message.FieldAuthorID, field.TypeUUID)

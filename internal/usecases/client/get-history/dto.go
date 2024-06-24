@@ -1,6 +1,7 @@
 package gethistory
 
 import (
+	"errors"
 	"time"
 
 	"github.com/zestagio/chat-service/internal/types"
@@ -10,11 +11,17 @@ import (
 type Request struct {
 	ID       types.RequestID `validate:"required"`
 	ClientID types.UserID    `validate:"required"`
-	PageSize int             `validate:"required_without=Cursor,excluded_with=Cursor,omitempty,gte=10,lte=100"`
-	Cursor   string          `validate:"required_without=PageSize,excluded_with=PageSize,omitempty,base64url"`
+	PageSize int             `validate:"omitempty,gte=10,lte=100"`
+	Cursor   string          `validate:"omitempty,base64url"`
 }
 
 func (r Request) Validate() error {
+	if r.Cursor == "" && r.PageSize == 0 {
+		return errors.New("either cursor or page size must be specified")
+	}
+	if r.Cursor != "" && r.PageSize != 0 {
+		return errors.New("either cursor or page size must be specified, not both")
+	}
 	return validator.Validator.Struct(r)
 }
 
@@ -24,12 +31,11 @@ type Response struct {
 }
 
 type Message struct {
-	ID                  types.MessageID
-	AuthorID            types.UserID
-	Body                string
-	IsVisibleForManager bool
-	IsBlocked           bool
-	IsReceived          bool
-	IsService           bool
-	CreatedAt           time.Time
+	ID         types.MessageID
+	AuthorID   types.UserID
+	Body       string
+	CreatedAt  time.Time
+	IsReceived bool
+	IsBlocked  bool
+	IsService  bool
 }

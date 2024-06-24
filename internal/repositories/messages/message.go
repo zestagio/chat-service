@@ -12,11 +12,11 @@ type Message struct {
 	ChatID              types.ChatID
 	AuthorID            types.UserID
 	Body                string
+	CreatedAt           time.Time
 	IsVisibleForClient  bool
 	IsVisibleForManager bool
 	IsBlocked           bool
 	IsService           bool
-	CreatedAt           time.Time
 }
 
 func adaptStoreMessage(m *store.Message) Message {
@@ -25,10 +25,10 @@ func adaptStoreMessage(m *store.Message) Message {
 		ChatID:              m.ChatID,
 		AuthorID:            m.AuthorID,
 		Body:                m.Body,
+		CreatedAt:           m.CreatedAt,
 		IsVisibleForClient:  m.IsVisibleForClient,
 		IsVisibleForManager: m.IsVisibleForManager,
 		IsBlocked:           m.IsBlocked,
 		IsService:           m.IsService,
-		CreatedAt:           m.CreatedAt,
 	}
 }

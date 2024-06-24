@@ -3,8 +3,8 @@ package pointer
 // Indirect returns the value from the passed pointer or the zero value if the pointer is nil.
 // Inspired by reflect.Indirect.
 func Indirect[T any](ptr *T) T {
-	var zero T
 	if ptr == nil {
+		var zero T
 		return zero
 	}
 	return *ptr

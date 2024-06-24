@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"go.uber.org/multierr"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
@@ -21,7 +22,6 @@ import (
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 	serverdebug "github.com/zestagio/chat-service/internal/server-debug"
 	"github.com/zestagio/chat-service/internal/store"
-	"github.com/zestagio/chat-service/internal/store/migrate"
 )
 
 var configPath = flag.String("config", "configs/config.toml", "Path to config file")
@@ -53,6 +53,48 @@ func run() (errReturned error) {
 	)
 	defer logger.Sync()
 
+	lg := zap.L().Named("main")
+
+	if cfg.Global.IsProduction() && cfg.Stores.PSQL.Debug {
+		lg.Warn("psql client in the debug mode")
+	}
+
+	storage, err := store.NewPSQLClient(store.NewPSQLOptions(
+		cfg.Stores.PSQL.Addr,
+		cfg.Stores.PSQL.Username,
+		cfg.Stores.PSQL.Password,
+		cfg.Stores.PSQL.Database,
+		store.WithDebug(cfg.Stores.PSQL.Debug),
+	))
+	if err != nil {
+		return fmt.Errorf("create store client: %v", err)
+	}
+	defer multierr.AppendInvoke(&errReturned, multierr.Close(storage))
+
+	// Migrations.
+	if err := storage.Schema.Create(ctx); err != nil {
+		return fmt.Errorf("migrate: %v", err)
+	}
+
+	// Repositories.
+	db := store.NewDatabase(storage)
+
+	chatsRepo, err := chatsrepo.New(chatsrepo.NewOptions(db))
+	if err != nil {
+		return fmt.Errorf("create chats repo: %v", err)
+	}
+
+	msgRepo, err := messagesrepo.New(messagesrepo.NewOptions(db))
+	if err != nil {
+		return fmt.Errorf("create messages repo: %v", err)
+	}
+
+	problemsRepo, err := problemsrepo.New(problemsrepo.NewOptions(db))
+	if err != nil {
+		return fmt.Errorf("create problems repo: %v", err)
+	}
+
+	// Clients.
 	kc, err := keycloakclient.New(keycloakclient.NewOptions(
 		cfg.Clients.Keycloak.BasePath,
 		cfg.Clients.Keycloak.Realm,
@@ -67,64 +109,33 @@ func run() (errReturned error) {
 		zap.L().Warn("keycloak client in the debug mode")
 	}
 
+	// Servers.
 	clientV1Swagger, err := clientv1.GetSwagger()
 	if err != nil {
 		return fmt.Errorf("get client v1 swagger: %v", err)
 	}
 
-	dbClient, err := store.NewPSQLClient(store.NewPSQLOptions(
-		cfg.DB.Addr,
-		cfg.DB.User,
-		cfg.DB.Password,
-		cfg.DB.Database,
-		store.WithDebug(cfg.DB.DebugMode),
-	))
-	if err != nil {
-		return fmt.Errorf("create db client: %v", err)
-	}
-	defer func() {
-		_ = dbClient.Close()
-	}()
-
-	if err := runMigration(dbClient); err != nil {
-		return fmt.Errorf("run migration: %v", err)
-	}
-
-	db := store.NewDatabase(dbClient)
-
-	msgRepo, err := messagesrepo.New(messagesrepo.NewOptions(db))
-	if err != nil {
-		return fmt.Errorf("create messages repo: %v", err)
-	}
-
-	chatRepo, err := chatsrepo.New(chatsrepo.NewOptions(db))
-	if err != nil {
-		return fmt.Errorf("init chats repo: %v", err)
-	}
-
-	problemRepo, err := problemsrepo.New(problemsrepo.NewOptions(db))
-	if err != nil {
-		return fmt.Errorf("init problems repo: %v", err)
-	}
-
 	srvClient, err := initServerClient(
+		cfg.Global.IsProduction(),
 		cfg.Servers.Client.Addr,
 		cfg.Servers.Client.AllowOrigins,
 		clientV1Swagger,
 		kc,
 		cfg.Servers.Client.RequiredAccess.Resource,
 		cfg.Servers.Client.RequiredAccess.Role,
-		msgRepo,
-		chatRepo,
-		problemRepo,
 		db,
-		cfg.Global.IsProduction(),
+		chatsRepo,
+		msgRepo,
+		problemsRepo,
 	)
 	if err != nil {
 		return fmt.Errorf("init client server: %v", err)
 	}
 
-	srvDebug, err := serverdebug.New(serverdebug.NewOptions(cfg.Servers.Debug.Addr, clientV1Swagger))
+	srvDebug, err := serverdebug.New(serverdebug.NewOptions(
+		cfg.Servers.Debug.Addr,
+		clientV1Swagger,
+	))
 	if err != nil {
 		return fmt.Errorf("init debug server: %v", err)
 	}
@@ -143,17 +154,5 @@ func run() (errReturned error) {
 		return fmt.Errorf("wait app stop: %v", err)
 	}
 
-	return nil
-}
-
-func runMigration(dbClient *store.Client) error {
-	err := dbClient.Schema.Create(
-		context.Background(),
-		migrate.WithDropIndex(true),
-		migrate.WithDropColumn(true),
-	)
-	if err != nil {
-		return err
-	}
 	return nil
 }

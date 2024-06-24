@@ -54,6 +54,14 @@ func (id {{ . }}) Validate() error {
 	}
 	return nil
 }
+
+func (id {{ . }}) AsPointer() *{{ . }} {
+	if id.IsZero() {
+		return nil
+	}
+	return &id
+}
+
 {{end}}
 func Parse[T {{ .argType }}](s string) (T, error) {
 	id, err := uuid.Parse(s)

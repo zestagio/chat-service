@@ -9,14 +9,14 @@ import (
 )
 
 func ParseAndValidate(filename string) (Config, error) {
-	var conf Config
-	if _, err := toml.DecodeFile(filename, &conf); err != nil {
+	var cfg Config
+	if _, err := toml.DecodeFile(filename, &cfg); err != nil {
 		return Config{}, fmt.Errorf("decode file: %v", err)
 	}
 
-	if err := validator.Validator.Struct(conf); err != nil {
+	if err := validator.Validator.Struct(cfg); err != nil {
 		return Config{}, fmt.Errorf("validate: %v", err)
 	}
 
-	return conf, nil
+	return cfg, nil
 }

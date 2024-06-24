@@ -1,12 +1,10 @@
 package schema
 
 import (
-	"entgo.io/ent/schema/index"
-	"time"
-
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"time"
 
 	"github.com/zestagio/chat-service/internal/types"
 )
@@ -30,13 +28,13 @@ func (Problem) Fields() []ent.Field {
 // Edges of the Problem.
 func (Problem) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("chat", Chat.Type).Ref("problems").Field("chat_id").Required().Unique(),
-		edge.To("messages", Message.Type),
-	}
-}
+		// The problem has one chat.
+		edge.From("chat", Chat.Type).
+			Ref("problems").
+			Field("chat_id").
+			Required().Unique(),
 
-func (Problem) Indexes() []ent.Index {
-	return []ent.Index{
-		index.Fields("chat_id", "resolved_at").Unique(),
+		// The problem has many messages.
+		edge.To("messages", Message.Type),
 	}
 }

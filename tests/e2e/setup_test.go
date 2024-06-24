@@ -14,8 +14,8 @@ import (
 	"testing"
 
 	"github.com/golang-jwt/jwt"
-	"github.com/onsi/ginkgo/v2"
-	"github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 
 	keycloakclient "github.com/zestagio/chat-service/internal/clients/keycloak"
 	"github.com/zestagio/chat-service/internal/types"
@@ -24,8 +24,8 @@ import (
 )
 
 func TestE2E(t *testing.T) {
-	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "E2E Suite")
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "E2E Suite")
 }
 
 var (
@@ -38,9 +38,9 @@ var (
 	clientsPool         *usersPool
 )
 
-var _ = ginkgo.BeforeSuite(func() {
+var _ = BeforeSuite(func() {
 	suiteCtx, suiteCtxCancel = context.WithCancel(context.Background())
-	ginkgo.DeferCleanup(suiteCtxCancel)
+	DeferCleanup(suiteCtxCancel)
 
 	apiClientV1Endpoint = expectEnv("E2E_CLIENT_V1_API_ENDPOINT")
 
@@ -59,17 +59,17 @@ var _ = ginkgo.BeforeSuite(func() {
 		kcClientSecret,
 		keycloakclient.WithDebugMode(kcClientDebug),
 	))
-	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+	Expect(err).ShouldNot(HaveOccurred())
 
 	clients, err := parseUsers(kcClients)
-	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-	ginkgo.GinkgoWriter.Printf("clients: %v", clients)
+	Expect(err).ShouldNot(HaveOccurred())
+	GinkgoWriter.Printf("clients: %v", clients)
 	clientsPool = newUsersPool(clients)
 })
 
 func expectEnv(k string) string {
 	v := os.Getenv(k)
-	gomega.Expect(v).NotTo(gomega.BeZero(), fmt.Sprintf("Please make sure %q is set correctly.", k))
+	Expect(v).NotTo(BeZero(), fmt.Sprintf("Please make sure %q is set correctly.", k))
 	return v
 }
 
@@ -100,21 +100,21 @@ func newClientChat(ctx context.Context, client user) *clientchat.Chat {
 
 	var cl simpleClaims
 	t, _, err := new(jwt.Parser).ParseUnverified(token, &cl)
-	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+	Expect(err).ShouldNot(HaveOccurred())
 
 	clientID, err := types.Parse[types.UserID](t.Claims.(*simpleClaims).Subject)
-	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-	ginkgo.GinkgoWriter.Printf("client %v has token sub %v\n", client.Name, clientID)
+	Expect(err).ShouldNot(HaveOccurred())
+	GinkgoWriter.Printf("client %v has token sub %v\n", client.Name, clientID)
 
 	clientChat, err := clientchat.New(clientchat.NewOptions(clientID, token, apiClientV1))
-	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+	Expect(err).ShouldNot(HaveOccurred())
 
 	return clientChat
 }
 
 func newClientAPI(ctx context.Context, client user) (*apiclientv1.ClientWithResponses, string) {
 	token, err := kc.Auth(ctx, client.Name, client.Password)
-	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+	Expect(err).ShouldNot(HaveOccurred())
 
 	authorizator := func(_ context.Context, req *http.Request) error {
 		req.Header.Set("Authorization", "Bearer "+token.AccessToken)
@@ -124,7 +124,7 @@ func newClientAPI(ctx context.Context, client user) (*apiclientv1.ClientWithResp
 		apiClientV1Endpoint,
 		apiclientv1.WithRequestEditorFn(authorizator),
 	)
-	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+	Expect(err).ShouldNot(HaveOccurred())
 
 	return apiClientV1, token.AccessToken
 }
@@ -153,13 +153,13 @@ func (p *usersPool) Get() user {
 	defer p.mu.Unlock()
 
 	if len(p.users) == 0 {
-		ginkgo.AbortSuite("there are no users in the pool - let's add a new one to Keycloak")
+		AbortSuite("there are no users in the pool - let's add a new one to Keycloak")
 	}
 
 	u := p.users[0]
 	p.users = p.users[1:]
 
-	ginkgo.GinkgoWriter.Printf("user %s removed from pool\n", u.Name)
+	GinkgoWriter.Printf("user %s removed from pool\n", u.Name)
 	return u
 }
 

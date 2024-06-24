@@ -600,7 +600,6 @@ type MessageMutation struct {
 	op                     Op
 	typ                    string
 	id                     *types.MessageID
-	initial_request_id     *types.RequestID
 	author_id              *types.UserID
 	is_visible_for_client  *bool
 	is_visible_for_manager *bool
@@ -608,6 +607,7 @@ type MessageMutation struct {
 	checked_at             *time.Time
 	is_blocked             *bool
 	is_service             *bool
+	initial_request_id     *types.RequestID
 	created_at             *time.Time
 	clearedFields          map[string]struct{}
 	chat                   *types.ChatID
@@ -793,55 +793,6 @@ func (m *MessageMutation) OldProblemID(ctx context.Context) (v types.ProblemID, 
 // ResetProblemID resets all changes to the "problem_id" field.
 func (m *MessageMutation) ResetProblemID() {
 	m.problem = nil
-}
-
-// SetInitialRequestID sets the "initial_request_id" field.
-func (m *MessageMutation) SetInitialRequestID(ti types.RequestID) {
-	m.initial_request_id = &ti
-}
-
-// InitialRequestID returns the value of the "initial_request_id" field in the mutation.
-func (m *MessageMutation) InitialRequestID() (r types.RequestID, exists bool) {
-	v := m.initial_request_id
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldInitialRequestID returns the old "initial_request_id" field's value of the Message entity.
-// If the Message object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *MessageMutation) OldInitialRequestID(ctx context.Context) (v types.RequestID, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldInitialRequestID is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldInitialRequestID requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldInitialRequestID: %w", err)
-	}
-	return oldValue.InitialRequestID, nil
-}
-
-// ClearInitialRequestID clears the value of the "initial_request_id" field.
-func (m *MessageMutation) ClearInitialRequestID() {
-	m.initial_request_id = nil
-	m.clearedFields[message.FieldInitialRequestID] = struct{}{}
-}
-
-// InitialRequestIDCleared returns if the "initial_request_id" field was cleared in this mutation.
-func (m *MessageMutation) InitialRequestIDCleared() bool {
-	_, ok := m.clearedFields[message.FieldInitialRequestID]
-	return ok
-}
-
-// ResetInitialRequestID resets all changes to the "initial_request_id" field.
-func (m *MessageMutation) ResetInitialRequestID() {
-	m.initial_request_id = nil
-	delete(m.clearedFields, message.FieldInitialRequestID)
 }
 
 // SetAuthorID sets the "author_id" field.
@@ -1122,6 +1073,42 @@ func (m *MessageMutation) ResetIsService() {
 	m.is_service = nil
 }
 
+// SetInitialRequestID sets the "initial_request_id" field.
+func (m *MessageMutation) SetInitialRequestID(ti types.RequestID) {
+	m.initial_request_id = &ti
+}
+
+// InitialRequestID returns the value of the "initial_request_id" field in the mutation.
+func (m *MessageMutation) InitialRequestID() (r types.RequestID, exists bool) {
+	v := m.initial_request_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInitialRequestID returns the old "initial_request_id" field's value of the Message entity.
+// If the Message object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageMutation) OldInitialRequestID(ctx context.Context) (v types.RequestID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInitialRequestID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInitialRequestID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInitialRequestID: %w", err)
+	}
+	return oldValue.InitialRequestID, nil
+}
+
+// ResetInitialRequestID resets all changes to the "initial_request_id" field.
+func (m *MessageMutation) ResetInitialRequestID() {
+	m.initial_request_id = nil
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *MessageMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -1253,9 +1240,6 @@ func (m *MessageMutation) Fields() []string {
 	if m.problem != nil {
 		fields = append(fields, message.FieldProblemID)
 	}
-	if m.initial_request_id != nil {
-		fields = append(fields, message.FieldInitialRequestID)
-	}
 	if m.author_id != nil {
 		fields = append(fields, message.FieldAuthorID)
 	}
@@ -1277,6 +1261,9 @@ func (m *MessageMutation) Fields() []string {
 	if m.is_service != nil {
 		fields = append(fields, message.FieldIsService)
 	}
+	if m.initial_request_id != nil {
+		fields = append(fields, message.FieldInitialRequestID)
+	}
 	if m.created_at != nil {
 		fields = append(fields, message.FieldCreatedAt)
 	}
@@ -1292,8 +1279,6 @@ func (m *MessageMutation) Field(name string) (ent.Value, bool) {
 		return m.ChatID()
 	case message.FieldProblemID:
 		return m.ProblemID()
-	case message.FieldInitialRequestID:
-		return m.InitialRequestID()
 	case message.FieldAuthorID:
 		return m.AuthorID()
 	case message.FieldIsVisibleForClient:
@@ -1308,6 +1293,8 @@ func (m *MessageMutation) Field(name string) (ent.Value, bool) {
 		return m.IsBlocked()
 	case message.FieldIsService:
 		return m.IsService()
+	case message.FieldInitialRequestID:
+		return m.InitialRequestID()
 	case message.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -1323,8 +1310,6 @@ func (m *MessageMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldChatID(ctx)
 	case message.FieldProblemID:
 		return m.OldProblemID(ctx)
-	case message.FieldInitialRequestID:
-		return m.OldInitialRequestID(ctx)
 	case message.FieldAuthorID:
 		return m.OldAuthorID(ctx)
 	case message.FieldIsVisibleForClient:
@@ -1339,6 +1324,8 @@ func (m *MessageMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldIsBlocked(ctx)
 	case message.FieldIsService:
 		return m.OldIsService(ctx)
+	case message.FieldInitialRequestID:
+		return m.OldInitialRequestID(ctx)
 	case message.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -1363,13 +1350,6 @@ func (m *MessageMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetProblemID(v)
-		return nil
-	case message.FieldInitialRequestID:
-		v, ok := value.(types.RequestID)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetInitialRequestID(v)
 		return nil
 	case message.FieldAuthorID:
 		v, ok := value.(types.UserID)
@@ -1420,6 +1400,13 @@ func (m *MessageMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetIsService(v)
 		return nil
+	case message.FieldInitialRequestID:
+		v, ok := value.(types.RequestID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInitialRequestID(v)
+		return nil
 	case message.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -1457,9 +1444,6 @@ func (m *MessageMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *MessageMutation) ClearedFields() []string {
 	var fields []string
-	if m.FieldCleared(message.FieldInitialRequestID) {
-		fields = append(fields, message.FieldInitialRequestID)
-	}
 	if m.FieldCleared(message.FieldAuthorID) {
 		fields = append(fields, message.FieldAuthorID)
 	}
@@ -1480,9 +1464,6 @@ func (m *MessageMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *MessageMutation) ClearField(name string) error {
 	switch name {
-	case message.FieldInitialRequestID:
-		m.ClearInitialRequestID()
-		return nil
 	case message.FieldAuthorID:
 		m.ClearAuthorID()
 		return nil
@@ -1502,9 +1483,6 @@ func (m *MessageMutation) ResetField(name string) error {
 		return nil
 	case message.FieldProblemID:
 		m.ResetProblemID()
-		return nil
-	case message.FieldInitialRequestID:
-		m.ResetInitialRequestID()
 		return nil
 	case message.FieldAuthorID:
 		m.ResetAuthorID()
@@ -1526,6 +1504,9 @@ func (m *MessageMutation) ResetField(name string) error {
 		return nil
 	case message.FieldIsService:
 		m.ResetIsService()
+		return nil
+	case message.FieldInitialRequestID:
+		m.ResetInitialRequestID()
 		return nil
 	case message.FieldCreatedAt:
 		m.ResetCreatedAt()

@@ -42,7 +42,9 @@ vars:
   DOCKER_COMPOSE_CMD: docker compose -f {{ .DOCKER_COMPOSE_PATHS | trim | splitLines | join " -f " }}
 
   ENT_SCHEMA: ./internal/store/schema
-  ENT_TEMPLATES: ./internal/store/templates/*.tmpl
+  ENT_TEMPLATES: ./internal/store/templates
+  ENT_FEATURES: |
+    sql/upsert
 
   KEYCLOAK_REALM_PATH: ./deploy/local/bank-realm.json
 
@@ -50,8 +52,10 @@ vars:
   CLIENT_V1_DST: ./internal/server-client/v1/server.gen.go
   CLIENT_V1_PKG: clientv1
 
+  ### E2E tests ###
   E2E_CLIENT_V1_DST: ./tests/e2e/api/client/v1/client.gen.go
   E2E_CLIENT_V1_PKG: apiclientv1
+  ###
 
 tasks:
   default:
@@ -172,7 +176,7 @@ tasks:
 
   ent:gen:
     cmds:
-      - .{{.DEV_TOOLS_PATH}}/ent generate --template {{.ENT_TEMPLATES}} {{.ENT_SCHEMA}}
+      - .{{.DEV_TOOLS_PATH}}/ent generate --template {{.ENT_TEMPLATES}} --feature {{ .ENT_FEATURES | trim | splitLines | join "," }} {{.ENT_SCHEMA}}
       - task: tidy
 
   ent:describe:
