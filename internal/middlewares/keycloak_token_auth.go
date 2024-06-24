@@ -16,10 +16,7 @@ import (
 
 const tokenCtxKey = "user-token"
 
-var (
-	ErrNoRequiredResourceRole = errors.New("no required resource role")
-	ErrInactiveToken          = errors.New("token is inactive")
-)
+var ErrNoRequiredResourceRole = errors.New("no required resource role")
 
 type Introspector interface {
 	IntrospectToken(ctx context.Context, token string) (*keycloakclient.IntrospectTokenResult, error)
@@ -36,41 +33,24 @@ func NewKeycloakTokenAuth(introspector Introspector, resource, role string) echo
 			if err != nil {
 				return false, err
 			}
-
 			if !res.Active {
-				return false, ErrInactiveToken
+				return false, nil
 			}
 
-			var keycloakClaims claims
-
-			token, _, err := new(jwt.Parser).ParseUnverified(tokenStr, &keycloakClaims)
+			var cl claims
+			t, _, err := new(jwt.Parser).ParseUnverified(tokenStr, &cl)
 			if err != nil {
+				// Unreachable.
 				return false, err
 			}
-
-			if err := keycloakClaims.Valid(); err != nil {
+			if err := t.Claims.Valid(); err != nil {
 				return false, err
 			}
-
-			resourceAccess, ok := keycloakClaims.ResourcesAccess[resource]
-			if !ok {
-				return false, ErrNoRequiredResourceRole
+			if !cl.ResourcesAccess.HasResourceRole(resource, role) {
+				return false, echo.ErrForbidden.WithInternal(ErrNoRequiredResourceRole)
 			}
 
-			hasRole := false
-			for _, v := range resourceAccess.Roles {
-				if v == role {
-					hasRole = true
-					break
-				}
-			}
-
-			if !hasRole {
-				return false, ErrNoRequiredResourceRole
-			}
-
-			eCtx.Set(tokenCtxKey, token)
-
+			eCtx.Set(tokenCtxKey, t)
 			return true, nil
 		},
 	})

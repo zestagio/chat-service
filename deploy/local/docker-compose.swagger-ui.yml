@@ -4,8 +4,7 @@ services:
   swagger-ui:
     image: swaggerapi/swagger-ui
     environment:
-      URLS_PRIMARY_NAME: "CheckServer"
-      URLS: "[{ url: 'doc/client.v1.swagger.yml', name: 'Client v1' }]"
+      URLS: "[{ url: 'doc/client.v1.swagger.yml', name: 'Bank Support Chat Client API' }]"
     profiles: [ swagger-ui ]
     volumes:
       - ./../../api:/usr/share/nginx/html/doc

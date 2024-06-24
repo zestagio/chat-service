@@ -25,3 +25,10 @@ realm = "Bank"
 client_id = "chat-service"
 client_secret = "BX6KbVXoZREf3hQI7mnRBwTW6wJ0SS8e"
 debug_mode = false
+
+[db]
+addr = "127.0.0.1:5432"
+user = "chat-service"
+password = "chat-service"
+database = "chat-service"
+debug_mode = false

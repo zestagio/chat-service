@@ -8,6 +8,7 @@ import (
 	"net/http/pprof"
 	"time"
 
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -15,7 +16,6 @@ import (
 	"github.com/zestagio/chat-service/internal/buildinfo"
 	"github.com/zestagio/chat-service/internal/logger"
 	"github.com/zestagio/chat-service/internal/middlewares"
-	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 )
 
 const (
@@ -26,6 +26,8 @@ const (
 //go:generate options-gen -out-filename=server_options.gen.go -from-struct=Options
 type Options struct {
 	addr string `option:"mandatory" validate:"required,hostname_port"`
+
+	clientSwagger *openapi3.T `option:"mandatory" validate:"required"`
 }
 
 type Server struct {
@@ -41,8 +43,8 @@ func New(opts Options) (*Server, error) {
 	lg := zap.L().Named("server-debug")
 
 	e := echo.New()
+	e.Use(middlewares.NewRecovery(lg))
 	e.Use(middlewares.NewRequestLogger(lg))
-	e.Use(middlewares.NewRecover(lg))
 
 	s := &Server{
 		lg: lg,
@@ -58,6 +60,7 @@ func New(opts Options) (*Server, error) {
 	index.addPage("/version", "Get build information")
 
 	e.PUT("/log/level", echo.WrapHandler(logger.Level))
+	e.GET("/log/level", echo.WrapHandler(logger.Level))
 
 	{
 		pprofMux := http.NewServeMux()
@@ -75,8 +78,10 @@ func New(opts Options) (*Server, error) {
 	e.GET("/debug/error", s.DebugError)
 	index.addPage("/debug/error", "Debug Sentry error event")
 
-	e.GET("/schema/client", s.SchemaClient)
-	index.addPage("/schema/client", "Get client OpenAPI specification")
+	{
+		e.GET("/schema/client", s.ExposeSchema(opts.clientSwagger))
+		index.addPage("/schema/client", "Get client OpenAPI specification")
+	}
 
 	e.GET("/", index.handler)
 	return s, nil
@@ -85,27 +90,23 @@ func New(opts Options) (*Server, error) {
 func (s *Server) Run(ctx context.Context) error {
 	eg, ctx := errgroup.WithContext(ctx)
 
-	eg.Go(
-		func() error {
-			<-ctx.Done()
+	eg.Go(func() error {
+		<-ctx.Done()
 
-			ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-			defer cancel()
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
 
-			return s.srv.Shutdown(ctx) //nolint:contextcheck // graceful shutdown with new context
-		},
-	)
+		return s.srv.Shutdown(ctx) //nolint:contextcheck // graceful shutdown with new context
+	})
 
-	eg.Go(
-		func() error {
-			s.lg.Info("listen and serve", zap.String("addr", s.srv.Addr))
+	eg.Go(func() error {
+		s.lg.Info("listen and serve", zap.String("addr", s.srv.Addr))
 
-			if err := s.srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				return fmt.Errorf("listen and serve: %v", err)
-			}
-			return nil
-		},
-	)
+		if err := s.srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return fmt.Errorf("listen and serve: %v", err)
+		}
+		return nil
+	})
 
 	return eg.Wait()
 }
@@ -115,13 +116,12 @@ func (s *Server) Version(eCtx echo.Context) error {
 }
 
 func (s *Server) DebugError(eCtx echo.Context) error {
-	s.lg.Error("look for me in the sentry")
-
+	s.lg.Error("look for me in the Sentry")
 	return eCtx.String(http.StatusOK, "event sent")
 }
 
-func (s *Server) SchemaClient(eCtx echo.Context) error {
-	swagger, _ := clientv1.GetSwagger()
-
-	return eCtx.JSON(http.StatusOK, swagger)
+func (s *Server) ExposeSchema(swagger *openapi3.T) echo.HandlerFunc {
+	return func(eCtx echo.Context) error {
+		return eCtx.JSON(http.StatusOK, swagger)
+	}
 }

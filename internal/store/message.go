@@ -24,6 +24,8 @@ type Message struct {
 	ChatID types.ChatID `json:"chat_id,omitempty"`
 	// ProblemID holds the value of the "problem_id" field.
 	ProblemID types.ProblemID `json:"problem_id,omitempty"`
+	// InitialRequestID holds the value of the "initial_request_id" field.
+	InitialRequestID types.RequestID `json:"initial_request_id,omitempty"`
 	// AuthorID holds the value of the "author_id" field.
 	AuthorID types.UserID `json:"author_id,omitempty"`
 	// IsVisibleForClient holds the value of the "is_visible_for_client" field.
@@ -96,6 +98,8 @@ func (*Message) scanValues(columns []string) ([]any, error) {
 			values[i] = new(types.MessageID)
 		case message.FieldProblemID:
 			values[i] = new(types.ProblemID)
+		case message.FieldInitialRequestID:
+			values[i] = new(types.RequestID)
 		case message.FieldAuthorID:
 			values[i] = new(types.UserID)
 		default:
@@ -130,6 +134,12 @@ func (m *Message) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field problem_id", values[i])
 			} else if value != nil {
 				m.ProblemID = *value
+			}
+		case message.FieldInitialRequestID:
+			if value, ok := values[i].(*types.RequestID); !ok {
+				return fmt.Errorf("unexpected type %T for field initial_request_id", values[i])
+			} else if value != nil {
+				m.InitialRequestID = *value
 			}
 		case message.FieldAuthorID:
 			if value, ok := values[i].(*types.UserID); !ok {
@@ -230,6 +240,9 @@ func (m *Message) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("problem_id=")
 	builder.WriteString(fmt.Sprintf("%v", m.ProblemID))
+	builder.WriteString(", ")
+	builder.WriteString("initial_request_id=")
+	builder.WriteString(fmt.Sprintf("%v", m.InitialRequestID))
 	builder.WriteString(", ")
 	builder.WriteString("author_id=")
 	builder.WriteString(fmt.Sprintf("%v", m.AuthorID))

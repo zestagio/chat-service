@@ -2,21 +2,24 @@ run:
   tests: true
   build-tags:
     - integration
+    - e2e
   skip-dirs:
     - internal/store/*
 
 issues:
+  max-same-issues: 0
+
   exclude-rules:
+    - path: cmd/gen-types
+      linters: [ forbidigo ]
+
     - path: internal/clients/keycloak
       linters: [ tagliatelle ]
-
     - path: internal/middlewares/keycloak_claims.go
       linters: [ tagliatelle ]
-
     - path: internal/middlewares/keycloak_token_auth_test.go
       source: "const token"
       linters: [ gosec ]
-  max-same-issues: 0
 
 linters-settings:
   exhaustive:
@@ -66,6 +69,7 @@ linters-settings:
     severity: error
     rules:
       - name: argument-limit
+        arguments: [11]
       - name: atomic
       - name: bare-return
       - name: blank-imports

@@ -10,31 +10,33 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	echomdlwr "github.com/labstack/echo/v4/middleware"
 	oapimdlwr "github.com/oapi-codegen/echo-middleware"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
-	keycloakclient "github.com/zestagio/chat-service/internal/clients/keycloak"
 	"github.com/zestagio/chat-service/internal/middlewares"
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 )
 
 const (
+	bodyLimit = "12KB" // ~ 3000 characters * 4 bytes.
+
 	readHeaderTimeout = time.Second
 	shutdownTimeout   = 3 * time.Second
 )
 
 //go:generate options-gen -out-filename=server_options.gen.go -from-struct=Options
 type Options struct {
-	logger         *zap.Logger              `option:"mandatory" validate:"required"`
-	keycloakClient *keycloakclient.Client   `option:"mandatory" validate:"required"`
-	addr           string                   `option:"mandatory" validate:"required,hostname_port"`
-	resource       string                   `option:"mandatory" validate:"required"`
-	role           string                   `option:"mandatory" validate:"required"`
-	allowOrigins   []string                 `option:"mandatory" validate:"min=1"`
-	v1Swagger      *openapi3.T              `option:"mandatory" validate:"required"`
-	v1Handlers     clientv1.ServerInterface `option:"mandatory" validate:"required"`
+	logger           *zap.Logger              `option:"mandatory" validate:"required"`
+	addr             string                   `option:"mandatory" validate:"required,hostname_port"`
+	allowOrigins     []string                 `option:"mandatory" validate:"min=1"`
+	introspector     middlewares.Introspector `option:"mandatory" validate:"required"`
+	requiredResource string                   `option:"mandatory" validate:"required"`
+	requiredRole     string                   `option:"mandatory" validate:"required"`
+	v1Swagger        *openapi3.T              `option:"mandatory" validate:"required"`
+	v1Handlers       clientv1.ServerInterface `option:"mandatory" validate:"required"`
+	errHandler       echo.HTTPErrorHandler    `option:"mandatory" validate:"required"`
 }
 
 type Server struct {
@@ -48,21 +50,14 @@ func New(opts Options) (*Server, error) {
 	}
 
 	e := echo.New()
-	e.Use(middlewares.NewRequestLogger(opts.logger))
-	e.Use(middlewares.NewRecover(opts.logger))
-	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{AllowOrigins: opts.allowOrigins, AllowMethods: []string{echo.POST}}))
-	e.Use(middlewares.NewKeycloakTokenAuth(opts.keycloakClient, opts.resource, opts.role))
-	// 3000 unicode chars. Each 4 bytes max. 3000 * 4 = 12 kilobytes. +1 kilobyte reserved for JSON extra chars.
-	e.Use(middleware.BodyLimit("13K"))
 
-	s := &Server{
-		lg: opts.logger,
-		srv: &http.Server{
-			Addr:              opts.addr,
-			Handler:           e,
-			ReadHeaderTimeout: readHeaderTimeout,
-		},
-	}
+	e.HTTPErrorHandler = opts.errHandler
+
+	e.Use(middlewares.NewRequestLogger(opts.logger))
+	e.Use(middlewares.NewRecovery(opts.logger))
+	e.Use(echomdlwr.CORSWithConfig(echomdlwr.CORSConfig{AllowOrigins: opts.allowOrigins, AllowMethods: []string{echo.POST}}))
+	e.Use(middlewares.NewKeycloakTokenAuth(opts.introspector, opts.requiredResource, opts.requiredRole))
+	e.Use(echomdlwr.BodyLimit(bodyLimit))
 
 	v1 := e.Group("v1", oapimdlwr.OapiRequestValidatorWithOptions(opts.v1Swagger, &oapimdlwr.Options{
 		Options: openapi3filter.Options{
@@ -73,7 +68,14 @@ func New(opts Options) (*Server, error) {
 	}))
 	clientv1.RegisterHandlers(v1, opts.v1Handlers)
 
-	return s, nil
+	return &Server{
+		lg: opts.logger,
+		srv: &http.Server{
+			Addr:              opts.addr,
+			Handler:           e,
+			ReadHeaderTimeout: readHeaderTimeout,
+		},
+	}, nil
 }
 
 func (s *Server) Run(ctx context.Context) error {

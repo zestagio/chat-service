@@ -17,13 +17,14 @@ type Options struct {
 	debugMode    bool
 }
 
-// Client is a tiny client to the KeyCloak realm operations. UMA configuration:
+// Client is a tiny client to the Keycloak realm operations. UMA configuration:
 // http://localhost:3010/realms/Bank/.well-known/uma2-configuration
 type Client struct {
+	realm        string
 	clientID     string
 	clientSecret string
-	realm        string
-	cli          *resty.Client
+
+	cli *resty.Client
 }
 
 func New(opts Options) (*Client, error) {
@@ -34,13 +35,12 @@ func New(opts Options) (*Client, error) {
 	cli := resty.New()
 	cli.SetDebug(opts.debugMode)
 	cli.SetBaseURL(opts.basePath)
-	cli.SetDebug(opts.debugMode)
-	cli.SetHeader("User-Agent", "chat-service/"+buildinfo.BuildInfo.Main.Version)
+	cli.SetHeader("User-Agent", "chat-service/"+buildinfo.Version())
 
 	return &Client{
+		realm:        opts.realm,
 		clientID:     opts.clientID,
 		clientSecret: opts.clientSecret,
-		realm:        opts.realm,
 		cli:          cli,
 	}, nil
 }

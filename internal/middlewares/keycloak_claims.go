@@ -1,12 +1,11 @@
 package middlewares
 
 import (
-	"encoding/json"
 	"errors"
-	"strings"
 
 	"github.com/golang-jwt/jwt"
 
+	keycloakclient "github.com/zestagio/chat-service/internal/clients/keycloak"
 	"github.com/zestagio/chat-service/internal/types"
 )
 
@@ -17,35 +16,9 @@ var (
 
 type claims struct {
 	jwt.StandardClaims
-	Audience        multiString               `json:"aud,omitempty"`
-	Subject         types.UserID              `json:"sub"`
-	ResourcesAccess map[string]ResourceAccess `json:"resource_access"`
-}
-
-type ResourceAccess struct {
-	Roles []string `json:"roles"`
-}
-
-type multiString string
-
-func (ms *multiString) UnmarshalJSON(data []byte) error {
-	if len(data) > 0 {
-		switch data[0] {
-		case '"':
-			var s string
-			if err := json.Unmarshal(data, &s); err != nil {
-				return err
-			}
-			*ms = multiString(s)
-		case '[':
-			var s []string
-			if err := json.Unmarshal(data, &s); err != nil {
-				return err
-			}
-			*ms = multiString(strings.Join(s, ","))
-		}
-	}
-	return nil
+	Audience        keycloakclient.StringOrSlice `json:"aud,omitempty"`
+	Subject         types.UserID                 `json:"sub,omitempty"`
+	ResourcesAccess resourceAccess               `json:"resource_access"`
 }
 
 // Valid returns errors:
@@ -70,4 +43,22 @@ func (c claims) Valid() error {
 
 func (c claims) UserID() types.UserID {
 	return c.Subject
+}
+
+type resourceAccess map[string]struct {
+	Roles []string `json:"roles"`
+}
+
+func (ra resourceAccess) HasResourceRole(resource, role string) bool {
+	access, ok := ra[resource]
+	if !ok {
+		return false
+	}
+
+	for _, r := range access.Roles {
+		if r == role {
+			return true
+		}
+	}
+	return false
 }

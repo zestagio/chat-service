@@ -3,7 +3,8 @@ package types
 
 import (
 	"database/sql/driver"
-	"fmt"
+	"errors"
+
 	"github.com/google/uuid"
 )
 
@@ -49,7 +50,7 @@ func (id ChatID) Matches(x interface{}) bool {
 
 func (id ChatID) Validate() error {
 	if id.IsZero() {
-		return fmt.Errorf("id has invalid value: %v", id.String())
+		return errors.New("zero ChatID")
 	}
 	return nil
 }
@@ -96,7 +97,7 @@ func (id MessageID) Matches(x interface{}) bool {
 
 func (id MessageID) Validate() error {
 	if id.IsZero() {
-		return fmt.Errorf("id has invalid value: %v", id.String())
+		return errors.New("zero MessageID")
 	}
 	return nil
 }
@@ -143,7 +144,7 @@ func (id ProblemID) Matches(x interface{}) bool {
 
 func (id ProblemID) Validate() error {
 	if id.IsZero() {
-		return fmt.Errorf("id has invalid value: %v", id.String())
+		return errors.New("zero ProblemID")
 	}
 	return nil
 }
@@ -190,7 +191,7 @@ func (id RequestID) Matches(x interface{}) bool {
 
 func (id RequestID) Validate() error {
 	if id.IsZero() {
-		return fmt.Errorf("id has invalid value: %v", id.String())
+		return errors.New("zero RequestID")
 	}
 	return nil
 }
@@ -237,7 +238,7 @@ func (id UserID) Matches(x interface{}) bool {
 
 func (id UserID) Validate() error {
 	if id.IsZero() {
-		return fmt.Errorf("id has invalid value: %v", id.String())
+		return errors.New("zero UserID")
 	}
 	return nil
 }

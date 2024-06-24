@@ -22,7 +22,7 @@ func newIndexPage() *indexPage {
 }
 
 func (i *indexPage) addPage(path string, description string) {
-	i.pages = append(i.pages, page{path, description})
+	i.pages = append(i.pages, page{Path: path, Description: description})
 }
 
 func (i indexPage) handler(eCtx echo.Context) error {

@@ -245,6 +245,7 @@
         "containerId" : "97212328-ea2b-4670-85cd-67d0a2097268",
         "attributes" : { }
       } ],
+      "e2e-testing" : [ ],
       "security-admin-console" : [ ],
       "integration-testing" : [ ],
       "admin-cli" : [ ],
@@ -413,11 +414,63 @@
     "notBefore" : 0,
     "groups" : [ ]
   }, {
+    "id" : "68a84596-4648-4e22-8416-bfbda59e0ae3",
+    "username" : "e2e_client_0",
+    "firstName" : "e2e_client_0",
+    "lastName" : "e2e_client_0",
+    "email" : "e2e_client_0@gmail.com",
+    "emailVerified" : true,
+    "createdTimestamp" : 1718740463471,
+    "enabled" : true,
+    "totp" : false,
+    "credentials" : [ {
+      "id" : "b22af017-5d76-44d4-bf5a-0bcd0d314061",
+      "type" : "password",
+      "userLabel" : "My password",
+      "createdDate" : 1718740470448,
+      "secretData" : "{\"value\":\"LGCmJ97kntVfIQ5Zx0B1jmAyzGvWHwgN5OiHkqZ5wbq8orSxJf+ZQ5wviwiAWDuKyX+32VZqhzj6eASAwBoTOQ==\",\"salt\":\"15hEpQEc0osfEHAizzhWAw==\",\"additionalParameters\":{}}",
+      "credentialData" : "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\",\"additionalParameters\":{}}"
+    } ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "default-roles-bank" ],
+    "clientRoles" : {
+      "chat-ui-client" : [ "support-chat-client" ]
+    },
+    "notBefore" : 0,
+    "groups" : [ ]
+  }, {
+    "id" : "7dfee8cc-df4b-4b0e-a30d-b25045cc2570",
+    "username" : "e2e_client_1",
+    "firstName" : "e2e_client_1",
+    "lastName" : "e2e_client_1",
+    "email" : "e2e_client_1@gmail.com",
+    "emailVerified" : true,
+    "createdTimestamp" : 1718740501844,
+    "enabled" : true,
+    "totp" : false,
+    "credentials" : [ {
+      "id" : "d7cbb9e0-4878-4dca-b73c-a3e4440c1960",
+      "type" : "password",
+      "userLabel" : "My password",
+      "createdDate" : 1718740510606,
+      "secretData" : "{\"value\":\"Z7WRnCIAE2ObOSJ4doFElg9WQ6zNC9gOWzznJHSWFh/4iqnhXWpcF5zg8+fMcXWZEGS3Ur5StogCaWqAoP3avg==\",\"salt\":\"OFmLROVbAt0qvOSWjxdtcA==\",\"additionalParameters\":{}}",
+      "credentialData" : "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\",\"additionalParameters\":{}}"
+    } ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "default-roles-bank" ],
+    "clientRoles" : {
+      "chat-ui-client" : [ "support-chat-client" ]
+    },
+    "notBefore" : 0,
+    "groups" : [ ]
+  }, {
     "id" : "fccd8e93-528d-4172-817a-8127ae514ebc",
     "username" : "integration-testing",
     "firstName" : "integration-testing",
     "lastName" : "integration-testing",
-    "email" : "integration-testing@gmailcom",
+    "email" : "integration-testing@gmail.com",
     "emailVerified" : true,
     "createdTimestamp" : 1718051079863,
     "enabled" : true,
@@ -636,6 +689,43 @@
       "oidc.ciba.grant.enabled" : "false",
       "post.logout.redirect.uris" : "+",
       "oauth2.device.authorization.grant.enabled" : "false",
+      "backchannel.logout.session.required" : "true",
+      "backchannel.logout.revoke.offline.tokens" : "false"
+    },
+    "authenticationFlowBindingOverrides" : { },
+    "fullScopeAllowed" : true,
+    "nodeReRegistrationTimeout" : -1,
+    "defaultClientScopes" : [ "web-origins", "acr", "profile", "roles", "email" ],
+    "optionalClientScopes" : [ "address", "phone", "offline_access", "microprofile-jwt" ]
+  }, {
+    "id" : "33480091-bd8e-417e-af35-20a88e117594",
+    "clientId" : "e2e-testing",
+    "name" : "",
+    "description" : "",
+    "rootUrl" : "",
+    "adminUrl" : "",
+    "baseUrl" : "",
+    "surrogateAuthRequired" : false,
+    "enabled" : true,
+    "alwaysDisplayInConsole" : false,
+    "clientAuthenticatorType" : "client-secret",
+    "secret" : "nGWGIQuZJ2wzvCI4hD85FqL9d3kmOzgY",
+    "redirectUris" : [ "/*" ],
+    "webOrigins" : [ "/*" ],
+    "notBefore" : 0,
+    "bearerOnly" : false,
+    "consentRequired" : false,
+    "standardFlowEnabled" : true,
+    "implicitFlowEnabled" : false,
+    "directAccessGrantsEnabled" : true,
+    "serviceAccountsEnabled" : false,
+    "publicClient" : false,
+    "frontchannelLogout" : true,
+    "protocol" : "openid-connect",
+    "attributes" : {
+      "oidc.ciba.grant.enabled" : "false",
+      "oauth2.device.authorization.grant.enabled" : "false",
+      "client.secret.creation.time" : "1718740351",
       "backchannel.logout.session.required" : "true",
       "backchannel.logout.revoke.offline.tokens" : "false"
     },

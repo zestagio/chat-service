@@ -11,8 +11,10 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/zestagio/chat-service/internal/store/chat"
 	"github.com/zestagio/chat-service/internal/store/message"
 	"github.com/zestagio/chat-service/internal/store/predicate"
+	"github.com/zestagio/chat-service/internal/store/problem"
 	"github.com/zestagio/chat-service/internal/types"
 )
 
@@ -29,23 +31,51 @@ func (mu *MessageUpdate) Where(ps ...predicate.Message) *MessageUpdate {
 	return mu
 }
 
-// SetAuthorID sets the "author_id" field.
-func (mu *MessageUpdate) SetAuthorID(ti types.UserID) *MessageUpdate {
-	mu.mutation.SetAuthorID(ti)
+// SetChatID sets the "chat_id" field.
+func (mu *MessageUpdate) SetChatID(ti types.ChatID) *MessageUpdate {
+	mu.mutation.SetChatID(ti)
 	return mu
 }
 
-// SetNillableAuthorID sets the "author_id" field if the given value is not nil.
-func (mu *MessageUpdate) SetNillableAuthorID(ti *types.UserID) *MessageUpdate {
+// SetNillableChatID sets the "chat_id" field if the given value is not nil.
+func (mu *MessageUpdate) SetNillableChatID(ti *types.ChatID) *MessageUpdate {
 	if ti != nil {
-		mu.SetAuthorID(*ti)
+		mu.SetChatID(*ti)
 	}
 	return mu
 }
 
-// ClearAuthorID clears the value of the "author_id" field.
-func (mu *MessageUpdate) ClearAuthorID() *MessageUpdate {
-	mu.mutation.ClearAuthorID()
+// SetProblemID sets the "problem_id" field.
+func (mu *MessageUpdate) SetProblemID(ti types.ProblemID) *MessageUpdate {
+	mu.mutation.SetProblemID(ti)
+	return mu
+}
+
+// SetNillableProblemID sets the "problem_id" field if the given value is not nil.
+func (mu *MessageUpdate) SetNillableProblemID(ti *types.ProblemID) *MessageUpdate {
+	if ti != nil {
+		mu.SetProblemID(*ti)
+	}
+	return mu
+}
+
+// SetInitialRequestID sets the "initial_request_id" field.
+func (mu *MessageUpdate) SetInitialRequestID(ti types.RequestID) *MessageUpdate {
+	mu.mutation.SetInitialRequestID(ti)
+	return mu
+}
+
+// SetNillableInitialRequestID sets the "initial_request_id" field if the given value is not nil.
+func (mu *MessageUpdate) SetNillableInitialRequestID(ti *types.RequestID) *MessageUpdate {
+	if ti != nil {
+		mu.SetInitialRequestID(*ti)
+	}
+	return mu
+}
+
+// ClearInitialRequestID clears the value of the "initial_request_id" field.
+func (mu *MessageUpdate) ClearInitialRequestID() *MessageUpdate {
+	mu.mutation.ClearInitialRequestID()
 	return mu
 }
 
@@ -77,20 +107,6 @@ func (mu *MessageUpdate) SetNillableIsVisibleForManager(b *bool) *MessageUpdate 
 	return mu
 }
 
-// SetBody sets the "body" field.
-func (mu *MessageUpdate) SetBody(s string) *MessageUpdate {
-	mu.mutation.SetBody(s)
-	return mu
-}
-
-// SetNillableBody sets the "body" field if the given value is not nil.
-func (mu *MessageUpdate) SetNillableBody(s *string) *MessageUpdate {
-	if s != nil {
-		mu.SetBody(*s)
-	}
-	return mu
-}
-
 // SetCheckedAt sets the "checked_at" field.
 func (mu *MessageUpdate) SetCheckedAt(t time.Time) *MessageUpdate {
 	mu.mutation.SetCheckedAt(t)
@@ -111,9 +127,45 @@ func (mu *MessageUpdate) ClearCheckedAt() *MessageUpdate {
 	return mu
 }
 
+// SetIsBlocked sets the "is_blocked" field.
+func (mu *MessageUpdate) SetIsBlocked(b bool) *MessageUpdate {
+	mu.mutation.SetIsBlocked(b)
+	return mu
+}
+
+// SetNillableIsBlocked sets the "is_blocked" field if the given value is not nil.
+func (mu *MessageUpdate) SetNillableIsBlocked(b *bool) *MessageUpdate {
+	if b != nil {
+		mu.SetIsBlocked(*b)
+	}
+	return mu
+}
+
+// SetChat sets the "chat" edge to the Chat entity.
+func (mu *MessageUpdate) SetChat(c *Chat) *MessageUpdate {
+	return mu.SetChatID(c.ID)
+}
+
+// SetProblem sets the "problem" edge to the Problem entity.
+func (mu *MessageUpdate) SetProblem(p *Problem) *MessageUpdate {
+	return mu.SetProblemID(p.ID)
+}
+
 // Mutation returns the MessageMutation object of the builder.
 func (mu *MessageUpdate) Mutation() *MessageMutation {
 	return mu.mutation
+}
+
+// ClearChat clears the "chat" edge to the Chat entity.
+func (mu *MessageUpdate) ClearChat() *MessageUpdate {
+	mu.mutation.ClearChat()
+	return mu
+}
+
+// ClearProblem clears the "problem" edge to the Problem entity.
+func (mu *MessageUpdate) ClearProblem() *MessageUpdate {
+	mu.mutation.ClearProblem()
+	return mu
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -145,14 +197,19 @@ func (mu *MessageUpdate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (mu *MessageUpdate) check() error {
-	if v, ok := mu.mutation.AuthorID(); ok {
+	if v, ok := mu.mutation.ChatID(); ok {
 		if err := v.Validate(); err != nil {
-			return &ValidationError{Name: "author_id", err: fmt.Errorf(`store: validator failed for field "Message.author_id": %w`, err)}
+			return &ValidationError{Name: "chat_id", err: fmt.Errorf(`store: validator failed for field "Message.chat_id": %w`, err)}
 		}
 	}
-	if v, ok := mu.mutation.Body(); ok {
-		if err := message.BodyValidator(v); err != nil {
-			return &ValidationError{Name: "body", err: fmt.Errorf(`store: validator failed for field "Message.body": %w`, err)}
+	if v, ok := mu.mutation.ProblemID(); ok {
+		if err := v.Validate(); err != nil {
+			return &ValidationError{Name: "problem_id", err: fmt.Errorf(`store: validator failed for field "Message.problem_id": %w`, err)}
+		}
+	}
+	if v, ok := mu.mutation.InitialRequestID(); ok {
+		if err := v.Validate(); err != nil {
+			return &ValidationError{Name: "initial_request_id", err: fmt.Errorf(`store: validator failed for field "Message.initial_request_id": %w`, err)}
 		}
 	}
 	if _, ok := mu.mutation.ChatID(); mu.mutation.ChatCleared() && !ok {
@@ -176,8 +233,11 @@ func (mu *MessageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
-	if value, ok := mu.mutation.AuthorID(); ok {
-		_spec.SetField(message.FieldAuthorID, field.TypeUUID, value)
+	if value, ok := mu.mutation.InitialRequestID(); ok {
+		_spec.SetField(message.FieldInitialRequestID, field.TypeUUID, value)
+	}
+	if mu.mutation.InitialRequestIDCleared() {
+		_spec.ClearField(message.FieldInitialRequestID, field.TypeUUID)
 	}
 	if mu.mutation.AuthorIDCleared() {
 		_spec.ClearField(message.FieldAuthorID, field.TypeUUID)
@@ -188,14 +248,72 @@ func (mu *MessageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := mu.mutation.IsVisibleForManager(); ok {
 		_spec.SetField(message.FieldIsVisibleForManager, field.TypeBool, value)
 	}
-	if value, ok := mu.mutation.Body(); ok {
-		_spec.SetField(message.FieldBody, field.TypeString, value)
-	}
 	if value, ok := mu.mutation.CheckedAt(); ok {
 		_spec.SetField(message.FieldCheckedAt, field.TypeTime, value)
 	}
 	if mu.mutation.CheckedAtCleared() {
 		_spec.ClearField(message.FieldCheckedAt, field.TypeTime)
+	}
+	if value, ok := mu.mutation.IsBlocked(); ok {
+		_spec.SetField(message.FieldIsBlocked, field.TypeBool, value)
+	}
+	if mu.mutation.ChatCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   message.ChatTable,
+			Columns: []string{message.ChatColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chat.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := mu.mutation.ChatIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   message.ChatTable,
+			Columns: []string{message.ChatColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chat.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if mu.mutation.ProblemCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   message.ProblemTable,
+			Columns: []string{message.ProblemColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(problem.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := mu.mutation.ProblemIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   message.ProblemTable,
+			Columns: []string{message.ProblemColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(problem.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, mu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -217,23 +335,51 @@ type MessageUpdateOne struct {
 	mutation *MessageMutation
 }
 
-// SetAuthorID sets the "author_id" field.
-func (muo *MessageUpdateOne) SetAuthorID(ti types.UserID) *MessageUpdateOne {
-	muo.mutation.SetAuthorID(ti)
+// SetChatID sets the "chat_id" field.
+func (muo *MessageUpdateOne) SetChatID(ti types.ChatID) *MessageUpdateOne {
+	muo.mutation.SetChatID(ti)
 	return muo
 }
 
-// SetNillableAuthorID sets the "author_id" field if the given value is not nil.
-func (muo *MessageUpdateOne) SetNillableAuthorID(ti *types.UserID) *MessageUpdateOne {
+// SetNillableChatID sets the "chat_id" field if the given value is not nil.
+func (muo *MessageUpdateOne) SetNillableChatID(ti *types.ChatID) *MessageUpdateOne {
 	if ti != nil {
-		muo.SetAuthorID(*ti)
+		muo.SetChatID(*ti)
 	}
 	return muo
 }
 
-// ClearAuthorID clears the value of the "author_id" field.
-func (muo *MessageUpdateOne) ClearAuthorID() *MessageUpdateOne {
-	muo.mutation.ClearAuthorID()
+// SetProblemID sets the "problem_id" field.
+func (muo *MessageUpdateOne) SetProblemID(ti types.ProblemID) *MessageUpdateOne {
+	muo.mutation.SetProblemID(ti)
+	return muo
+}
+
+// SetNillableProblemID sets the "problem_id" field if the given value is not nil.
+func (muo *MessageUpdateOne) SetNillableProblemID(ti *types.ProblemID) *MessageUpdateOne {
+	if ti != nil {
+		muo.SetProblemID(*ti)
+	}
+	return muo
+}
+
+// SetInitialRequestID sets the "initial_request_id" field.
+func (muo *MessageUpdateOne) SetInitialRequestID(ti types.RequestID) *MessageUpdateOne {
+	muo.mutation.SetInitialRequestID(ti)
+	return muo
+}
+
+// SetNillableInitialRequestID sets the "initial_request_id" field if the given value is not nil.
+func (muo *MessageUpdateOne) SetNillableInitialRequestID(ti *types.RequestID) *MessageUpdateOne {
+	if ti != nil {
+		muo.SetInitialRequestID(*ti)
+	}
+	return muo
+}
+
+// ClearInitialRequestID clears the value of the "initial_request_id" field.
+func (muo *MessageUpdateOne) ClearInitialRequestID() *MessageUpdateOne {
+	muo.mutation.ClearInitialRequestID()
 	return muo
 }
 
@@ -265,20 +411,6 @@ func (muo *MessageUpdateOne) SetNillableIsVisibleForManager(b *bool) *MessageUpd
 	return muo
 }
 
-// SetBody sets the "body" field.
-func (muo *MessageUpdateOne) SetBody(s string) *MessageUpdateOne {
-	muo.mutation.SetBody(s)
-	return muo
-}
-
-// SetNillableBody sets the "body" field if the given value is not nil.
-func (muo *MessageUpdateOne) SetNillableBody(s *string) *MessageUpdateOne {
-	if s != nil {
-		muo.SetBody(*s)
-	}
-	return muo
-}
-
 // SetCheckedAt sets the "checked_at" field.
 func (muo *MessageUpdateOne) SetCheckedAt(t time.Time) *MessageUpdateOne {
 	muo.mutation.SetCheckedAt(t)
@@ -299,9 +431,45 @@ func (muo *MessageUpdateOne) ClearCheckedAt() *MessageUpdateOne {
 	return muo
 }
 
+// SetIsBlocked sets the "is_blocked" field.
+func (muo *MessageUpdateOne) SetIsBlocked(b bool) *MessageUpdateOne {
+	muo.mutation.SetIsBlocked(b)
+	return muo
+}
+
+// SetNillableIsBlocked sets the "is_blocked" field if the given value is not nil.
+func (muo *MessageUpdateOne) SetNillableIsBlocked(b *bool) *MessageUpdateOne {
+	if b != nil {
+		muo.SetIsBlocked(*b)
+	}
+	return muo
+}
+
+// SetChat sets the "chat" edge to the Chat entity.
+func (muo *MessageUpdateOne) SetChat(c *Chat) *MessageUpdateOne {
+	return muo.SetChatID(c.ID)
+}
+
+// SetProblem sets the "problem" edge to the Problem entity.
+func (muo *MessageUpdateOne) SetProblem(p *Problem) *MessageUpdateOne {
+	return muo.SetProblemID(p.ID)
+}
+
 // Mutation returns the MessageMutation object of the builder.
 func (muo *MessageUpdateOne) Mutation() *MessageMutation {
 	return muo.mutation
+}
+
+// ClearChat clears the "chat" edge to the Chat entity.
+func (muo *MessageUpdateOne) ClearChat() *MessageUpdateOne {
+	muo.mutation.ClearChat()
+	return muo
+}
+
+// ClearProblem clears the "problem" edge to the Problem entity.
+func (muo *MessageUpdateOne) ClearProblem() *MessageUpdateOne {
+	muo.mutation.ClearProblem()
+	return muo
 }
 
 // Where appends a list predicates to the MessageUpdate builder.
@@ -346,14 +514,19 @@ func (muo *MessageUpdateOne) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (muo *MessageUpdateOne) check() error {
-	if v, ok := muo.mutation.AuthorID(); ok {
+	if v, ok := muo.mutation.ChatID(); ok {
 		if err := v.Validate(); err != nil {
-			return &ValidationError{Name: "author_id", err: fmt.Errorf(`store: validator failed for field "Message.author_id": %w`, err)}
+			return &ValidationError{Name: "chat_id", err: fmt.Errorf(`store: validator failed for field "Message.chat_id": %w`, err)}
 		}
 	}
-	if v, ok := muo.mutation.Body(); ok {
-		if err := message.BodyValidator(v); err != nil {
-			return &ValidationError{Name: "body", err: fmt.Errorf(`store: validator failed for field "Message.body": %w`, err)}
+	if v, ok := muo.mutation.ProblemID(); ok {
+		if err := v.Validate(); err != nil {
+			return &ValidationError{Name: "problem_id", err: fmt.Errorf(`store: validator failed for field "Message.problem_id": %w`, err)}
+		}
+	}
+	if v, ok := muo.mutation.InitialRequestID(); ok {
+		if err := v.Validate(); err != nil {
+			return &ValidationError{Name: "initial_request_id", err: fmt.Errorf(`store: validator failed for field "Message.initial_request_id": %w`, err)}
 		}
 	}
 	if _, ok := muo.mutation.ChatID(); muo.mutation.ChatCleared() && !ok {
@@ -394,8 +567,11 @@ func (muo *MessageUpdateOne) sqlSave(ctx context.Context) (_node *Message, err e
 			}
 		}
 	}
-	if value, ok := muo.mutation.AuthorID(); ok {
-		_spec.SetField(message.FieldAuthorID, field.TypeUUID, value)
+	if value, ok := muo.mutation.InitialRequestID(); ok {
+		_spec.SetField(message.FieldInitialRequestID, field.TypeUUID, value)
+	}
+	if muo.mutation.InitialRequestIDCleared() {
+		_spec.ClearField(message.FieldInitialRequestID, field.TypeUUID)
 	}
 	if muo.mutation.AuthorIDCleared() {
 		_spec.ClearField(message.FieldAuthorID, field.TypeUUID)
@@ -406,14 +582,72 @@ func (muo *MessageUpdateOne) sqlSave(ctx context.Context) (_node *Message, err e
 	if value, ok := muo.mutation.IsVisibleForManager(); ok {
 		_spec.SetField(message.FieldIsVisibleForManager, field.TypeBool, value)
 	}
-	if value, ok := muo.mutation.Body(); ok {
-		_spec.SetField(message.FieldBody, field.TypeString, value)
-	}
 	if value, ok := muo.mutation.CheckedAt(); ok {
 		_spec.SetField(message.FieldCheckedAt, field.TypeTime, value)
 	}
 	if muo.mutation.CheckedAtCleared() {
 		_spec.ClearField(message.FieldCheckedAt, field.TypeTime)
+	}
+	if value, ok := muo.mutation.IsBlocked(); ok {
+		_spec.SetField(message.FieldIsBlocked, field.TypeBool, value)
+	}
+	if muo.mutation.ChatCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   message.ChatTable,
+			Columns: []string{message.ChatColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chat.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := muo.mutation.ChatIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   message.ChatTable,
+			Columns: []string{message.ChatColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chat.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if muo.mutation.ProblemCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   message.ProblemTable,
+			Columns: []string{message.ProblemColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(problem.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := muo.mutation.ProblemIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   message.ProblemTable,
+			Columns: []string{message.ProblemColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(problem.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &Message{config: muo.config}
 	_spec.Assign = _node.assignValues
