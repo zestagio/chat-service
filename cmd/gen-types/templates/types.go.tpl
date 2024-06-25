@@ -61,14 +61,17 @@ func (id {{ . }}) AsPointer() *{{ . }} {
 	}
 	return &id
 }
-
 {{end}}
-func Parse[T {{ .argType }}](s string) (T, error) {
+type TypeSet = interface {
+	{{ .argType }}
+}
+
+func Parse[T TypeSet](s string) (T, error) {
 	id, err := uuid.Parse(s)
 
 	return T(id), err
 }
 
-func MustParse[T {{ .argType }}](s string) T {
+func MustParse[T TypeSet](s string) T {
 	return T(uuid.MustParse(s))
 }

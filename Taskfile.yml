@@ -32,6 +32,8 @@ vars:
     ProblemID
     RequestID
     UserID
+    JobID
+    FailedJobID
   TYPES_PKG: types
   TYPES_DST: ./internal/types/types.gen.go
 
@@ -45,6 +47,7 @@ vars:
   ENT_TEMPLATES: ./internal/store/templates
   ENT_FEATURES: |
     sql/upsert
+    sql/lock
 
   KEYCLOAK_REALM_PATH: ./deploy/local/bank-realm.json
 
