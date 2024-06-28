@@ -7,6 +7,7 @@ package sendmessagemocks
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	gomock "github.com/golang/mock/gomock"
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
@@ -102,6 +103,44 @@ func (m *MockmessagesRepository) GetMessageByRequestID(ctx context.Context, reqI
 func (mr *MockmessagesRepositoryMockRecorder) GetMessageByRequestID(ctx, reqID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMessageByRequestID", reflect.TypeOf((*MockmessagesRepository)(nil).GetMessageByRequestID), ctx, reqID)
+}
+
+// MockoutboxService is a mock of outboxService interface.
+type MockoutboxService struct {
+	ctrl     *gomock.Controller
+	recorder *MockoutboxServiceMockRecorder
+}
+
+// MockoutboxServiceMockRecorder is the mock recorder for MockoutboxService.
+type MockoutboxServiceMockRecorder struct {
+	mock *MockoutboxService
+}
+
+// NewMockoutboxService creates a new mock instance.
+func NewMockoutboxService(ctrl *gomock.Controller) *MockoutboxService {
+	mock := &MockoutboxService{ctrl: ctrl}
+	mock.recorder = &MockoutboxServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockoutboxService) EXPECT() *MockoutboxServiceMockRecorder {
+	return m.recorder
+}
+
+// Put mocks base method.
+func (m *MockoutboxService) Put(ctx context.Context, name, payload string, availableAt time.Time) (types.JobID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Put", ctx, name, payload, availableAt)
+	ret0, _ := ret[0].(types.JobID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Put indicates an expected call of Put.
+func (mr *MockoutboxServiceMockRecorder) Put(ctx, name, payload, availableAt interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockoutboxService)(nil).Put), ctx, name, payload, availableAt)
 }
 
 // MockproblemsRepository is a mock of problemsRepository interface.

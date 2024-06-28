@@ -13,6 +13,7 @@ import (
 	serverclient "github.com/zestagio/chat-service/internal/server-client"
 	clienterrhandler "github.com/zestagio/chat-service/internal/server-client/errhandler"
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
+	"github.com/zestagio/chat-service/internal/services/outbox"
 	"github.com/zestagio/chat-service/internal/store"
 	gethistory "github.com/zestagio/chat-service/internal/usecases/client/get-history"
 	sendmessage "github.com/zestagio/chat-service/internal/usecases/client/send-message"
@@ -35,6 +36,8 @@ func initServerClient(
 	chatsRepo *chatsrepo.Repo,
 	msgRepo *messagesrepo.Repo,
 	problemsRepo *problemsrepo.Repo,
+
+	outboxSrv *outbox.Service,
 ) (*serverclient.Server, error) {
 	getHistoryUseCase, err := gethistory.New(gethistory.NewOptions(msgRepo))
 	if err != nil {
@@ -44,6 +47,7 @@ func initServerClient(
 	sendMessageUseCase, err := sendmessage.New(sendmessage.NewOptions(
 		chatsRepo,
 		msgRepo,
+		outboxSrv,
 		problemsRepo,
 		db,
 	))

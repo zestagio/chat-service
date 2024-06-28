@@ -17,10 +17,14 @@ import (
 	"github.com/zestagio/chat-service/internal/config"
 	"github.com/zestagio/chat-service/internal/logger"
 	chatsrepo "github.com/zestagio/chat-service/internal/repositories/chats"
+	jobsrepo "github.com/zestagio/chat-service/internal/repositories/jobs"
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
 	problemsrepo "github.com/zestagio/chat-service/internal/repositories/problems"
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 	serverdebug "github.com/zestagio/chat-service/internal/server-debug"
+	msgproducer "github.com/zestagio/chat-service/internal/services/msg-producer"
+	"github.com/zestagio/chat-service/internal/services/outbox"
+	sendclientmessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-client-message"
 	"github.com/zestagio/chat-service/internal/store"
 )
 
@@ -94,6 +98,43 @@ func run() (errReturned error) {
 		return fmt.Errorf("create problems repo: %v", err)
 	}
 
+	jobsRepo, err := jobsrepo.New(jobsrepo.NewOptions(db))
+	if err != nil {
+		return fmt.Errorf("init jobs repo err: %v", err)
+	}
+
+	msgProducer, err := msgproducer.New(msgproducer.NewOptions(
+		msgproducer.NewKafkaWriter(
+			cfg.Services.MsgProducer.Brokers,
+			cfg.Services.MsgProducer.Topic,
+			cfg.Services.MsgProducer.BatchSize,
+		),
+		msgproducer.WithEncryptKey(cfg.Services.MsgProducer.EncryptKey),
+	))
+	if err != nil {
+		return fmt.Errorf("init msg producer err: %v", err)
+	}
+
+	outboxSrv, err := outbox.New(outbox.NewOptions(
+		cfg.Services.Outbox.Workers,
+		cfg.Services.Outbox.IDLE,
+		cfg.Services.Outbox.ReserveFor,
+		jobsRepo,
+		db,
+	))
+	if err != nil {
+		return fmt.Errorf("init outbox service err: %v", err)
+	}
+
+	sendClientMessageJob, err := sendclientmessagejob.New(sendclientmessagejob.NewOptions(msgProducer, msgRepo))
+	if err != nil {
+		return fmt.Errorf("create send client message job: %v", err)
+	}
+
+	if err := outboxSrv.RegisterJob(sendClientMessageJob); err != nil {
+		return fmt.Errorf("register send client message job err: %v", err)
+	}
+
 	// Clients.
 	kc, err := keycloakclient.New(keycloakclient.NewOptions(
 		cfg.Clients.Keycloak.BasePath,
@@ -127,6 +168,7 @@ func run() (errReturned error) {
 		chatsRepo,
 		msgRepo,
 		problemsRepo,
+		outboxSrv,
 	)
 	if err != nil {
 		return fmt.Errorf("init client server: %v", err)
@@ -145,6 +187,7 @@ func run() (errReturned error) {
 	// Run servers.
 	eg.Go(func() error { return srvClient.Run(ctx) })
 	eg.Go(func() error { return srvDebug.Run(ctx) })
+	eg.Go(func() error { return outboxSrv.Run(ctx) })
 
 	// Run services.
 	// Ждут своего часа.

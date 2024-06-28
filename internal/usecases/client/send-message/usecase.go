@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
+	sendclientmessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-client-message"
 	"github.com/zestagio/chat-service/internal/types"
 )
 
@@ -33,6 +35,10 @@ type messagesRepository interface {
 	) (*messagesrepo.Message, error)
 }
 
+type outboxService interface {
+	Put(ctx context.Context, name, payload string, availableAt time.Time) (types.JobID, error)
+}
+
 type problemsRepository interface {
 	CreateIfNotExists(ctx context.Context, chatID types.ChatID) (types.ProblemID, error)
 }
@@ -45,6 +51,7 @@ type transactor interface {
 type Options struct {
 	chatsRepo    chatsRepository    `option:"mandatory" validate:"required"`
 	msgRepo      messagesRepository `option:"mandatory" validate:"required"`
+	outboxSrv    outboxService      `option:"mandatory" validate:"required"`
 	problemsRepo problemsRepository `option:"mandatory" validate:"required"`
 	txtor        transactor         `option:"mandatory" validate:"required"`
 }
@@ -90,7 +97,7 @@ func (u UseCase) Handle(ctx context.Context, req Request) (Response, error) {
 		}
 
 		msg = m
-		return nil
+		return u.putIntoOutbox(ctx, m.ID)
 	}); err != nil {
 		return Response{}, fmt.Errorf("`send client message` tx: %w", err)
 	}
@@ -100,4 +107,17 @@ func (u UseCase) Handle(ctx context.Context, req Request) (Response, error) {
 		MessageID: msg.ID,
 		CreatedAt: msg.CreatedAt,
 	}, nil
+}
+
+func (u UseCase) putIntoOutbox(ctx context.Context, msgID types.MessageID) error {
+	outboxPayload, err := sendclientmessagejob.MarshalPayload(msgID)
+	if err != nil {
+		return err
+	}
+
+	if _, err = u.outboxSrv.Put(ctx, sendclientmessagejob.Name, outboxPayload, time.Now()); err != nil {
+		return err
+	}
+
+	return nil
 }
