@@ -1,4 +1,4 @@
-package serverclient
+package server
 
 import (
 	"context"
@@ -16,7 +16,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/zestagio/chat-service/internal/middlewares"
-	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 )
 
 const (
@@ -25,6 +24,18 @@ const (
 	readHeaderTimeout = time.Second
 	shutdownTimeout   = 3 * time.Second
 )
+
+type EchoRouter interface {
+	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+}
 
 //go:generate options-gen -out-filename=server_options.gen.go -from-struct=Options
 type Options struct {
@@ -35,7 +46,7 @@ type Options struct {
 	requiredResource string                   `option:"mandatory" validate:"required"`
 	requiredRole     string                   `option:"mandatory" validate:"required"`
 	v1Swagger        *openapi3.T              `option:"mandatory" validate:"required"`
-	v1Handlers       clientv1.ServerInterface `option:"mandatory" validate:"required"`
+	registerHandlers func(router EchoRouter)  `option:"mandatory" validate:"required"`
 	errorHandler     echo.HTTPErrorHandler    `option:"mandatory" validate:"required"`
 }
 
@@ -70,7 +81,7 @@ func New(opts Options) (*Server, error) {
 			AuthenticationFunc:  openapi3filter.NoopAuthenticationFunc,
 		},
 	}))
-	clientv1.RegisterHandlers(v1, opts.v1Handlers)
+	opts.registerHandlers(v1)
 
 	return &Server{
 		lg: opts.logger,

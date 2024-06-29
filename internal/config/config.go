@@ -29,8 +29,9 @@ type SentryConfig struct {
 }
 
 type ServersConfig struct {
-	Debug  DebugServerConfig `toml:"debug"`
-	Client APIServerConfig   `toml:"client"`
+	Debug   DebugServerConfig `toml:"debug"`
+	Client  APIServerConfig   `toml:"client"`
+	Manager APIServerConfig   `toml:"manager"`
 }
 
 type DebugServerConfig struct {

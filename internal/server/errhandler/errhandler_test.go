@@ -15,7 +15,7 @@ import (
 	"go.uber.org/zap"
 
 	internalerrors "github.com/zestagio/chat-service/internal/errors"
-	"github.com/zestagio/chat-service/internal/server-client/errhandler"
+	errhandler2 "github.com/zestagio/chat-service/internal/server/errhandler"
 )
 
 func TestHandler_Handle_InDevMode(t *testing.T) {
@@ -48,7 +48,7 @@ func TestHandler_Handle_InDevMode(t *testing.T) {
 		},
 	}
 
-	h, err := errhandler.New(errhandler.NewOptions(zap.L(), productionMode, respBuilder))
+	h, err := errhandler2.New(errhandler2.NewOptions(zap.L(), productionMode, respBuilder))
 	require.NoError(t, err)
 
 	for _, tt := range cases {
@@ -94,7 +94,7 @@ func TestHandler_Handle_InProductionMode(t *testing.T) {
 		},
 	}
 
-	h, err := errhandler.New(errhandler.NewOptions(zap.L(), productionMode, respBuilder))
+	h, err := errhandler2.New(errhandler2.NewOptions(zap.L(), productionMode, respBuilder))
 	require.NoError(t, err)
 
 	for _, tt := range cases {

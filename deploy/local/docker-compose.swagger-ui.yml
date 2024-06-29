@@ -4,7 +4,10 @@ services:
   swagger-ui:
     image: swaggerapi/swagger-ui
     environment:
-      URLS: "[{ url: 'doc/client.v1.swagger.yml', name: 'Bank Support Chat Client API' }]"
+      URLS: "[
+        { url: 'doc/client.v1.swagger.yml', name: 'Bank Support Chat Client API' },
+        { url: 'doc/manager.v1.swagger.yml', name: 'Bank Support Chat Manager API' }
+      ]"
     profiles: [ swagger-ui ]
     volumes:
       - ./../../api:/usr/share/nginx/html/doc

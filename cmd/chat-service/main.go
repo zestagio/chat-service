@@ -22,6 +22,7 @@ import (
 	problemsrepo "github.com/zestagio/chat-service/internal/repositories/problems"
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 	serverdebug "github.com/zestagio/chat-service/internal/server-debug"
+	managerv1 "github.com/zestagio/chat-service/internal/server-manager/v1"
 	msgproducer "github.com/zestagio/chat-service/internal/services/msg-producer"
 	"github.com/zestagio/chat-service/internal/services/outbox"
 	sendclientmessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-client-message"
@@ -174,9 +175,28 @@ func run() (errReturned error) {
 		return fmt.Errorf("init client server: %v", err)
 	}
 
+	managerV1Swagger, err := managerv1.GetSwagger()
+	if err != nil {
+		return fmt.Errorf("get manager v1 swagger: %v", err)
+	}
+
+	srvManager, err := initServerManager(
+		cfg.Global.IsProduction(),
+		cfg.Servers.Manager.Addr,
+		cfg.Servers.Manager.AllowOrigins,
+		managerV1Swagger,
+		kc,
+		cfg.Servers.Manager.RequiredAccess.Resource,
+		cfg.Servers.Manager.RequiredAccess.Role,
+	)
+	if err != nil {
+		return fmt.Errorf("init manager server: %v", err)
+	}
+
 	srvDebug, err := serverdebug.New(serverdebug.NewOptions(
 		cfg.Servers.Debug.Addr,
 		clientV1Swagger,
+		managerV1Swagger,
 	))
 	if err != nil {
 		return fmt.Errorf("init debug server: %v", err)
@@ -186,6 +206,7 @@ func run() (errReturned error) {
 
 	// Run servers.
 	eg.Go(func() error { return srvClient.Run(ctx) })
+	eg.Go(func() error { return srvManager.Run(ctx) })
 	eg.Go(func() error { return srvDebug.Run(ctx) })
 	eg.Go(func() error { return outboxSrv.Run(ctx) })
 

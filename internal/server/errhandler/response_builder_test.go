@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/zestagio/chat-service/internal/server-client/errhandler"
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
+	"github.com/zestagio/chat-service/internal/server/errhandler"
 )
 
 func TestResponseBuilder(t *testing.T) {

@@ -17,6 +17,7 @@ import (
 	"github.com/zestagio/chat-service/internal/logger"
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 	serverdebug "github.com/zestagio/chat-service/internal/server-debug"
+	managerv1 "github.com/zestagio/chat-service/internal/server-manager/v1"
 )
 
 func TestServer_LoggerLevel(t *testing.T) {
@@ -27,7 +28,10 @@ func TestServer_LoggerLevel(t *testing.T) {
 	clientV1Swagger, err := clientv1.GetSwagger()
 	require.NoError(t, err)
 
-	srv, err := serverdebug.New(serverdebug.NewOptions(":80", clientV1Swagger))
+	managerV1Swagger, err := managerv1.GetSwagger()
+	require.NoError(t, err)
+
+	srv, err := serverdebug.New(serverdebug.NewOptions(":80", clientV1Swagger, managerV1Swagger))
 	require.NoError(t, err)
 
 	testSrv := httptest.NewServer(srv.Handler())
