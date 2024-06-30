@@ -15,5 +15,6 @@ func (r Request) Validate() error {
 }
 
 type Response struct {
-	Result bool
+	Available bool
+	InPool    bool
 }

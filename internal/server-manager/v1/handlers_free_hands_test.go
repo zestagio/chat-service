@@ -33,7 +33,7 @@ func (s *HandlersSuite) TestGetFreeHandsBtnAvailability_Usecase_Success() {
 	s.canReceiveProblemsUseCase.EXPECT().Handle(eCtx.Request().Context(), canreceiveproblems.Request{
 		ID:        reqID,
 		ManagerID: s.managerID,
-	}).Return(canreceiveproblems.Response{Result: true}, nil)
+	}).Return(canreceiveproblems.Response{Available: true}, nil)
 
 	// Action.
 	err := s.handlers.PostGetFreeHandsBtnAvailability(eCtx, managerv1.PostGetFreeHandsBtnAvailabilityParams{XRequestID: reqID})
@@ -45,7 +45,8 @@ func (s *HandlersSuite) TestGetFreeHandsBtnAvailability_Usecase_Success() {
 {
     "data":
     {
-        "available": true
+        "available": true,
+		"inPool": false
     }
 }`, resp.Body.String())
 }

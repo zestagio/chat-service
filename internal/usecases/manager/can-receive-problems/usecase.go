@@ -52,7 +52,7 @@ func (u UseCase) Handle(ctx context.Context, req Request) (Response, error) {
 	}
 
 	if inPool {
-		return Response{Result: false}, nil
+		return Response{Available: false, InPool: true}, nil
 	}
 
 	canTakeProblem, err := u.managerLoadSrv.CanManagerTakeProblem(ctx, req.ManagerID)
@@ -60,5 +60,5 @@ func (u UseCase) Handle(ctx context.Context, req Request) (Response, error) {
 		return Response{}, ErrManagerLoadService
 	}
 
-	return Response{Result: canTakeProblem}, nil
+	return Response{Available: canTakeProblem, InPool: false}, nil
 }

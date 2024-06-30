@@ -86,9 +86,11 @@ components:
           $ref: "#/components/schemas/Error"
 
     GetFreeHandsBtnAvailability:
-      required: [ available ]
+      required: [ available, inPool ]
       properties:
         available:
+          type: boolean
+        inPool:
           type: boolean
 
     FreeHandsResponse:

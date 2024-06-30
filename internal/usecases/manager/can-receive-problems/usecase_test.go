@@ -97,7 +97,8 @@ func (s *UseCaseSuite) TestManagerInPool() {
 
 	// Assert.
 	s.Require().NoError(err)
-	s.Require().False(response.Result)
+	s.Require().False(response.Available)
+	s.Require().True(response.InPool)
 }
 
 func (s *UseCaseSuite) TestManagerCanTakeProblem_Error() {
@@ -122,7 +123,8 @@ func (s *UseCaseSuite) TestManagerCanTakeProblem_Error() {
 	// Assert.
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, canreceiveproblems.ErrManagerLoadService)
-	s.Require().False(response.Result)
+	s.Require().False(response.Available)
+	s.Require().False(response.InPool)
 }
 
 func (s *UseCaseSuite) TestManagerCanTakeProblem_True() {
@@ -146,7 +148,8 @@ func (s *UseCaseSuite) TestManagerCanTakeProblem_True() {
 
 	// Assert.
 	s.Require().NoError(err)
-	s.Require().True(response.Result)
+	s.Require().True(response.Available)
+	s.Require().False(response.InPool)
 }
 
 func (s *UseCaseSuite) TestManagerCanTakeProblem_False() {
@@ -170,5 +173,6 @@ func (s *UseCaseSuite) TestManagerCanTakeProblem_False() {
 
 	// Assert.
 	s.Require().NoError(err)
-	s.Require().False(response.Result)
+	s.Require().False(response.Available)
+	s.Require().False(response.InPool)
 }

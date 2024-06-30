@@ -23,7 +23,8 @@ func (h Handlers) PostGetFreeHandsBtnAvailability(eCtx echo.Context, params Post
 	}
 
 	response := GetFreeHandsBtnAvailability{
-		Available: useCaseResponse.Result,
+		Available: useCaseResponse.Available,
+		InPool:    useCaseResponse.InPool,
 	}
 
 	return eCtx.JSON(http.StatusOK, &GetFreeHandsBtnAvailabilityResponse{Data: &response})
