@@ -5,9 +5,8 @@ import (
 	"fmt"
 
 	canreceiveproblems "github.com/zestagio/chat-service/internal/usecases/manager/can-receive-problems"
+	freehands "github.com/zestagio/chat-service/internal/usecases/manager/free-hands"
 )
-
-var _ ServerInterface = (*Handlers)(nil)
 
 //go:generate mockgen -source=$GOFILE -destination=mocks/handlers_mocks.gen.go -package=managerv1mocks
 
@@ -15,9 +14,14 @@ type canReceiveProblemsUseCase interface {
 	Handle(ctx context.Context, req canreceiveproblems.Request) (canreceiveproblems.Response, error)
 }
 
+type freeHandsUseCase interface {
+	Handle(ctx context.Context, req freehands.Request) error
+}
+
 //go:generate options-gen -out-filename=handler_options.gen.go -from-struct=Options
 type Options struct {
 	canReceiveProblemUseCase canReceiveProblemsUseCase `option:"mandatory" validate:"required"`
+	freeHandsUseCase         freeHandsUseCase          `option:"mandatory" validate:"required"`
 }
 
 type Handlers struct {

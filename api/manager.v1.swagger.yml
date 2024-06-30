@@ -21,6 +21,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/GetFreeHandsBtnAvailabilityResponse"
 
+  /freeHands:
+    post:
+      description: Manager is free for resolve problems
+      parameters:
+        - $ref: "#/components/parameters/XRequestIDHeader"
+      responses:
+        '200':
+          description: Manager is free result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FreeHandsResponse"
+
 security:
   - bearerAuth: [ ]
 
@@ -46,19 +59,6 @@ components:
   schemas:
     # Common.
 
-    GetFreeHandsBtnAvailabilityResponse:
-      properties:
-        data:
-          $ref: "#/components/schemas/GetFreeHandsBtnAvailability"
-        error:
-          $ref: "#/components/schemas/Error"
-
-    GetFreeHandsBtnAvailability:
-      required: [ available ]
-      properties:
-        available:
-          type: boolean
-
     Error:
       required: [ message, code ]
       properties:
@@ -72,4 +72,29 @@ components:
     ErrorCode:
       type: integer
       description: contains HTTP error codes and specific business logic error codes (the last must be >= 1000).
+      enum:
+        - 5000
+      x-enum-varnames:
+        - ErrorCodeManagerOverloaded
       minimum: 400
+
+    GetFreeHandsBtnAvailabilityResponse:
+      properties:
+        data:
+          $ref: "#/components/schemas/GetFreeHandsBtnAvailability"
+        error:
+          $ref: "#/components/schemas/Error"
+
+    GetFreeHandsBtnAvailability:
+      required: [ available ]
+      properties:
+        available:
+          type: boolean
+
+    FreeHandsResponse:
+      properties:
+        data:
+          type: string
+          nullable: true
+        error:
+          $ref: "#/components/schemas/Error"

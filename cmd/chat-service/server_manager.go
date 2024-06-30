@@ -13,6 +13,7 @@ import (
 	managerload "github.com/zestagio/chat-service/internal/services/manager-load"
 	inmemmanagerpool "github.com/zestagio/chat-service/internal/services/manager-pool/in-mem"
 	canreceiveproblems "github.com/zestagio/chat-service/internal/usecases/manager/can-receive-problems"
+	freehands "github.com/zestagio/chat-service/internal/usecases/manager/free-hands"
 )
 
 const nameServerManager = "server-manager"
@@ -29,12 +30,19 @@ func initServerManager(
 
 	managerLoadSrv *managerload.Service,
 ) (*server.Server, error) {
-	canReceiveProblemUseCase, err := canreceiveproblems.New(canreceiveproblems.NewOptions(managerLoadSrv, inmemmanagerpool.New()))
+	managerPool := inmemmanagerpool.New()
+
+	canReceiveProblemUseCase, err := canreceiveproblems.New(canreceiveproblems.NewOptions(managerLoadSrv, managerPool))
 	if err != nil {
 		return nil, fmt.Errorf("create canreceiveproblem usecase: %v", err)
 	}
 
-	v1Handlers, err := managerv1.NewHandlers(managerv1.NewOptions(canReceiveProblemUseCase))
+	freeHandsUseCase, err := freehands.New(freehands.NewOptions(managerLoadSrv, managerPool))
+	if err != nil {
+		return nil, fmt.Errorf("create freehands usecase: %v", err)
+	}
+
+	v1Handlers, err := managerv1.NewHandlers(managerv1.NewOptions(canReceiveProblemUseCase, freeHandsUseCase))
 	if err != nil {
 		return nil, fmt.Errorf("create v1 handlers: %v", err)
 	}
