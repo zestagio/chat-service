@@ -37,6 +37,9 @@ workers = 2
 idle_time = "1s"
 reserve_for = "5m"
 
+[services.manager_load]
+max_problems_at_same_time = 5
+
 [stores]
 [stores.psql]
 addr = "127.0.0.1:5432"

@@ -23,6 +23,7 @@ import (
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 	serverdebug "github.com/zestagio/chat-service/internal/server-debug"
 	managerv1 "github.com/zestagio/chat-service/internal/server-manager/v1"
+	managerload "github.com/zestagio/chat-service/internal/services/manager-load"
 	msgproducer "github.com/zestagio/chat-service/internal/services/msg-producer"
 	"github.com/zestagio/chat-service/internal/services/outbox"
 	sendclientmessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-client-message"
@@ -180,6 +181,14 @@ func run() (errReturned error) {
 		return fmt.Errorf("get manager v1 swagger: %v", err)
 	}
 
+	managerLoadService, err := managerload.New(managerload.NewOptions(
+		cfg.Services.ManagerLoad.MaxProblemsAtSameTime,
+		problemsRepo,
+	))
+	if err != nil {
+		return fmt.Errorf("init manager load service err: %v", err)
+	}
+
 	srvManager, err := initServerManager(
 		cfg.Global.IsProduction(),
 		cfg.Servers.Manager.Addr,
@@ -188,6 +197,7 @@ func run() (errReturned error) {
 		kc,
 		cfg.Servers.Manager.RequiredAccess.Resource,
 		cfg.Servers.Manager.RequiredAccess.Role,
+		managerLoadService,
 	)
 	if err != nil {
 		return fmt.Errorf("init manager server: %v", err)

@@ -1,6 +1,5 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Run E2E tests" type="GoTestRunConfiguration" factoryName="Go Test">
-    <module name="writing-go-service.solutions" />
     <working_directory value="$PROJECT_DIR$/tests/e2e" />
     <useCustomBuildTags value="true" />
     <EXTENSION ID="net.ashald.envfile">

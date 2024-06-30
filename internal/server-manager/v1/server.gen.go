@@ -8,21 +8,94 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"net/url"
 	"path"
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"
+	"github.com/oapi-codegen/runtime"
+	"github.com/zestagio/chat-service/internal/types"
 )
+
+const (
+	BearerAuthScopes = "bearerAuth.Scopes"
+)
+
+// Error defines model for Error.
+type Error struct {
+	// Code contains HTTP error codes and specific business logic error codes (the last must be >= 1000).
+	Code    ErrorCode `json:"code"`
+	Details *string   `json:"details,omitempty"`
+	Message string    `json:"message"`
+}
+
+// ErrorCode contains HTTP error codes and specific business logic error codes (the last must be >= 1000).
+type ErrorCode = int
+
+// GetFreeHandsBtnAvailability defines model for GetFreeHandsBtnAvailability.
+type GetFreeHandsBtnAvailability struct {
+	Available bool `json:"available"`
+}
+
+// GetFreeHandsBtnAvailabilityResponse defines model for GetFreeHandsBtnAvailabilityResponse.
+type GetFreeHandsBtnAvailabilityResponse struct {
+	Data  *GetFreeHandsBtnAvailability `json:"data,omitempty"`
+	Error *Error                       `json:"error,omitempty"`
+}
+
+// XRequestIDHeader defines model for XRequestIDHeader.
+type XRequestIDHeader = types.RequestID
+
+// PostGetFreeHandsBtnAvailabilityParams defines parameters for PostGetFreeHandsBtnAvailability.
+type PostGetFreeHandsBtnAvailabilityParams struct {
+	XRequestID XRequestIDHeader `json:"X-Request-ID"`
+}
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+
+	// (POST /getFreeHandsBtnAvailability)
+	PostGetFreeHandsBtnAvailability(ctx echo.Context, params PostGetFreeHandsBtnAvailabilityParams) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// PostGetFreeHandsBtnAvailability converts echo context to params.
+func (w *ServerInterfaceWrapper) PostGetFreeHandsBtnAvailability(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostGetFreeHandsBtnAvailabilityParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-Request-ID" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Request-ID")]; found {
+		var XRequestID XRequestIDHeader
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-Request-ID, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Request-ID", valueList[0], &XRequestID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-Request-ID: %s", err))
+		}
+
+		params.XRequestID = XRequestID
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-Request-ID is required, but not found"))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostGetFreeHandsBtnAvailability(ctx, params)
+	return err
 }
 
 // This is a simple interface which specifies echo.Route addition functions which
@@ -49,15 +122,29 @@ func RegisterHandlers(router EchoRouter, si ServerInterface) {
 // can be served under a prefix.
 func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL string) {
 
+	wrapper := ServerInterfaceWrapper{
+		Handler: si,
+	}
+
+	router.POST(baseURL+"/getFreeHandsBtnAvailability", wrapper.PostGetFreeHandsBtnAvailability)
+
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/1SOQUsDMRCF/8ryzqHb0kvJrSqCgiBU8FD2ENfRBLNJmEwWSsl/l2yL0uOb783jO2OM",
-	"U4qBgmToMzKNhZ2cDqOliZbTBxkm3hex/+kx8mQEGs/vb1DISxv6SqEgp9SyFUmotSq48BXbvzjxjdyZ",
-	"8NMdSkqRpbu3RroXE8w3cbd/fYLCTJxdDNCYN6gKMVEwyUFju1qvtlBIRmyGDsV79ecNfbw1Pg51aJjb",
-	"4EI/KY/sklzWH2gmH9NEQbpLCwqF/VVe972Po/E2ZtG79W7TN52h/gYAAP//8yKYcDgBAAA=",
+	"H4sIAAAAAAAC/5xU32vkOAz+V4zuHu4gM0mv91AC99Af1+0sLJS2sIXuPGgcTeJtYru2PGx3yP++2Jkf",
+	"Gaa0sE/G1idL+vRJa5Cms0aTZg/lGiw67IjJpdvjHb0E8jy7uiGsyMU3paGEZrhmoLEjKOFxskFOZleQ",
+	"gaOXoBxVULILlIGXDXUYvZfGdchQQgiqggz41UZ/z07pGjL4ManNZPMYDz/dpTC2TlRnjeMhY26ghFpx",
+	"ExZTabr8J3nGWplcNsgTT26lJOVKMzmNbZ6+hb7v+21iqdb/nTOpQOuMJceK0rM0FcXzT0dLKOGPfM9X",
+	"vvHOk+tlBPYZVMSo2uR7WFyfQUfeY01v2PoxaU87YDbEn/cZ7IOUa6jIS6csKxO7IY1mVNqLm4eHW0ER",
+	"KKKfF6gr4S1JtVRSLIJXmrwXramVPMD9xQ2JFj2LLngWCxLfQlGc0n/ipCiKv6eQQae06kIH5b9Fsetb",
+	"JLUmF2v7RHztiG5QV/6C9fkKVYsL1Sp+PWYVB2s7pmJhTEuoj7jYY+fvh7kjb432dByuQsaPmvhe/n0G",
+	"tJXHh0LYSotkcIpf76NtSGNB6MidhyjY7e16OxCfvz7ARpCJjWTdT0jDbCF9rPTSJNoUR/7gAvWzuA82",
+	"DoS4bJDFF9RYkxPntzPIYEXODzpZncRKjCWNVkEJp9NiegpZGqGUYF5/0ETj+Vh+lw3JZ4EjrFgEZqMh",
+	"BXMYcbMKSrg1nt/jOTvYP09vk72H5Ef7qZ9H7QwySBX9UxTDFGsmnXJHa1slU075dx8LWI/2028qZCe9",
+	"1KFDesY44Rk5DNtnpJFU61gdT/NYSVxdWyYO/7yiFbXGdqRZDCjIILh2I5Qyz1sjsW2M5/KsODvJY+vn",
+	"/a8AAAD///gtdOjuBQAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

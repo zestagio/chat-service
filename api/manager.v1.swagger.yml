@@ -8,6 +8,18 @@ servers:
     description: Development server
 
 paths:
+  /getFreeHandsBtnAvailability:
+    post:
+      description: Check availability button
+      parameters:
+        - $ref: "#/components/parameters/XRequestIDHeader"
+      responses:
+        '200':
+          description: Availability status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetFreeHandsBtnAvailabilityResponse"
 
 security:
   - bearerAuth: [ ]
@@ -19,8 +31,33 @@ components:
       scheme: bearer
       bearerFormat: JWT
 
+  parameters:
+    XRequestIDHeader:
+      name: X-Request-ID
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+        x-go-type: types.RequestID
+        x-go-type-import:
+          path: "github.com/zestagio/chat-service/internal/types"
+
   schemas:
     # Common.
+
+    GetFreeHandsBtnAvailabilityResponse:
+      properties:
+        data:
+          $ref: "#/components/schemas/GetFreeHandsBtnAvailability"
+        error:
+          $ref: "#/components/schemas/Error"
+
+    GetFreeHandsBtnAvailability:
+      required: [ available ]
+      properties:
+        available:
+          type: boolean
 
     Error:
       required: [ message, code ]

@@ -52,6 +52,7 @@ type RequiredAccessConfig struct {
 type ServicesConfig struct {
 	Outbox      OutboxConfig      `toml:"outbox"`
 	MsgProducer MsgProducerConfig `toml:"msg_producer"`
+	ManagerLoad ManagerLoadConfig `toml:"manager_load"`
 }
 
 type OutboxConfig struct {
@@ -65,6 +66,10 @@ type MsgProducerConfig struct {
 	Topic      string   `toml:"topic" validate:"required"`
 	BatchSize  int      `toml:"batch_size" validate:"required,min=1"`
 	EncryptKey string   `toml:"encrypt_key" validate:"omitempty,hexadecimal"`
+}
+
+type ManagerLoadConfig struct {
+	MaxProblemsAtSameTime int `toml:"max_problems_at_same_time" validate:"required,gt=0"`
 }
 
 type StoresConfig struct {

@@ -8,7 +8,11 @@ import (
 
 	keycloakclient "github.com/zestagio/chat-service/internal/clients/keycloak"
 	"github.com/zestagio/chat-service/internal/server"
+	managerv1 "github.com/zestagio/chat-service/internal/server-manager/v1"
 	"github.com/zestagio/chat-service/internal/server/errhandler"
+	managerload "github.com/zestagio/chat-service/internal/services/manager-load"
+	inmemmanagerpool "github.com/zestagio/chat-service/internal/services/manager-pool/in-mem"
+	canreceiveproblems "github.com/zestagio/chat-service/internal/usecases/manager/can-receive-problems"
 )
 
 const nameServerManager = "server-manager"
@@ -22,7 +26,19 @@ func initServerManager(
 	keycloak *keycloakclient.Client,
 	requiredResource string,
 	requiredRole string,
+
+	managerLoadSrv *managerload.Service,
 ) (*server.Server, error) {
+	canReceiveProblemUseCase, err := canreceiveproblems.New(canreceiveproblems.NewOptions(managerLoadSrv, inmemmanagerpool.New()))
+	if err != nil {
+		return nil, fmt.Errorf("create canreceiveproblem usecase: %v", err)
+	}
+
+	v1Handlers, err := managerv1.NewHandlers(managerv1.NewOptions(canReceiveProblemUseCase))
+	if err != nil {
+		return nil, fmt.Errorf("create v1 handlers: %v", err)
+	}
+
 	lg := zap.L().Named(nameServerManager)
 
 	httpErrorHandler, err := errhandler.New(errhandler.NewOptions(
@@ -42,7 +58,9 @@ func initServerManager(
 		requiredResource,
 		requiredRole,
 		v1Swagger,
-		func(_ server.EchoRouter) {},
+		func(router server.EchoRouter) {
+			managerv1.RegisterHandlers(router, v1Handlers)
+		},
 		httpErrorHandler.Handle,
 	))
 	if err != nil {
