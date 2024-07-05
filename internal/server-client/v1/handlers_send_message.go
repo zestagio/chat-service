@@ -2,6 +2,7 @@ package clientv1
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -18,30 +19,33 @@ func (h Handlers) PostSendMessage(eCtx echo.Context, params PostSendMessageParam
 
 	var req SendMessageRequest
 	if err := eCtx.Bind(&req); err != nil {
-		return internalerrors.NewServerError(http.StatusBadRequest, "bind request", err)
+		return fmt.Errorf("bind request: %w", err)
 	}
 
-	result, err := h.sendMsgUseCase.Handle(ctx, sendmessage.Request{
+	resp, err := h.sendMessage.Handle(ctx, sendmessage.Request{
 		ID:          params.XRequestID,
 		ClientID:    clientID,
 		MessageBody: req.MessageBody,
 	})
+	if err != nil {
+		if errors.Is(err, sendmessage.ErrInvalidRequest) {
+			return internalerrors.NewServerError(http.StatusBadRequest, "invalid request", err)
+		}
 
-	if errors.Is(err, sendmessage.ErrInvalidRequest) {
-		return internalerrors.NewServerError(http.StatusBadRequest, "invalid request", err)
-	}
-	if errors.Is(err, sendmessage.ErrChatNotCreated) {
-		return internalerrors.NewServerError(ErrorCodeCreateChatError, "create chat error", err)
-	}
-	if errors.Is(err, sendmessage.ErrProblemNotCreated) {
-		return internalerrors.NewServerError(ErrorCodeCreateProblemError, "create problem error", err)
+		if errors.Is(err, sendmessage.ErrChatNotCreated) {
+			return internalerrors.NewServerError(ErrorCodeCreateChatError, "create chat error", err)
+		}
+
+		if errors.Is(err, sendmessage.ErrProblemNotCreated) {
+			return internalerrors.NewServerError(ErrorCodeCreateProblemError, "create problem error", err)
+		}
+
+		return fmt.Errorf("handle `send message` use case: %v", err)
 	}
 
-	return eCtx.JSON(http.StatusOK, &SendMessageResponse{
-		Data: &MessageHeader{
-			AuthorId:  pointer.PtrWithZeroAsNil(result.AuthorID),
-			CreatedAt: result.CreatedAt,
-			Id:        result.MessageID,
-		},
-	})
+	return eCtx.JSON(http.StatusOK, SendMessageResponse{Data: &MessageHeader{
+		AuthorId:  pointer.PtrWithZeroAsNil(resp.AuthorID),
+		CreatedAt: resp.CreatedAt,
+		Id:        resp.MessageID,
+	}})
 }

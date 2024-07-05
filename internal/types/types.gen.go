@@ -55,6 +55,13 @@ func (id ChatID) Validate() error {
 	return nil
 }
 
+func (id ChatID) AsPointer() *ChatID {
+	if id.IsZero() {
+		return nil
+	}
+	return &id
+}
+
 type MessageID uuid.UUID
 
 var MessageIDNil MessageID
@@ -100,6 +107,13 @@ func (id MessageID) Validate() error {
 		return errors.New("zero MessageID")
 	}
 	return nil
+}
+
+func (id MessageID) AsPointer() *MessageID {
+	if id.IsZero() {
+		return nil
+	}
+	return &id
 }
 
 type ProblemID uuid.UUID
@@ -149,6 +163,13 @@ func (id ProblemID) Validate() error {
 	return nil
 }
 
+func (id ProblemID) AsPointer() *ProblemID {
+	if id.IsZero() {
+		return nil
+	}
+	return &id
+}
+
 type RequestID uuid.UUID
 
 var RequestIDNil RequestID
@@ -194,6 +215,13 @@ func (id RequestID) Validate() error {
 		return errors.New("zero RequestID")
 	}
 	return nil
+}
+
+func (id RequestID) AsPointer() *RequestID {
+	if id.IsZero() {
+		return nil
+	}
+	return &id
 }
 
 type UserID uuid.UUID
@@ -243,12 +271,131 @@ func (id UserID) Validate() error {
 	return nil
 }
 
-func Parse[T ChatID | MessageID | ProblemID | RequestID | UserID](s string) (T, error) {
+func (id UserID) AsPointer() *UserID {
+	if id.IsZero() {
+		return nil
+	}
+	return &id
+}
+
+type JobID uuid.UUID
+
+var JobIDNil JobID
+
+func NewJobID() JobID {
+	return JobID(uuid.New())
+}
+
+func (id JobID) String() string {
+	return (uuid.UUID)(id).String()
+}
+
+func (id *JobID) Scan(src interface{}) error {
+	return (*uuid.UUID)(id).Scan(src)
+}
+
+func (id JobID) Value() (driver.Value, error) {
+	return (uuid.UUID)(id).Value()
+}
+
+func (id JobID) MarshalText() ([]byte, error) {
+	return (uuid.UUID)(id).MarshalText()
+}
+
+func (id *JobID) UnmarshalText(data []byte) error {
+	return (*uuid.UUID)(id).UnmarshalText(data)
+}
+
+func (id JobID) IsZero() bool {
+	return id.String() == uuid.Nil.String()
+}
+
+func (id JobID) Matches(x interface{}) bool {
+	switch x := x.(type) {
+	case JobID:
+		return id.String() == x.String()
+	}
+	return false
+}
+
+func (id JobID) Validate() error {
+	if id.IsZero() {
+		return errors.New("zero JobID")
+	}
+	return nil
+}
+
+func (id JobID) AsPointer() *JobID {
+	if id.IsZero() {
+		return nil
+	}
+	return &id
+}
+
+type FailedJobID uuid.UUID
+
+var FailedJobIDNil FailedJobID
+
+func NewFailedJobID() FailedJobID {
+	return FailedJobID(uuid.New())
+}
+
+func (id FailedJobID) String() string {
+	return (uuid.UUID)(id).String()
+}
+
+func (id *FailedJobID) Scan(src interface{}) error {
+	return (*uuid.UUID)(id).Scan(src)
+}
+
+func (id FailedJobID) Value() (driver.Value, error) {
+	return (uuid.UUID)(id).Value()
+}
+
+func (id FailedJobID) MarshalText() ([]byte, error) {
+	return (uuid.UUID)(id).MarshalText()
+}
+
+func (id *FailedJobID) UnmarshalText(data []byte) error {
+	return (*uuid.UUID)(id).UnmarshalText(data)
+}
+
+func (id FailedJobID) IsZero() bool {
+	return id.String() == uuid.Nil.String()
+}
+
+func (id FailedJobID) Matches(x interface{}) bool {
+	switch x := x.(type) {
+	case FailedJobID:
+		return id.String() == x.String()
+	}
+	return false
+}
+
+func (id FailedJobID) Validate() error {
+	if id.IsZero() {
+		return errors.New("zero FailedJobID")
+	}
+	return nil
+}
+
+func (id FailedJobID) AsPointer() *FailedJobID {
+	if id.IsZero() {
+		return nil
+	}
+	return &id
+}
+
+type TypeSet = interface {
+	ChatID | MessageID | ProblemID | RequestID | UserID | JobID | FailedJobID
+}
+
+func Parse[T TypeSet](s string) (T, error) {
 	id, err := uuid.Parse(s)
 
 	return T(id), err
 }
 
-func MustParse[T ChatID | MessageID | ProblemID | RequestID | UserID](s string) T {
+func MustParse[T TypeSet](s string) T {
 	return T(uuid.MustParse(s))
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"go.uber.org/zap"
 
-	"github.com/zestagio/chat-service/internal/errors"
+	internalerrors "github.com/zestagio/chat-service/internal/errors"
 )
 
 func NewRequestLogger(lg *zap.Logger) echo.MiddlewareFunc {
@@ -16,8 +16,6 @@ func NewRequestLogger(lg *zap.Logger) echo.MiddlewareFunc {
 			return c.Request().Method == http.MethodOptions
 		},
 		LogValuesFunc: func(eCtx echo.Context, v middleware.RequestLoggerValues) error {
-			status := v.Status
-
 			lg := lg.With(
 				zap.Duration("latency", v.Latency),
 				zap.String("remote_ip", v.RemoteIP),
@@ -31,17 +29,21 @@ func NewRequestLogger(lg *zap.Logger) echo.MiddlewareFunc {
 			uid, _ := userID(eCtx)
 			lg = lg.With(zap.Stringer("user_id", uid))
 
+			status := v.Status
+
 			if err := v.Error; err != nil {
 				lg = lg.With(zap.Error(err))
-				status = errors.GetServerErrorCode(v.Error)
+				status = internalerrors.GetServerErrorCode(err)
 			}
 
-			lg.With(zap.Int("status", status))
+			lg = lg.With(zap.Int("status", status))
 
-			switch s := v.Status; {
-			case s >= 500:
+			switch {
+			case status >= 1000:
+				lg.Error("business logic error")
+			case status >= 500:
 				lg.Error("server error")
-			case s >= 400:
+			case status >= 400:
 				lg.Error("client error")
 			default:
 				lg.Info("success")

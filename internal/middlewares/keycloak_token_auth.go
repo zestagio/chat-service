@@ -29,7 +29,7 @@ func NewKeycloakTokenAuth(introspector Introspector, resource, role string) echo
 		KeyLookup:  "header:" + echo.HeaderAuthorization,
 		AuthScheme: "Bearer",
 		Validator: func(tokenStr string, eCtx echo.Context) (bool, error) {
-			res, err := introspector.IntrospectToken(context.Background(), tokenStr)
+			res, err := introspector.IntrospectToken(eCtx.Request().Context(), tokenStr)
 			if err != nil {
 				return false, err
 			}

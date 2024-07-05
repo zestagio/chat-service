@@ -21,6 +21,11 @@ issues:
       source: "const token"
       linters: [ gosec ]
 
+    - path: (.+)_test.go
+      linters:
+        - revive
+      text: "^dot-imports"
+
 linters-settings:
   exhaustive:
     default-signifies-exhaustive: true
@@ -44,13 +49,18 @@ linters-settings:
       - standard
       - default
       - prefix(github.com/zestagio/chat-service)
-    skip-generated: false
-    custom-order: true
 
   godox:
     keywords:
       - FIXME
       - TODO
+
+  gocritic:
+    enabled-checks:
+      - ruleguard
+    settings:
+      ruleguard:
+        rules: "gorules/ent.go"
 
   govet:
     enable-all: true
@@ -69,7 +79,6 @@ linters-settings:
     severity: error
     rules:
       - name: argument-limit
-        arguments: [11]
       - name: atomic
       - name: bare-return
       - name: blank-imports

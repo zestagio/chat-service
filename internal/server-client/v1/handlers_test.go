@@ -9,7 +9,6 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/suite"
-	"go.uber.org/zap"
 
 	"github.com/zestagio/chat-service/internal/middlewares"
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
@@ -40,7 +39,7 @@ func (s *HandlersSuite) SetupTest() {
 	s.sendMsgUseCase = clientv1mocks.NewMocksendMessageUseCase(s.ctrl)
 	{
 		var err error
-		s.handlers, err = clientv1.NewHandlers(clientv1.NewOptions(zap.L(), s.getHistoryUseCase, s.sendMsgUseCase))
+		s.handlers, err = clientv1.NewHandlers(clientv1.NewOptions(s.getHistoryUseCase, s.sendMsgUseCase))
 		s.Require().NoError(err)
 	}
 	s.clientID = types.NewUserID()

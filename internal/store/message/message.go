@@ -19,8 +19,6 @@ const (
 	FieldChatID = "chat_id"
 	// FieldProblemID holds the string denoting the problem_id field in the database.
 	FieldProblemID = "problem_id"
-	// FieldInitialRequestID holds the string denoting the initial_request_id field in the database.
-	FieldInitialRequestID = "initial_request_id"
 	// FieldAuthorID holds the string denoting the author_id field in the database.
 	FieldAuthorID = "author_id"
 	// FieldIsVisibleForClient holds the string denoting the is_visible_for_client field in the database.
@@ -35,6 +33,8 @@ const (
 	FieldIsBlocked = "is_blocked"
 	// FieldIsService holds the string denoting the is_service field in the database.
 	FieldIsService = "is_service"
+	// FieldInitialRequestID holds the string denoting the initial_request_id field in the database.
+	FieldInitialRequestID = "initial_request_id"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// EdgeChat holds the string denoting the chat edge name in mutations.
@@ -64,7 +64,6 @@ var Columns = []string{
 	FieldID,
 	FieldChatID,
 	FieldProblemID,
-	FieldInitialRequestID,
 	FieldAuthorID,
 	FieldIsVisibleForClient,
 	FieldIsVisibleForManager,
@@ -72,6 +71,7 @@ var Columns = []string{
 	FieldCheckedAt,
 	FieldIsBlocked,
 	FieldIsService,
+	FieldInitialRequestID,
 	FieldCreatedAt,
 }
 
@@ -120,11 +120,6 @@ func ByProblemID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldProblemID, opts...).ToFunc()
 }
 
-// ByInitialRequestID orders the results by the initial_request_id field.
-func ByInitialRequestID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldInitialRequestID, opts...).ToFunc()
-}
-
 // ByAuthorID orders the results by the author_id field.
 func ByAuthorID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAuthorID, opts...).ToFunc()
@@ -158,6 +153,11 @@ func ByIsBlocked(opts ...sql.OrderTermOption) OrderOption {
 // ByIsService orders the results by the is_service field.
 func ByIsService(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldIsService, opts...).ToFunc()
+}
+
+// ByInitialRequestID orders the results by the initial_request_id field.
+func ByInitialRequestID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldInitialRequestID, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

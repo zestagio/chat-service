@@ -5,26 +5,42 @@ import (
 	"fmt"
 
 	"github.com/zestagio/chat-service/internal/store"
+	"github.com/zestagio/chat-service/internal/store/chat"
 	"github.com/zestagio/chat-service/internal/store/problem"
 	"github.com/zestagio/chat-service/internal/types"
 )
 
 func (r *Repo) CreateIfNotExists(ctx context.Context, chatID types.ChatID) (types.ProblemID, error) {
-	problemID, err := r.db.Problem(ctx).Query().Where(problem.ChatIDEQ(chatID), problem.ResolvedAtIsNil()).FirstID(ctx)
-	if err != nil {
-		if store.IsNotFound(err) {
-			return r.createProblem(ctx, chatID)
-		}
-		return types.ProblemIDNil, fmt.Errorf("find existing problem: %v", err)
+	pID, err := r.db.Problem(ctx).Query().
+		Unique(false).
+		Where(
+			problem.HasChatWith(chat.ID(chatID)),
+			problem.ResolvedAtIsNil(),
+		).
+		FirstID(ctx)
+	if nil == err {
+		return pID, nil
+	}
+	if !store.IsNotFound(err) {
+		return types.ProblemIDNil, fmt.Errorf("select existent problem: %v", err)
 	}
 
-	return problemID, nil
-}
-
-func (r *Repo) createProblem(ctx context.Context, chatID types.ChatID) (types.ProblemID, error) {
-	newProblem, err := r.db.Problem(ctx).Create().SetChatID(chatID).Save(ctx)
+	p, err := r.db.Problem(ctx).Create().
+		SetChatID(chatID).
+		Save(ctx)
 	if err != nil {
 		return types.ProblemIDNil, fmt.Errorf("create new problem: %v", err)
 	}
-	return newProblem.ID, nil
+
+	return p.ID, nil
+}
+
+func (r *Repo) GetManagerOpenProblemsCount(ctx context.Context, managerID types.UserID) (int, error) {
+	return r.db.Problem(ctx).Query().
+		Unique(false).
+		Where(
+			problem.ManagerID(managerID),
+			problem.ResolvedAtIsNil(),
+		).
+		Count(ctx)
 }

@@ -3,6 +3,7 @@
 package migrate
 
 import (
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/schema/field"
 )
@@ -20,10 +21,51 @@ var (
 		Columns:    ChatsColumns,
 		PrimaryKey: []*schema.Column{ChatsColumns[0]},
 	}
+	// FailedJobsColumns holds the columns for the "failed_jobs" table.
+	FailedJobsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "name", Type: field.TypeString},
+		{Name: "payload", Type: field.TypeString},
+		{Name: "reason", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// FailedJobsTable holds the schema information for the "failed_jobs" table.
+	FailedJobsTable = &schema.Table{
+		Name:       "failed_jobs",
+		Columns:    FailedJobsColumns,
+		PrimaryKey: []*schema.Column{FailedJobsColumns[0]},
+	}
+	// JobsColumns holds the columns for the "jobs" table.
+	JobsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "name", Type: field.TypeString},
+		{Name: "payload", Type: field.TypeString},
+		{Name: "attempts", Type: field.TypeInt, Default: 0},
+		{Name: "available_at", Type: field.TypeTime, Nullable: true},
+		{Name: "reserved_until", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// JobsTable holds the schema information for the "jobs" table.
+	JobsTable = &schema.Table{
+		Name:       "jobs",
+		Columns:    JobsColumns,
+		PrimaryKey: []*schema.Column{JobsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "job_available_at",
+				Unique:  false,
+				Columns: []*schema.Column{JobsColumns[4]},
+			},
+			{
+				Name:    "job_reserved_until",
+				Unique:  false,
+				Columns: []*schema.Column{JobsColumns[5]},
+			},
+		},
+	}
 	// MessagesColumns holds the columns for the "messages" table.
 	MessagesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true},
-		{Name: "initial_request_id", Type: field.TypeUUID, Unique: true, Nullable: true},
 		{Name: "author_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "is_visible_for_client", Type: field.TypeBool, Default: false},
 		{Name: "is_visible_for_manager", Type: field.TypeBool, Default: false},
@@ -31,6 +73,7 @@ var (
 		{Name: "checked_at", Type: field.TypeTime, Nullable: true},
 		{Name: "is_blocked", Type: field.TypeBool, Default: false},
 		{Name: "is_service", Type: field.TypeBool, Default: false},
+		{Name: "initial_request_id", Type: field.TypeUUID, Unique: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "chat_id", Type: field.TypeUUID},
 		{Name: "problem_id", Type: field.TypeUUID},
@@ -56,19 +99,15 @@ var (
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "message_chat_id",
-				Unique:  false,
-				Columns: []*schema.Column{MessagesColumns[10]},
-			},
-			{
-				Name:    "message_initial_request_id",
-				Unique:  false,
-				Columns: []*schema.Column{MessagesColumns[1]},
-			},
-			{
 				Name:    "message_created_at",
 				Unique:  false,
 				Columns: []*schema.Column{MessagesColumns[9]},
+				Annotation: &entsql.IndexAnnotation{
+					DescColumns: map[string]bool{
+						MessagesColumns[9].Name: true,
+					},
+					Type: "BTREE",
+				},
 			},
 		},
 	}
@@ -93,17 +132,12 @@ var (
 				OnDelete:   schema.NoAction,
 			},
 		},
-		Indexes: []*schema.Index{
-			{
-				Name:    "problem_chat_id_resolved_at",
-				Unique:  true,
-				Columns: []*schema.Column{ProblemsColumns[4], ProblemsColumns[2]},
-			},
-		},
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		ChatsTable,
+		FailedJobsTable,
+		JobsTable,
 		MessagesTable,
 		ProblemsTable,
 	}

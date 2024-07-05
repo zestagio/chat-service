@@ -1,0 +1,102 @@
+openapi: 3.0.3
+info:
+  title: Bank Support Chat Manager API
+  version: v1
+
+servers:
+  - url: http://localhost:8081/v1
+    description: Development server
+
+paths:
+  /getFreeHandsBtnAvailability:
+    post:
+      description: Check availability button
+      parameters:
+        - $ref: "#/components/parameters/XRequestIDHeader"
+      responses:
+        '200':
+          description: Availability status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetFreeHandsBtnAvailabilityResponse"
+
+  /freeHands:
+    post:
+      description: Manager is free for resolve problems
+      parameters:
+        - $ref: "#/components/parameters/XRequestIDHeader"
+      responses:
+        '200':
+          description: Manager is free result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FreeHandsResponse"
+
+security:
+  - bearerAuth: [ ]
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    XRequestIDHeader:
+      name: X-Request-ID
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+        x-go-type: types.RequestID
+        x-go-type-import:
+          path: "github.com/zestagio/chat-service/internal/types"
+
+  schemas:
+    # Common.
+
+    Error:
+      required: [ message, code ]
+      properties:
+        code:
+          $ref: "#/components/schemas/ErrorCode"
+        message:
+          type: string
+        details:
+          type: string
+
+    ErrorCode:
+      type: integer
+      description: contains HTTP error codes and specific business logic error codes (the last must be >= 1000).
+      enum:
+        - 5000
+      x-enum-varnames:
+        - ErrorCodeManagerOverloaded
+      minimum: 400
+
+    GetFreeHandsBtnAvailabilityResponse:
+      properties:
+        data:
+          $ref: "#/components/schemas/GetFreeHandsBtnAvailability"
+        error:
+          $ref: "#/components/schemas/Error"
+
+    GetFreeHandsBtnAvailability:
+      required: [ available, inPool ]
+      properties:
+        available:
+          type: boolean
+        inPool:
+          type: boolean
+
+    FreeHandsResponse:
+      properties:
+        data:
+          type: string
+          nullable: true
+        error:
+          $ref: "#/components/schemas/Error"

@@ -27,7 +27,8 @@ const (
 type Options struct {
 	addr string `option:"mandatory" validate:"required,hostname_port"`
 
-	clientSwagger *openapi3.T `option:"mandatory" validate:"required"`
+	clientSwagger  *openapi3.T `option:"mandatory" validate:"required"`
+	managerSwagger *openapi3.T `option:"mandatory" validate:"required"`
 }
 
 type Server struct {
@@ -81,6 +82,11 @@ func New(opts Options) (*Server, error) {
 	{
 		e.GET("/schema/client", s.ExposeSchema(opts.clientSwagger))
 		index.addPage("/schema/client", "Get client OpenAPI specification")
+	}
+
+	{
+		e.GET("/schema/manager", s.ExposeSchema(opts.managerSwagger))
+		index.addPage("/schema/manager", "Get manager OpenAPI specification")
 	}
 
 	e.GET("/", index.handler)

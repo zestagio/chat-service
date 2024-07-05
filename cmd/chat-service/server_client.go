@@ -10,9 +10,10 @@ import (
 	chatsrepo "github.com/zestagio/chat-service/internal/repositories/chats"
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
 	problemsrepo "github.com/zestagio/chat-service/internal/repositories/problems"
-	serverclient "github.com/zestagio/chat-service/internal/server-client"
-	"github.com/zestagio/chat-service/internal/server-client/errhandler"
+	"github.com/zestagio/chat-service/internal/server"
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
+	"github.com/zestagio/chat-service/internal/server/errhandler"
+	"github.com/zestagio/chat-service/internal/services/outbox"
 	"github.com/zestagio/chat-service/internal/store"
 	gethistory "github.com/zestagio/chat-service/internal/usecases/client/get-history"
 	sendmessage "github.com/zestagio/chat-service/internal/usecases/client/send-message"
@@ -20,7 +21,9 @@ import (
 
 const nameServerClient = "server-client"
 
+//nolint:revive // ignore argument-limit rule to keep server client init in single place
 func initServerClient(
+	productionMode bool,
 	addr string,
 	allowOrigins []string,
 	v1Swagger *openapi3.T,
@@ -29,37 +32,46 @@ func initServerClient(
 	requiredResource string,
 	requiredRole string,
 
-	msgRepo *messagesrepo.Repo,
-	chatRepo *chatsrepo.Repo,
-	problemRepo *problemsrepo.Repo,
-
 	db *store.Database,
+	chatsRepo *chatsrepo.Repo,
+	msgRepo *messagesrepo.Repo,
+	problemsRepo *problemsrepo.Repo,
 
-	productionMode bool,
-) (*serverclient.Server, error) {
-	lg := zap.L().Named(nameServerClient)
-
+	outboxSrv *outbox.Service,
+) (*server.Server, error) {
 	getHistoryUseCase, err := gethistory.New(gethistory.NewOptions(msgRepo))
 	if err != nil {
-		return nil, fmt.Errorf("create get history usecase: %v", err)
+		return nil, fmt.Errorf("create gethistory usecase: %v", err)
 	}
 
-	sendMsgUseCase, err := sendmessage.New(sendmessage.NewOptions(chatRepo, msgRepo, problemRepo, db))
+	sendMessageUseCase, err := sendmessage.New(sendmessage.NewOptions(
+		chatsRepo,
+		msgRepo,
+		outboxSrv,
+		problemsRepo,
+		db,
+	))
 	if err != nil {
-		return nil, fmt.Errorf("create send message usecase: %v", err)
+		return nil, fmt.Errorf("create sendmessage usecase: %v", err)
 	}
 
-	v1Handlers, err := clientv1.NewHandlers(clientv1.NewOptions(lg, getHistoryUseCase, sendMsgUseCase))
+	v1Handlers, err := clientv1.NewHandlers(clientv1.NewOptions(getHistoryUseCase, sendMessageUseCase))
 	if err != nil {
 		return nil, fmt.Errorf("create v1 handlers: %v", err)
 	}
 
-	errHandler, err := errhandler.New(errhandler.NewOptions(lg, productionMode, errhandler.ResponseBuilder))
+	lg := zap.L().Named(nameServerClient)
+
+	httpErrorHandler, err := errhandler.New(errhandler.NewOptions(
+		lg,
+		productionMode,
+		errhandler.ResponseBuilder,
+	))
 	if err != nil {
-		return nil, fmt.Errorf("create err handler: %v", err)
+		return nil, fmt.Errorf("create http error handler: %v", err)
 	}
 
-	srv, err := serverclient.New(serverclient.NewOptions(
+	srv, err := server.New(server.NewOptions(
 		lg,
 		addr,
 		allowOrigins,
@@ -67,8 +79,10 @@ func initServerClient(
 		requiredResource,
 		requiredRole,
 		v1Swagger,
-		v1Handlers,
-		errHandler.Handle,
+		func(router server.EchoRouter) {
+			clientv1.RegisterHandlers(router, v1Handlers)
+		},
+		httpErrorHandler.Handle,
 	))
 	if err != nil {
 		return nil, fmt.Errorf("build server: %v", err)

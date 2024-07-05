@@ -14,15 +14,19 @@ import (
 var ErrMsgNotFound = errors.New("message not found")
 
 func (r *Repo) GetMessageByRequestID(ctx context.Context, reqID types.RequestID) (*Message, error) {
-	msg, err := r.db.Message(ctx).Query().Where(message.InitialRequestIDEQ(reqID)).First(ctx)
+	m, err := r.db.Message(ctx).Query().
+		Unique(false).
+		Where(message.InitialRequestID(reqID)).
+		Only(ctx)
 	if err != nil {
 		if store.IsNotFound(err) {
-			return nil, ErrMsgNotFound
+			return nil, fmt.Errorf("request id %v: %w", reqID, ErrMsgNotFound)
 		}
-		return nil, fmt.Errorf("get chat message: %v", err)
+		return nil, fmt.Errorf("query message by request id %v: %v", reqID, err)
 	}
 
-	return pointer.Ptr(adaptStoreMessage(msg)), nil
+	mm := adaptStoreMessage(m)
+	return &mm, nil
 }
 
 // CreateClientVisible creates a message that is visible only to the client.
@@ -34,18 +38,30 @@ func (r *Repo) CreateClientVisible(
 	authorID types.UserID,
 	msgBody string,
 ) (*Message, error) {
-	msg, err := r.db.Message(ctx).Create().
-		SetInitialRequestID(reqID).
-		SetProblemID(problemID).
+	m, err := r.db.Message(ctx).Create().
 		SetChatID(chatID).
+		SetProblemID(problemID).
 		SetAuthorID(authorID).
-		SetBody(msgBody).
-		SetIsVisibleForManager(false).
 		SetIsVisibleForClient(true).
+		SetIsVisibleForManager(false).
+		SetBody(msgBody).
+		SetInitialRequestID(reqID).
 		Save(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("create chat message: %v", err)
+		return nil, fmt.Errorf("create msg: %v", err)
 	}
 
-	return pointer.Ptr(adaptStoreMessage(msg)), nil
+	mm := adaptStoreMessage(m)
+	return &mm, nil
+}
+
+func (r *Repo) GetMessageByID(ctx context.Context, msgID types.MessageID) (*Message, error) {
+	m, err := r.db.Message(ctx).Get(ctx, msgID)
+	if store.IsNotFound(err) {
+		return nil, fmt.Errorf("get message by id err: %v", ErrMsgNotFound)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get message by id err: %v", err)
+	}
+	return pointer.Ptr(adaptStoreMessage(m)), nil
 }

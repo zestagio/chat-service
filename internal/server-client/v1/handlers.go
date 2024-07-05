@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"go.uber.org/zap"
-
 	gethistory "github.com/zestagio/chat-service/internal/usecases/client/get-history"
 	sendmessage "github.com/zestagio/chat-service/internal/usecases/client/send-message"
 )
@@ -20,11 +18,10 @@ type sendMessageUseCase interface {
 	Handle(ctx context.Context, req sendmessage.Request) (sendmessage.Response, error)
 }
 
-//go:generate options-gen -out-filename=handlers_options.gen.go -from-struct=Options
+//go:generate options-gen -out-filename=handlers.gen.go -from-struct=Options
 type Options struct {
-	logger         *zap.Logger        `option:"mandatory" validate:"required"`
-	getHistory     getHistoryUseCase  `option:"mandatory" validate:"required"`
-	sendMsgUseCase sendMessageUseCase `option:"mandatory" validate:"required"`
+	getHistory  getHistoryUseCase  `option:"mandatory" validate:"required"`
+	sendMessage sendMessageUseCase `option:"mandatory" validate:"required"`
 }
 
 type Handlers struct {

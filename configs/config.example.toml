@@ -18,17 +18,40 @@ allow_origins = ["http://localhost:3011", "http://localhost:3000"]
 resource = "chat-ui-client"
 role = "support-chat-client"
 
+[servers.manager]
+addr = ":8081"
+allow_origins = ["http://localhost:3011", "http://localhost:3001"]
+[servers.manager.required_access]
+resource = "chat-ui-manager"
+role = "support-chat-manager"
+
+[services]
+[services.msg_producer]
+brokers = ["localhost:9092"]
+topic = "chat.messages"
+batch_size = 1
+encrypt_key = "68566D597133743677397A2443264629" # Leave it blank to disable encryption.
+
+[services.outbox]
+workers = 2
+idle_time = "1s"
+reserve_for = "5m"
+
+[services.manager_load]
+max_problems_at_same_time = 5
+
+[stores]
+[stores.psql]
+addr = "127.0.0.1:5432"
+username = "chat-service"
+password = "chat-service"
+database = "chat-service"
+debug = false
+
 [clients]
 [clients.keycloak]
 base_path = "http://localhost:3010"
 realm = "Bank"
 client_id = "chat-service"
-client_secret = "BX6KbVXoZREf3hQI7mnRBwTW6wJ0SS8e"
-debug_mode = false
-
-[db]
-addr = "127.0.0.1:5432"
-user = "chat-service"
-password = "chat-service"
-database = "chat-service"
+client_secret = "68566D597133743677397A2443264629"
 debug_mode = false

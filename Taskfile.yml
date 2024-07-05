@@ -32,6 +32,8 @@ vars:
     ProblemID
     RequestID
     UserID
+    JobID
+    FailedJobID
   TYPES_PKG: types
   TYPES_DST: ./internal/types/types.gen.go
 
@@ -42,7 +44,10 @@ vars:
   DOCKER_COMPOSE_CMD: docker compose -f {{ .DOCKER_COMPOSE_PATHS | trim | splitLines | join " -f " }}
 
   ENT_SCHEMA: ./internal/store/schema
-  ENT_TEMPLATES: ./internal/store/templates/*.tmpl
+  ENT_TEMPLATES: ./internal/store/templates
+  ENT_FEATURES: |
+    sql/upsert
+    sql/lock
 
   KEYCLOAK_REALM_PATH: ./deploy/local/bank-realm.json
 
@@ -50,8 +55,14 @@ vars:
   CLIENT_V1_DST: ./internal/server-client/v1/server.gen.go
   CLIENT_V1_PKG: clientv1
 
+  MANAGER_V1_SRC: ./api/manager.v1.swagger.yml
+  MANAGER_V1_DST: ./internal/server-manager/v1/server.gen.go
+  MANAGER_V1_PKG: managerv1
+
+  ### E2E tests ###
   E2E_CLIENT_V1_DST: ./tests/e2e/api/client/v1/client.gen.go
   E2E_CLIENT_V1_PKG: apiclientv1
+  ###
 
 tasks:
   default:
@@ -172,7 +183,7 @@ tasks:
 
   ent:gen:
     cmds:
-      - .{{.DEV_TOOLS_PATH}}/ent generate --template {{.ENT_TEMPLATES}} {{.ENT_SCHEMA}}
+      - .{{.DEV_TOOLS_PATH}}/ent generate --template {{.ENT_TEMPLATES}} --feature {{ .ENT_FEATURES | trim | splitLines | join "," }} {{.ENT_SCHEMA}}
       - task: tidy
 
   ent:describe:
@@ -188,6 +199,8 @@ tasks:
     cmds:
       - echo "Generate client server..."
       - .{{.DEV_TOOLS_PATH}}/oapi-codegen -generate types,server,spec -package {{.CLIENT_V1_PKG}} {{.CLIENT_V1_SRC}} > {{.CLIENT_V1_DST}}
+      - echo "Generate manager server..."
+      - .{{.DEV_TOOLS_PATH}}/oapi-codegen -generate types,server,spec -package {{.MANAGER_V1_PKG}} {{.MANAGER_V1_SRC}} > {{.MANAGER_V1_DST}}
       - task: tidy
 
   gen:e2e:

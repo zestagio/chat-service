@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
+	sendclientmessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-client-message"
 	"github.com/zestagio/chat-service/internal/types"
 )
 
@@ -33,6 +35,10 @@ type messagesRepository interface {
 	) (*messagesrepo.Message, error)
 }
 
+type outboxService interface {
+	Put(ctx context.Context, name, payload string, availableAt time.Time) (types.JobID, error)
+}
+
 type problemsRepository interface {
 	CreateIfNotExists(ctx context.Context, chatID types.ChatID) (types.ProblemID, error)
 }
@@ -43,10 +49,11 @@ type transactor interface {
 
 //go:generate options-gen -out-filename=usecase_options.gen.go -from-struct=Options
 type Options struct {
-	chatRepo    chatsRepository    `option:"mandatory" validation:"required"`
-	msgRepo     messagesRepository `option:"mandatory" validation:"required"`
-	problemRepo problemsRepository `option:"mandatory" validation:"required"`
-	txtor       transactor         `option:"mandatory" validation:"required"`
+	chatsRepo    chatsRepository    `option:"mandatory" validate:"required"`
+	msgRepo      messagesRepository `option:"mandatory" validate:"required"`
+	outboxSrv    outboxService      `option:"mandatory" validate:"required"`
+	problemsRepo problemsRepository `option:"mandatory" validate:"required"`
+	txtor        transactor         `option:"mandatory" validate:"required"`
 }
 
 type UseCase struct {
@@ -59,43 +66,58 @@ func New(opts Options) (UseCase, error) {
 
 func (u UseCase) Handle(ctx context.Context, req Request) (Response, error) {
 	if err := req.Validate(); err != nil {
-		return Response{}, ErrInvalidRequest
+		return Response{}, fmt.Errorf("validate request: %w: %v", ErrInvalidRequest, err)
 	}
 
-	var message *messagesrepo.Message
+	var msg *messagesrepo.Message
 
-	err := u.txtor.RunInTx(ctx, func(ctx context.Context) error {
-		var err error
-
-		message, err = u.msgRepo.GetMessageByRequestID(ctx, req.ID)
-		if err == nil {
+	if err := u.txtor.RunInTx(ctx, func(ctx context.Context) error {
+		m, err := u.msgRepo.GetMessageByRequestID(ctx, req.ID)
+		if nil == err {
+			msg = m
 			return nil
 		}
 		if !errors.Is(err, messagesrepo.ErrMsgNotFound) {
-			return fmt.Errorf("get msg by request id: %v", err)
+			return fmt.Errorf("get msg by initial request id: %v", err)
 		}
 
-		chatID, err := u.chatRepo.CreateIfNotExists(ctx, req.ClientID)
+		chatID, err := u.chatsRepo.CreateIfNotExists(ctx, req.ClientID)
 		if err != nil {
 			return fmt.Errorf("%w: %v", ErrChatNotCreated, err)
 		}
 
-		problemID, err := u.problemRepo.CreateIfNotExists(ctx, chatID)
+		problemID, err := u.problemsRepo.CreateIfNotExists(ctx, chatID)
 		if err != nil {
 			return fmt.Errorf("%w: %v", ErrProblemNotCreated, err)
 		}
 
-		message, err = u.msgRepo.CreateClientVisible(ctx, req.ID, problemID, chatID, req.ClientID, req.MessageBody)
+		m, err = u.msgRepo.CreateClientVisible(ctx, req.ID, problemID, chatID, req.ClientID, req.MessageBody)
+		if err != nil {
+			return fmt.Errorf("create client visible message: %v", err)
+		}
 
-		return err
-	})
-	if err != nil {
-		return Response{}, err
+		msg = m
+		return u.putIntoOutbox(ctx, m.ID)
+	}); err != nil {
+		return Response{}, fmt.Errorf("`send client message` tx: %w", err)
 	}
 
 	return Response{
-		MessageID: message.ID,
-		AuthorID:  message.AuthorID,
-		CreatedAt: message.CreatedAt,
+		AuthorID:  msg.AuthorID,
+		MessageID: msg.ID,
+		CreatedAt: msg.CreatedAt,
 	}, nil
+}
+
+func (u UseCase) putIntoOutbox(ctx context.Context, msgID types.MessageID) error {
+	outboxPayload, err := sendclientmessagejob.MarshalPayload(msgID)
+	if err != nil {
+		return err
+	}
+
+	if _, err = u.outboxSrv.Put(ctx, sendclientmessagejob.Name, outboxPayload, time.Now()); err != nil {
+		return err
+	}
+
+	return nil
 }
