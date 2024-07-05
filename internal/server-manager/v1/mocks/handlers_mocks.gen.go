@@ -10,7 +10,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	canreceiveproblems "github.com/zestagio/chat-service/internal/usecases/manager/can-receive-problems"
-	freehands "github.com/zestagio/chat-service/internal/usecases/manager/free-hands"
+	freehandssignal "github.com/zestagio/chat-service/internal/usecases/manager/free-hands-signal"
 )
 
 // MockcanReceiveProblemsUseCase is a mock of canReceiveProblemsUseCase interface.
@@ -51,39 +51,40 @@ func (mr *MockcanReceiveProblemsUseCaseMockRecorder) Handle(ctx, req interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Handle", reflect.TypeOf((*MockcanReceiveProblemsUseCase)(nil).Handle), ctx, req)
 }
 
-// MockfreeHandsUseCase is a mock of freeHandsUseCase interface.
-type MockfreeHandsUseCase struct {
+// MockfreeHandsSignalUseCase is a mock of freeHandsSignalUseCase interface.
+type MockfreeHandsSignalUseCase struct {
 	ctrl     *gomock.Controller
-	recorder *MockfreeHandsUseCaseMockRecorder
+	recorder *MockfreeHandsSignalUseCaseMockRecorder
 }
 
-// MockfreeHandsUseCaseMockRecorder is the mock recorder for MockfreeHandsUseCase.
-type MockfreeHandsUseCaseMockRecorder struct {
-	mock *MockfreeHandsUseCase
+// MockfreeHandsSignalUseCaseMockRecorder is the mock recorder for MockfreeHandsSignalUseCase.
+type MockfreeHandsSignalUseCaseMockRecorder struct {
+	mock *MockfreeHandsSignalUseCase
 }
 
-// NewMockfreeHandsUseCase creates a new mock instance.
-func NewMockfreeHandsUseCase(ctrl *gomock.Controller) *MockfreeHandsUseCase {
-	mock := &MockfreeHandsUseCase{ctrl: ctrl}
-	mock.recorder = &MockfreeHandsUseCaseMockRecorder{mock}
+// NewMockfreeHandsSignalUseCase creates a new mock instance.
+func NewMockfreeHandsSignalUseCase(ctrl *gomock.Controller) *MockfreeHandsSignalUseCase {
+	mock := &MockfreeHandsSignalUseCase{ctrl: ctrl}
+	mock.recorder = &MockfreeHandsSignalUseCaseMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockfreeHandsUseCase) EXPECT() *MockfreeHandsUseCaseMockRecorder {
+func (m *MockfreeHandsSignalUseCase) EXPECT() *MockfreeHandsSignalUseCaseMockRecorder {
 	return m.recorder
 }
 
 // Handle mocks base method.
-func (m *MockfreeHandsUseCase) Handle(ctx context.Context, req freehands.Request) error {
+func (m *MockfreeHandsSignalUseCase) Handle(ctx context.Context, req freehandssignal.Request) (freehandssignal.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Handle", ctx, req)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(freehandssignal.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Handle indicates an expected call of Handle.
-func (mr *MockfreeHandsUseCaseMockRecorder) Handle(ctx, req interface{}) *gomock.Call {
+func (mr *MockfreeHandsSignalUseCaseMockRecorder) Handle(ctx, req interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Handle", reflect.TypeOf((*MockfreeHandsUseCase)(nil).Handle), ctx, req)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Handle", reflect.TypeOf((*MockfreeHandsSignalUseCase)(nil).Handle), ctx, req)
 }

@@ -24,6 +24,7 @@ import (
 	serverdebug "github.com/zestagio/chat-service/internal/server-debug"
 	managerv1 "github.com/zestagio/chat-service/internal/server-manager/v1"
 	managerload "github.com/zestagio/chat-service/internal/services/manager-load"
+	inmemmanagerpool "github.com/zestagio/chat-service/internal/services/manager-pool/in-mem"
 	msgproducer "github.com/zestagio/chat-service/internal/services/msg-producer"
 	"github.com/zestagio/chat-service/internal/services/outbox"
 	sendclientmessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-client-message"
@@ -49,14 +50,14 @@ func run() (errReturned error) {
 		return fmt.Errorf("parse and validate config %q: %v", *configPath, err)
 	}
 
-	logger.MustInit(
-		logger.NewOptions(
-			cfg.Log.Level,
-			logger.WithSentryEnv(cfg.Global.Env),
-			logger.WithSentryDsn(cfg.Sentry.Dsn),
-			logger.WithProductionMode(cfg.Global.IsProduction()),
-		),
-	)
+	if err := logger.Init(logger.NewOptions(
+		cfg.Log.Level,
+		logger.WithProductionMode(cfg.Global.IsProduction()),
+		logger.WithSentryDSN(cfg.Sentry.DSN),
+		logger.WithSentryEnv(cfg.Global.Env),
+	)); err != nil {
+		return fmt.Errorf("init logger: %v", err)
+	}
 	defer logger.Sync()
 
 	lg := zap.L().Named("main")
@@ -90,6 +91,11 @@ func run() (errReturned error) {
 		return fmt.Errorf("create chats repo: %v", err)
 	}
 
+	jobsRepo, err := jobsrepo.New(jobsrepo.NewOptions(db))
+	if err != nil {
+		return fmt.Errorf("create jobs repo: %v", err)
+	}
+
 	msgRepo, err := messagesrepo.New(messagesrepo.NewOptions(db))
 	if err != nil {
 		return fmt.Errorf("create messages repo: %v", err)
@@ -98,43 +104,6 @@ func run() (errReturned error) {
 	problemsRepo, err := problemsrepo.New(problemsrepo.NewOptions(db))
 	if err != nil {
 		return fmt.Errorf("create problems repo: %v", err)
-	}
-
-	jobsRepo, err := jobsrepo.New(jobsrepo.NewOptions(db))
-	if err != nil {
-		return fmt.Errorf("init jobs repo err: %v", err)
-	}
-
-	msgProducer, err := msgproducer.New(msgproducer.NewOptions(
-		msgproducer.NewKafkaWriter(
-			cfg.Services.MsgProducer.Brokers,
-			cfg.Services.MsgProducer.Topic,
-			cfg.Services.MsgProducer.BatchSize,
-		),
-		msgproducer.WithEncryptKey(cfg.Services.MsgProducer.EncryptKey),
-	))
-	if err != nil {
-		return fmt.Errorf("init msg producer err: %v", err)
-	}
-
-	outboxSrv, err := outbox.New(outbox.NewOptions(
-		cfg.Services.Outbox.Workers,
-		cfg.Services.Outbox.IDLE,
-		cfg.Services.Outbox.ReserveFor,
-		jobsRepo,
-		db,
-	))
-	if err != nil {
-		return fmt.Errorf("init outbox service err: %v", err)
-	}
-
-	sendClientMessageJob, err := sendclientmessagejob.New(sendclientmessagejob.NewOptions(msgProducer, msgRepo))
-	if err != nil {
-		return fmt.Errorf("create send client message job: %v", err)
-	}
-
-	if err := outboxSrv.RegisterJob(sendClientMessageJob); err != nil {
-		return fmt.Errorf("register send client message job err: %v", err)
 	}
 
 	// Clients.
@@ -152,6 +121,50 @@ func run() (errReturned error) {
 		zap.L().Warn("keycloak client in the debug mode")
 	}
 
+	// Infrastructure Services.
+	msgProducer, err := msgproducer.New(msgproducer.NewOptions(
+		msgproducer.NewKafkaWriter(
+			cfg.Services.MsgProducer.Brokers,
+			cfg.Services.MsgProducer.Topic,
+			cfg.Services.MsgProducer.BatchSize,
+		),
+		msgproducer.WithEncryptKey(cfg.Services.MsgProducer.EncryptKey),
+	))
+	if err != nil {
+		return fmt.Errorf("create message producer: %v", err)
+	}
+	defer multierr.AppendInvoke(&errReturned, multierr.Close(msgProducer))
+
+	outBox, err := outbox.New(outbox.NewOptions(
+		cfg.Services.Outbox.Workers,
+		cfg.Services.Outbox.IdleTime,
+		cfg.Services.Outbox.ReserveFor,
+		jobsRepo,
+		db,
+	))
+	if err != nil {
+		return fmt.Errorf("create outbox service: %v", err)
+	}
+
+	managerPool := inmemmanagerpool.New()
+	defer multierr.AppendInvoke(&errReturned, multierr.Close(managerPool))
+
+	// Domain Services.
+	managerLoad, err := managerload.New(managerload.NewOptions(
+		cfg.Services.ManagerLoad.MaxProblemsAtSameTime,
+		problemsRepo,
+	))
+	if err != nil {
+		return fmt.Errorf("create manager load service: %v", err)
+	}
+
+	// Application Services. Jobs.
+	for _, j := range []outbox.Job{
+		sendclientmessagejob.Must(sendclientmessagejob.NewOptions(msgProducer, msgRepo)),
+	} {
+		outBox.MustRegisterJob(j)
+	}
+
 	// Servers.
 	clientV1Swagger, err := clientv1.GetSwagger()
 	if err != nil {
@@ -166,11 +179,11 @@ func run() (errReturned error) {
 		kc,
 		cfg.Servers.Client.RequiredAccess.Resource,
 		cfg.Servers.Client.RequiredAccess.Role,
+		outBox,
 		db,
 		chatsRepo,
 		msgRepo,
 		problemsRepo,
-		outboxSrv,
 	)
 	if err != nil {
 		return fmt.Errorf("init client server: %v", err)
@@ -181,14 +194,6 @@ func run() (errReturned error) {
 		return fmt.Errorf("get manager v1 swagger: %v", err)
 	}
 
-	managerLoadService, err := managerload.New(managerload.NewOptions(
-		cfg.Services.ManagerLoad.MaxProblemsAtSameTime,
-		problemsRepo,
-	))
-	if err != nil {
-		return fmt.Errorf("init manager load service err: %v", err)
-	}
-
 	srvManager, err := initServerManager(
 		cfg.Global.IsProduction(),
 		cfg.Servers.Manager.Addr,
@@ -197,7 +202,8 @@ func run() (errReturned error) {
 		kc,
 		cfg.Servers.Manager.RequiredAccess.Resource,
 		cfg.Servers.Manager.RequiredAccess.Role,
-		managerLoadService,
+		managerLoad,
+		managerPool, // как sql-конфиг
 	)
 	if err != nil {
 		return fmt.Errorf("init manager server: %v", err)
@@ -218,11 +224,9 @@ func run() (errReturned error) {
 	eg.Go(func() error { return srvClient.Run(ctx) })
 	eg.Go(func() error { return srvManager.Run(ctx) })
 	eg.Go(func() error { return srvDebug.Run(ctx) })
-	eg.Go(func() error { return outboxSrv.Run(ctx) })
 
 	// Run services.
-	// Ждут своего часа.
-	// ...
+	eg.Go(func() error { return outBox.Run(ctx) })
 
 	if err = eg.Wait(); err != nil && !errors.Is(err, context.Canceled) {
 		return fmt.Errorf("wait app stop: %v", err)

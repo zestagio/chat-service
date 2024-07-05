@@ -28,12 +28,12 @@ vars:
 
   TYPES: |
     ChatID
+    FailedJobID
+    JobID
     MessageID
     ProblemID
     RequestID
     UserID
-    JobID
-    FailedJobID
   TYPES_PKG: types
   TYPES_DST: ./internal/types/types.gen.go
 
@@ -46,8 +46,8 @@ vars:
   ENT_SCHEMA: ./internal/store/schema
   ENT_TEMPLATES: ./internal/store/templates
   ENT_FEATURES: |
+    sql/execquery
     sql/upsert
-    sql/lock
 
   KEYCLOAK_REALM_PATH: ./deploy/local/bank-realm.json
 
@@ -121,7 +121,7 @@ tasks:
     cmds:
       - echo "- End-to-end tests..."
       # NOTE: It's important to run tests serial (without `-p` flag) – for correct `clientsPool` sharing.
-      - .{{.DEV_TOOLS_PATH}}/ginkgo --fail-fast --timeout=1m --tags e2e tests {{.CLI_ARGS}} ./tests/e2e
+      - .{{.DEV_TOOLS_PATH}}/ginkgo --fail-fast --timeout=1m --tags e2e {{.CLI_ARGS}} ./tests/e2e
 
   build:
     cmds:
@@ -139,7 +139,7 @@ tasks:
 
   deps:
     cmds:
-      - "{{.DOCKER_COMPOSE_CMD}} up -d"
+      - "{{.DOCKER_COMPOSE_CMD}} up -d {{.CLI_ARGS}}"
 
   deps:cmd:
     cmds:
@@ -198,9 +198,9 @@ tasks:
   gen:api:
     cmds:
       - echo "Generate client server..."
-      - .{{.DEV_TOOLS_PATH}}/oapi-codegen -generate types,server,spec -package {{.CLIENT_V1_PKG}} {{.CLIENT_V1_SRC}} > {{.CLIENT_V1_DST}}
+      - .{{.DEV_TOOLS_PATH}}/oapi-codegen -generate skip-prune,types,server,spec -package {{.CLIENT_V1_PKG}} {{.CLIENT_V1_SRC}} > {{.CLIENT_V1_DST}}
       - echo "Generate manager server..."
-      - .{{.DEV_TOOLS_PATH}}/oapi-codegen -generate types,server,spec -package {{.MANAGER_V1_PKG}} {{.MANAGER_V1_SRC}} > {{.MANAGER_V1_DST}}
+      - .{{.DEV_TOOLS_PATH}}/oapi-codegen -generate skip-prune,types,server,spec -package {{.MANAGER_V1_PKG}} {{.MANAGER_V1_SRC}} > {{.MANAGER_V1_DST}}
       - task: tidy
 
   gen:e2e:

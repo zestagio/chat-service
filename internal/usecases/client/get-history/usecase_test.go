@@ -56,6 +56,7 @@ func (s *UseCaseSuite) TestRequestValidationError() {
 	resp, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
+	s.Require().Error(err)
 	s.Require().ErrorIs(err, gethistory.ErrInvalidRequest)
 	s.Empty(resp.Messages)
 	s.Empty(resp.NextCursor)
@@ -73,6 +74,7 @@ func (s *UseCaseSuite) TestCursorDecodingError() {
 	resp, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
+	s.Require().Error(err)
 	s.Require().ErrorIs(err, gethistory.ErrInvalidCursor)
 	s.Empty(resp.Messages)
 	s.Empty(resp.NextCursor)
@@ -100,6 +102,7 @@ func (s *UseCaseSuite) TestGetClientChatMessages_InvalidCursor() {
 	resp, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
+	s.Require().Error(err)
 	s.Require().ErrorIs(err, gethistory.ErrInvalidCursor)
 	s.Empty(resp.Messages)
 	s.Empty(resp.NextCursor)

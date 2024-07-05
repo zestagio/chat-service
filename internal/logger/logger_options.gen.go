@@ -26,9 +26,16 @@ func NewOptions(
 	return o
 }
 
-func WithSentryDsn(opt string) OptOptionsSetter {
+func WithProductionMode(opt bool) OptOptionsSetter {
 	return func(o *Options) {
-		o.sentryDsn = opt
+		o.productionMode = opt
+
+	}
+}
+
+func WithSentryDSN(opt string) OptOptionsSetter {
+	return func(o *Options) {
+		o.sentryDSN = opt
 
 	}
 }
@@ -40,17 +47,10 @@ func WithSentryEnv(opt string) OptOptionsSetter {
 	}
 }
 
-func WithProductionMode(opt bool) OptOptionsSetter {
-	return func(o *Options) {
-		o.productionMode = opt
-
-	}
-}
-
 func (o *Options) Validate() error {
 	errs := new(errors461e464ebed9.ValidationErrors)
 	errs.Add(errors461e464ebed9.NewValidationError("level", _validate_Options_level(o)))
-	errs.Add(errors461e464ebed9.NewValidationError("sentryDsn", _validate_Options_sentryDsn(o)))
+	errs.Add(errors461e464ebed9.NewValidationError("sentryDSN", _validate_Options_sentryDSN(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("sentryEnv", _validate_Options_sentryEnv(o)))
 	return errs.AsError()
 }
@@ -62,9 +62,9 @@ func _validate_Options_level(o *Options) error {
 	return nil
 }
 
-func _validate_Options_sentryDsn(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.sentryDsn, "omitempty,url"); err != nil {
-		return fmt461e464ebed9.Errorf("field `sentryDsn` did not pass the test: %w", err)
+func _validate_Options_sentryDSN(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.sentryDSN, "omitempty,url"); err != nil {
+		return fmt461e464ebed9.Errorf("field `sentryDSN` did not pass the test: %w", err)
 	}
 	return nil
 }

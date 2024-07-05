@@ -10,17 +10,6 @@ const (
 	defaultMaxAttempts      = 30
 )
 
-// DefaultJob is useful for embedding into other jobs.
-type DefaultJob struct{}
-
-func (j DefaultJob) ExecutionTimeout() time.Duration {
-	return defaultExecutionTimeout
-}
-
-func (j DefaultJob) MaxAttempts() int {
-	return defaultMaxAttempts
-}
-
 type Job interface {
 	Name() string
 
@@ -35,4 +24,15 @@ type Job interface {
 	// An attempt is counted if the task was not completed due to an unknown error.
 	// When MaxAttempts() is exceeded, the task moves to the dlq (dead letter queue) table.
 	MaxAttempts() int
+}
+
+// DefaultJob is useful for embedding into other jobs.
+type DefaultJob struct{}
+
+func (j DefaultJob) ExecutionTimeout() time.Duration {
+	return defaultExecutionTimeout
+}
+
+func (j DefaultJob) MaxAttempts() int {
+	return defaultMaxAttempts
 }

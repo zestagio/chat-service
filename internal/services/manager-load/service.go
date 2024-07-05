@@ -15,8 +15,9 @@ type problemsRepository interface {
 
 //go:generate options-gen -out-filename=service_options.gen.go -from-struct=Options
 type Options struct {
-	maxProblemsAtTime int                `option:"mandatory" validate:"required,min=1,max=30"`
-	problemsRepo      problemsRepository `option:"mandatory" validate:"required"`
+	maxProblemsAtTime int `option:"mandatory" validate:"min=1,max=30"`
+
+	problemsRepo problemsRepository `option:"mandatory" validate:"required"`
 }
 
 type Service struct {

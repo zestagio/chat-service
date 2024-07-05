@@ -33,17 +33,24 @@ type Options struct {
 type Job struct {
 	outbox.DefaultJob
 	Options
-	lg *zap.Logger
+	logger *zap.Logger
+}
+
+func Must(opts Options) *Job {
+	j, err := New(opts)
+	if err != nil {
+		panic(err)
+	}
+	return j
 }
 
 func New(opts Options) (*Job, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, fmt.Errorf("validate options: %v", err)
 	}
-
 	return &Job{
 		Options: opts,
-		lg:      zap.L().Named(Name),
+		logger:  zap.L().Named("job." + Name),
 	}, nil
 }
 
@@ -52,27 +59,26 @@ func (j *Job) Name() string {
 }
 
 func (j *Job) Handle(ctx context.Context, payload string) error {
-	msgID, err := unmarshalPayload(payload)
+	j.logger.Info("start processing", zap.String("payload", payload))
+
+	p, err := unmarshalPayload(payload)
 	if err != nil {
-		j.lg.Error("unmarshal payload err", zap.Error(err))
-		return err
+		return fmt.Errorf("unmarshal payload: %v", err)
 	}
 
-	msg, err := j.msgRepo.GetMessageByID(ctx, msgID)
+	m, err := j.msgRepo.GetMessageByID(ctx, p.MessageID)
 	if err != nil {
-		j.lg.Error("get msg err", zap.Error(err))
-		return err
+		return fmt.Errorf("get message: %v", err)
 	}
 
 	if err := j.msgProducer.ProduceMessage(ctx, msgproducer.Message{
-		ID:         msg.ID,
-		ChatID:     msg.ChatID,
-		Body:       msg.Body,
+		ID:         m.ID,
+		ChatID:     m.ChatID,
+		Body:       m.Body,
 		FromClient: true,
 	}); err != nil {
-		j.lg.Error("produce msg err", zap.Error(err))
+		return fmt.Errorf("produce message to queue: %v", err)
 	}
 
-	j.lg.Info("msg produce successful")
 	return nil
 }

@@ -1374,22 +1374,9 @@ func (m *JobMutation) OldAvailableAt(ctx context.Context) (v time.Time, err erro
 	return oldValue.AvailableAt, nil
 }
 
-// ClearAvailableAt clears the value of the "available_at" field.
-func (m *JobMutation) ClearAvailableAt() {
-	m.available_at = nil
-	m.clearedFields[job.FieldAvailableAt] = struct{}{}
-}
-
-// AvailableAtCleared returns if the "available_at" field was cleared in this mutation.
-func (m *JobMutation) AvailableAtCleared() bool {
-	_, ok := m.clearedFields[job.FieldAvailableAt]
-	return ok
-}
-
 // ResetAvailableAt resets all changes to the "available_at" field.
 func (m *JobMutation) ResetAvailableAt() {
 	m.available_at = nil
-	delete(m.clearedFields, job.FieldAvailableAt)
 }
 
 // SetReservedUntil sets the "reserved_until" field.
@@ -1423,22 +1410,9 @@ func (m *JobMutation) OldReservedUntil(ctx context.Context) (v time.Time, err er
 	return oldValue.ReservedUntil, nil
 }
 
-// ClearReservedUntil clears the value of the "reserved_until" field.
-func (m *JobMutation) ClearReservedUntil() {
-	m.reserved_until = nil
-	m.clearedFields[job.FieldReservedUntil] = struct{}{}
-}
-
-// ReservedUntilCleared returns if the "reserved_until" field was cleared in this mutation.
-func (m *JobMutation) ReservedUntilCleared() bool {
-	_, ok := m.clearedFields[job.FieldReservedUntil]
-	return ok
-}
-
 // ResetReservedUntil resets all changes to the "reserved_until" field.
 func (m *JobMutation) ResetReservedUntil() {
 	m.reserved_until = nil
-	delete(m.clearedFields, job.FieldReservedUntil)
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -1666,14 +1640,7 @@ func (m *JobMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *JobMutation) ClearedFields() []string {
-	var fields []string
-	if m.FieldCleared(job.FieldAvailableAt) {
-		fields = append(fields, job.FieldAvailableAt)
-	}
-	if m.FieldCleared(job.FieldReservedUntil) {
-		fields = append(fields, job.FieldReservedUntil)
-	}
-	return fields
+	return nil
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -1686,14 +1653,6 @@ func (m *JobMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *JobMutation) ClearField(name string) error {
-	switch name {
-	case job.FieldAvailableAt:
-		m.ClearAvailableAt()
-		return nil
-	case job.FieldReservedUntil:
-		m.ClearReservedUntil()
-		return nil
-	}
 	return fmt.Errorf("unknown Job nullable field %s", name)
 }
 

@@ -145,6 +145,14 @@ func (jc *JobCreate) defaults() {
 		v := job.DefaultAttempts
 		jc.mutation.SetAttempts(v)
 	}
+	if _, ok := jc.mutation.AvailableAt(); !ok {
+		v := job.DefaultAvailableAt()
+		jc.mutation.SetAvailableAt(v)
+	}
+	if _, ok := jc.mutation.ReservedUntil(); !ok {
+		v := job.DefaultReservedUntil()
+		jc.mutation.SetReservedUntil(v)
+	}
 	if _, ok := jc.mutation.CreatedAt(); !ok {
 		v := job.DefaultCreatedAt()
 		jc.mutation.SetCreatedAt(v)
@@ -168,11 +176,6 @@ func (jc *JobCreate) check() error {
 	if _, ok := jc.mutation.Payload(); !ok {
 		return &ValidationError{Name: "payload", err: errors.New(`store: missing required field "Job.payload"`)}
 	}
-	if v, ok := jc.mutation.Payload(); ok {
-		if err := job.PayloadValidator(v); err != nil {
-			return &ValidationError{Name: "payload", err: fmt.Errorf(`store: validator failed for field "Job.payload": %w`, err)}
-		}
-	}
 	if _, ok := jc.mutation.Attempts(); !ok {
 		return &ValidationError{Name: "attempts", err: errors.New(`store: missing required field "Job.attempts"`)}
 	}
@@ -180,6 +183,12 @@ func (jc *JobCreate) check() error {
 		if err := job.AttemptsValidator(v); err != nil {
 			return &ValidationError{Name: "attempts", err: fmt.Errorf(`store: validator failed for field "Job.attempts": %w`, err)}
 		}
+	}
+	if _, ok := jc.mutation.AvailableAt(); !ok {
+		return &ValidationError{Name: "available_at", err: errors.New(`store: missing required field "Job.available_at"`)}
+	}
+	if _, ok := jc.mutation.ReservedUntil(); !ok {
+		return &ValidationError{Name: "reserved_until", err: errors.New(`store: missing required field "Job.reserved_until"`)}
 	}
 	if _, ok := jc.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`store: missing required field "Job.created_at"`)}
@@ -331,12 +340,6 @@ func (u *JobUpsert) UpdateReservedUntil() *JobUpsert {
 	return u
 }
 
-// ClearReservedUntil clears the value of the "reserved_until" field.
-func (u *JobUpsert) ClearReservedUntil() *JobUpsert {
-	u.SetNull(job.FieldReservedUntil)
-	return u
-}
-
 // UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
 // Using this option is equivalent to using:
 //
@@ -429,13 +432,6 @@ func (u *JobUpsertOne) SetReservedUntil(v time.Time) *JobUpsertOne {
 func (u *JobUpsertOne) UpdateReservedUntil() *JobUpsertOne {
 	return u.Update(func(s *JobUpsert) {
 		s.UpdateReservedUntil()
-	})
-}
-
-// ClearReservedUntil clears the value of the "reserved_until" field.
-func (u *JobUpsertOne) ClearReservedUntil() *JobUpsertOne {
-	return u.Update(func(s *JobUpsert) {
-		s.ClearReservedUntil()
 	})
 }
 
@@ -698,13 +694,6 @@ func (u *JobUpsertBulk) SetReservedUntil(v time.Time) *JobUpsertBulk {
 func (u *JobUpsertBulk) UpdateReservedUntil() *JobUpsertBulk {
 	return u.Update(func(s *JobUpsert) {
 		s.UpdateReservedUntil()
-	})
-}
-
-// ClearReservedUntil clears the value of the "reserved_until" field.
-func (u *JobUpsertBulk) ClearReservedUntil() *JobUpsertBulk {
-	return u.Update(func(s *JobUpsert) {
-		s.ClearReservedUntil()
 	})
 }
 

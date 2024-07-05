@@ -63,12 +63,6 @@ func (ju *JobUpdate) SetNillableReservedUntil(t *time.Time) *JobUpdate {
 	return ju
 }
 
-// ClearReservedUntil clears the value of the "reserved_until" field.
-func (ju *JobUpdate) ClearReservedUntil() *JobUpdate {
-	ju.mutation.ClearReservedUntil()
-	return ju
-}
-
 // Mutation returns the JobMutation object of the builder.
 func (ju *JobUpdate) Mutation() *JobMutation {
 	return ju.mutation
@@ -129,14 +123,8 @@ func (ju *JobUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := ju.mutation.AddedAttempts(); ok {
 		_spec.AddField(job.FieldAttempts, field.TypeInt, value)
 	}
-	if ju.mutation.AvailableAtCleared() {
-		_spec.ClearField(job.FieldAvailableAt, field.TypeTime)
-	}
 	if value, ok := ju.mutation.ReservedUntil(); ok {
 		_spec.SetField(job.FieldReservedUntil, field.TypeTime, value)
-	}
-	if ju.mutation.ReservedUntilCleared() {
-		_spec.ClearField(job.FieldReservedUntil, field.TypeTime)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, ju.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -190,12 +178,6 @@ func (juo *JobUpdateOne) SetNillableReservedUntil(t *time.Time) *JobUpdateOne {
 	if t != nil {
 		juo.SetReservedUntil(*t)
 	}
-	return juo
-}
-
-// ClearReservedUntil clears the value of the "reserved_until" field.
-func (juo *JobUpdateOne) ClearReservedUntil() *JobUpdateOne {
-	juo.mutation.ClearReservedUntil()
 	return juo
 }
 
@@ -289,14 +271,8 @@ func (juo *JobUpdateOne) sqlSave(ctx context.Context) (_node *Job, err error) {
 	if value, ok := juo.mutation.AddedAttempts(); ok {
 		_spec.AddField(job.FieldAttempts, field.TypeInt, value)
 	}
-	if juo.mutation.AvailableAtCleared() {
-		_spec.ClearField(job.FieldAvailableAt, field.TypeTime)
-	}
 	if value, ok := juo.mutation.ReservedUntil(); ok {
 		_spec.SetField(job.FieldReservedUntil, field.TypeTime, value)
-	}
-	if juo.mutation.ReservedUntilCleared() {
-		_spec.ClearField(job.FieldReservedUntil, field.TypeTime)
 	}
 	_node = &Job{config: juo.config}
 	_spec.Assign = _node.assignValues

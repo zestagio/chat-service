@@ -15,9 +15,9 @@ func TestRequest_Validate(t *testing.T) {
 		request canreceiveproblems.Request
 		wantErr bool
 	}{
-		// Positive
+		// Positive.
 		{
-			name: "all ID's is valid",
+			name: "valid request",
 			request: canreceiveproblems.Request{
 				ID:        types.NewRequestID(),
 				ManagerID: types.NewUserID(),
@@ -25,9 +25,9 @@ func TestRequest_Validate(t *testing.T) {
 			wantErr: false,
 		},
 
-		// Negative
+		// Negative.
 		{
-			name: "req id is invalid",
+			name: "require request id",
 			request: canreceiveproblems.Request{
 				ID:        types.RequestIDNil,
 				ManagerID: types.NewUserID(),
@@ -35,7 +35,7 @@ func TestRequest_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "manager id is invalid",
+			name: "require manager id",
 			request: canreceiveproblems.Request{
 				ID:        types.NewRequestID(),
 				ManagerID: types.UserIDNil,

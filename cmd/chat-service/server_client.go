@@ -11,6 +11,8 @@ import (
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
 	problemsrepo "github.com/zestagio/chat-service/internal/repositories/problems"
 	"github.com/zestagio/chat-service/internal/server"
+	serverclient "github.com/zestagio/chat-service/internal/server-client"
+	clienterrhandler "github.com/zestagio/chat-service/internal/server-client/errhandler"
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 	"github.com/zestagio/chat-service/internal/server/errhandler"
 	"github.com/zestagio/chat-service/internal/services/outbox"
@@ -32,12 +34,12 @@ func initServerClient(
 	requiredResource string,
 	requiredRole string,
 
+	outBox *outbox.Service,
+
 	db *store.Database,
 	chatsRepo *chatsrepo.Repo,
 	msgRepo *messagesrepo.Repo,
 	problemsRepo *problemsrepo.Repo,
-
-	outboxSrv *outbox.Service,
 ) (*server.Server, error) {
 	getHistoryUseCase, err := gethistory.New(gethistory.NewOptions(msgRepo))
 	if err != nil {
@@ -47,7 +49,7 @@ func initServerClient(
 	sendMessageUseCase, err := sendmessage.New(sendmessage.NewOptions(
 		chatsRepo,
 		msgRepo,
-		outboxSrv,
+		outBox,
 		problemsRepo,
 		db,
 	))
@@ -62,11 +64,7 @@ func initServerClient(
 
 	lg := zap.L().Named(nameServerClient)
 
-	httpErrorHandler, err := errhandler.New(errhandler.NewOptions(
-		lg,
-		productionMode,
-		errhandler.ResponseBuilder,
-	))
+	httpErrorHandler, err := errhandler.New(errhandler.NewOptions(lg, productionMode, clienterrhandler.ResponseBuilder))
 	if err != nil {
 		return nil, fmt.Errorf("create http error handler: %v", err)
 	}
@@ -78,11 +76,7 @@ func initServerClient(
 		keycloak,
 		requiredResource,
 		requiredRole,
-		v1Swagger,
-		func(router server.EchoRouter) {
-			clientv1.RegisterHandlers(router, v1Handlers)
-		},
-		httpErrorHandler.Handle,
+		serverclient.NewHandlersRegistrar(v1Swagger, v1Handlers, httpErrorHandler.Handle),
 	))
 	if err != nil {
 		return nil, fmt.Errorf("build server: %v", err)

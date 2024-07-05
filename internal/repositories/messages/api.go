@@ -8,10 +8,19 @@ import (
 	"github.com/zestagio/chat-service/internal/store"
 	"github.com/zestagio/chat-service/internal/store/message"
 	"github.com/zestagio/chat-service/internal/types"
-	"github.com/zestagio/chat-service/pkg/pointer"
 )
 
 var ErrMsgNotFound = errors.New("message not found")
+
+func (r *Repo) GetMessageByID(ctx context.Context, msgID types.MessageID) (*Message, error) {
+	m, err := r.db.Message(ctx).Get(ctx, msgID)
+	if err != nil {
+		return nil, fmt.Errorf("query message by id: %v", err)
+	}
+
+	mm := adaptStoreMessage(m)
+	return &mm, nil
+}
 
 func (r *Repo) GetMessageByRequestID(ctx context.Context, reqID types.RequestID) (*Message, error) {
 	m, err := r.db.Message(ctx).Query().
@@ -53,15 +62,4 @@ func (r *Repo) CreateClientVisible(
 
 	mm := adaptStoreMessage(m)
 	return &mm, nil
-}
-
-func (r *Repo) GetMessageByID(ctx context.Context, msgID types.MessageID) (*Message, error) {
-	m, err := r.db.Message(ctx).Get(ctx, msgID)
-	if store.IsNotFound(err) {
-		return nil, fmt.Errorf("get message by id err: %v", ErrMsgNotFound)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("get message by id err: %v", err)
-	}
-	return pointer.Ptr(adaptStoreMessage(m)), nil
 }

@@ -8,16 +8,19 @@ import (
 
 	keycloakclient "github.com/zestagio/chat-service/internal/clients/keycloak"
 	"github.com/zestagio/chat-service/internal/server"
+	servermanager "github.com/zestagio/chat-service/internal/server-manager"
+	managererrhandler "github.com/zestagio/chat-service/internal/server-manager/errhandler"
 	managerv1 "github.com/zestagio/chat-service/internal/server-manager/v1"
 	"github.com/zestagio/chat-service/internal/server/errhandler"
 	managerload "github.com/zestagio/chat-service/internal/services/manager-load"
-	inmemmanagerpool "github.com/zestagio/chat-service/internal/services/manager-pool/in-mem"
+	managerpool "github.com/zestagio/chat-service/internal/services/manager-pool"
 	canreceiveproblems "github.com/zestagio/chat-service/internal/usecases/manager/can-receive-problems"
-	freehands "github.com/zestagio/chat-service/internal/usecases/manager/free-hands"
+	freehandssignal "github.com/zestagio/chat-service/internal/usecases/manager/free-hands-signal"
 )
 
 const nameServerManager = "server-manager"
 
+//nolint:revive // ignore argument-limit rule to keep server manager init in single place
 func initServerManager(
 	productionMode bool,
 	addr string,
@@ -28,32 +31,30 @@ func initServerManager(
 	requiredResource string,
 	requiredRole string,
 
-	managerLoadSrv *managerload.Service,
+	mLoadSvc *managerload.Service,
+	mPool managerpool.Pool,
 ) (*server.Server, error) {
-	managerPool := inmemmanagerpool.New()
-
-	canReceiveProblemUseCase, err := canreceiveproblems.New(canreceiveproblems.NewOptions(managerLoadSrv, managerPool))
+	canReceiveProblemsUseCase, err := canreceiveproblems.New(canreceiveproblems.NewOptions(mLoadSvc, mPool))
 	if err != nil {
-		return nil, fmt.Errorf("create canreceiveproblem usecase: %v", err)
+		return nil, fmt.Errorf("create canreceiveproblems usecase: %v", err)
 	}
 
-	freeHandsUseCase, err := freehands.New(freehands.NewOptions(managerLoadSrv, managerPool))
+	freeHandsSignalUseCase, err := freehandssignal.New(freehandssignal.NewOptions(mLoadSvc, mPool))
 	if err != nil {
-		return nil, fmt.Errorf("create freehands usecase: %v", err)
+		return nil, fmt.Errorf("create freehandssignal usecase: %v", err)
 	}
 
-	v1Handlers, err := managerv1.NewHandlers(managerv1.NewOptions(canReceiveProblemUseCase, freeHandsUseCase))
+	v1Handlers, err := managerv1.NewHandlers(managerv1.NewOptions(
+		canReceiveProblemsUseCase,
+		freeHandsSignalUseCase,
+	))
 	if err != nil {
 		return nil, fmt.Errorf("create v1 handlers: %v", err)
 	}
 
 	lg := zap.L().Named(nameServerManager)
 
-	httpErrorHandler, err := errhandler.New(errhandler.NewOptions(
-		lg,
-		productionMode,
-		errhandler.ResponseBuilder,
-	))
+	httpErrorHandler, err := errhandler.New(errhandler.NewOptions(lg, productionMode, managererrhandler.ResponseBuilder))
 	if err != nil {
 		return nil, fmt.Errorf("create http error handler: %v", err)
 	}
@@ -65,11 +66,7 @@ func initServerManager(
 		keycloak,
 		requiredResource,
 		requiredRole,
-		v1Swagger,
-		func(router server.EchoRouter) {
-			managerv1.RegisterHandlers(router, v1Handlers)
-		},
-		httpErrorHandler.Handle,
+		servermanager.NewHandlersRegistrar(v1Swagger, v1Handlers, httpErrorHandler.Handle),
 	))
 	if err != nil {
 		return nil, fmt.Errorf("build server: %v", err)

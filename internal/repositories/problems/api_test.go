@@ -108,7 +108,7 @@ func (s *ProblemsRepoSuite) Test_GetManagerOpenProblemsCount() {
 		problems := make([]types.ProblemID, 0, problemsCount)
 
 		for i := 0; i < problemsCount; i++ {
-			pID := s.createChatWithProblemAssignedTo(managerID)
+			_, pID := s.createChatWithProblemAssignedTo(managerID)
 			problems = append(problems, pID)
 		}
 
@@ -138,7 +138,8 @@ func (s *ProblemsRepoSuite) Test_GetManagerOpenProblemsCount() {
 	})
 }
 
-func (s *ProblemsRepoSuite) createChatWithProblemAssignedTo(managerID types.UserID) types.ProblemID {
+//nolint:unparam // first param will be used later
+func (s *ProblemsRepoSuite) createChatWithProblemAssignedTo(managerID types.UserID) (types.ChatID, types.ProblemID) {
 	s.T().Helper()
 
 	// 1 chat can have only 1 open problem.
@@ -149,5 +150,5 @@ func (s *ProblemsRepoSuite) createChatWithProblemAssignedTo(managerID types.User
 	p, err := s.Database.Problem(s.Ctx).Create().SetChatID(chat.ID).SetManagerID(managerID).Save(s.Ctx)
 	s.Require().NoError(err)
 
-	return p.ID
+	return chat.ID, p.ID
 }

@@ -1,4 +1,4 @@
-package freehands
+package freehandssignal
 
 import (
 	"github.com/zestagio/chat-service/internal/types"
@@ -13,3 +13,5 @@ type Request struct {
 func (r Request) Validate() error {
 	return validator.Validator.Struct(r)
 }
+
+type Response struct{}

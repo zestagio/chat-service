@@ -1,7 +1,7 @@
 package managerload_test
 
 import (
-	"errors"
+	"context"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -12,6 +12,8 @@ import (
 	"github.com/zestagio/chat-service/internal/testingh"
 	"github.com/zestagio/chat-service/internal/types"
 )
+
+const maxProblemAtSameTime = 5
 
 type ServiceSuite struct {
 	testingh.ContextSuite
@@ -32,7 +34,7 @@ func (s *ServiceSuite) SetupTest() {
 	s.problemsRepo = managerloadmocks.NewMockproblemsRepository(s.ctrl)
 
 	var err error
-	s.managerLoad, err = managerload.New(managerload.NewOptions(2, s.problemsRepo))
+	s.managerLoad, err = managerload.New(managerload.NewOptions(maxProblemAtSameTime, s.problemsRepo))
 	s.Require().NoError(err)
 
 	s.ContextSuite.SetupTest()
@@ -44,63 +46,29 @@ func (s *ServiceSuite) TearDownTest() {
 	s.ContextSuite.TearDownTest()
 }
 
-func (s *ServiceSuite) TestCanManagerTakeProblem_ManagerFree() {
-	// Arrange.
-	managerID := types.NewUserID()
+func (s *ServiceSuite) TestCanManagerTakeProblem() {
+	for _, tt := range []struct {
+		int
+		bool
+	}{
+		{maxProblemAtSameTime - 1, true},
+		{maxProblemAtSameTime, false},
+		{maxProblemAtSameTime + 1, false},
+	} {
+		s.Run("", func() {
+			manager := types.NewUserID()
+			s.problemsRepo.EXPECT().GetManagerOpenProblemsCount(gomock.Any(), manager).Return(tt.int, nil)
 
-	s.problemsRepo.EXPECT().GetManagerOpenProblemsCount(gomock.Any(), managerID).
-		Return(0, nil)
-
-	// Action.
-	can, err := s.managerLoad.CanManagerTakeProblem(s.Ctx, managerID)
-
-	// Assert.
-	s.Require().NoError(err)
-	s.Require().True(can)
-}
-
-func (s *ServiceSuite) TestCanManagerTakeProblem_OneProblem() {
-	// Arrange.
-	managerID := types.NewUserID()
-
-	s.problemsRepo.EXPECT().GetManagerOpenProblemsCount(gomock.Any(), managerID).
-		Return(1, nil)
-
-	// Action.
-	can, err := s.managerLoad.CanManagerTakeProblem(s.Ctx, managerID)
-
-	// Assert.
-	s.Require().NoError(err)
-	s.Require().True(can)
-}
-
-func (s *ServiceSuite) TestCanManagerTakeProblem_TwoProblems_Busy() {
-	// Arrange.
-	managerID := types.NewUserID()
-
-	s.problemsRepo.EXPECT().GetManagerOpenProblemsCount(gomock.Any(), managerID).
-		Return(2, nil)
-
-	// Action.
-	can, err := s.managerLoad.CanManagerTakeProblem(s.Ctx, managerID)
-
-	// Assert.
-	s.Require().NoError(err)
-	s.Require().False(can)
+			result, err := s.managerLoad.CanManagerTakeProblem(s.Ctx, manager)
+			s.Require().NoError(err)
+			s.Equal(tt.bool, result)
+		})
+	}
 }
 
 func (s *ServiceSuite) TestCanManagerTakeProblem_Error() {
-	// Arrange.
-	managerID := types.NewUserID()
-	repoErr := errors.New("unknown")
-
-	s.problemsRepo.EXPECT().GetManagerOpenProblemsCount(gomock.Any(), managerID).
-		Return(0, repoErr)
-
-	// Action.
-	can, err := s.managerLoad.CanManagerTakeProblem(s.Ctx, managerID)
-
-	// Assert.
+	s.problemsRepo.EXPECT().GetManagerOpenProblemsCount(gomock.Any(), gomock.Any()).Return(0, context.Canceled)
+	result, err := s.managerLoad.CanManagerTakeProblem(s.Ctx, types.NewUserID())
 	s.Require().Error(err)
-	s.Require().False(can)
+	s.False(result)
 }

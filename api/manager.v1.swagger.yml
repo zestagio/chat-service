@@ -10,12 +10,12 @@ servers:
 paths:
   /getFreeHandsBtnAvailability:
     post:
-      description: Check availability button
+      description: Check availability of "Free Hands" button.
       parameters:
         - $ref: "#/components/parameters/XRequestIDHeader"
       responses:
         '200':
-          description: Availability status
+          description: Button availability flag.
           content:
             application/json:
               schema:
@@ -23,12 +23,12 @@ paths:
 
   /freeHands:
     post:
-      description: Manager is free for resolve problems
+      description: Send a signal that I'm ready to deal with new problems.
       parameters:
         - $ref: "#/components/parameters/XRequestIDHeader"
       responses:
         '200':
-          description: Manager is free result
+          description: No data on success.
           content:
             application/json:
               schema:
@@ -46,15 +46,15 @@ components:
 
   parameters:
     XRequestIDHeader:
-      name: X-Request-ID
       in: header
-      required: true
+      name: X-Request-ID
       schema:
         type: string
         format: uuid
         x-go-type: types.RequestID
         x-go-type-import:
           path: "github.com/zestagio/chat-service/internal/types"
+      required: true
 
   schemas:
     # Common.
@@ -78,25 +78,26 @@ components:
         - ErrorCodeManagerOverloaded
       minimum: 400
 
+    # /getFreeHandsBtnAvailability
+
     GetFreeHandsBtnAvailabilityResponse:
       properties:
         data:
-          $ref: "#/components/schemas/GetFreeHandsBtnAvailability"
+          $ref: "#/components/schemas/FreeHandsBtnAvailability"
         error:
           $ref: "#/components/schemas/Error"
 
-    GetFreeHandsBtnAvailability:
-      required: [ available, inPool ]
+    FreeHandsBtnAvailability:
+      required: [ available ]
       properties:
         available:
           type: boolean
-        inPool:
-          type: boolean
+
+    # /freeHands
 
     FreeHandsResponse:
       properties:
         data:
-          type: string
-          nullable: true
+          type: object
         error:
           $ref: "#/components/schemas/Error"

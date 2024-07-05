@@ -1,4 +1,4 @@
-package freehands_test
+package freehandssignal_test
 
 import (
 	"testing"
@@ -6,37 +6,37 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/zestagio/chat-service/internal/types"
-	canreceiveproblems "github.com/zestagio/chat-service/internal/usecases/manager/can-receive-problems"
+	freehandssignal "github.com/zestagio/chat-service/internal/usecases/manager/free-hands-signal"
 )
 
 func TestRequest_Validate(t *testing.T) {
 	cases := []struct {
 		name    string
-		request canreceiveproblems.Request
+		request freehandssignal.Request
 		wantErr bool
 	}{
-		// Positive
+		// Positive.
 		{
-			name: "all ID's is valid",
-			request: canreceiveproblems.Request{
+			name: "valid request",
+			request: freehandssignal.Request{
 				ID:        types.NewRequestID(),
 				ManagerID: types.NewUserID(),
 			},
 			wantErr: false,
 		},
 
-		// Negative
+		// Negative.
 		{
-			name: "req id is invalid",
-			request: canreceiveproblems.Request{
+			name: "require request id",
+			request: freehandssignal.Request{
 				ID:        types.RequestIDNil,
 				ManagerID: types.NewUserID(),
 			},
 			wantErr: true,
 		},
 		{
-			name: "manager id is invalid",
-			request: canreceiveproblems.Request{
+			name: "require manager id",
+			request: freehandssignal.Request{
 				ID:        types.NewRequestID(),
 				ManagerID: types.UserIDNil,
 			},

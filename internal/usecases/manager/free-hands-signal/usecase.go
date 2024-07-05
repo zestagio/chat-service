@@ -1,20 +1,23 @@
-package canreceiveproblems
+package freehandssignal
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/zestagio/chat-service/internal/types"
 )
 
-//go:generate mockgen -source=$GOFILE -destination=mocks/usecase_mock.gen.go -package=canreceiveproblemsmocks
+//go:generate mockgen -source=$GOFILE -destination=mocks/usecase_mock.gen.go -package=freehandssignalmocks
+
+var ErrManagerOverloaded = errors.New("manager overloaded")
 
 type managerLoadService interface {
 	CanManagerTakeProblem(ctx context.Context, managerID types.UserID) (bool, error)
 }
 
 type managerPool interface {
-	Contains(ctx context.Context, managerID types.UserID) (bool, error)
+	Put(ctx context.Context, managerID types.UserID) error
 }
 
 //go:generate options-gen -out-filename=usecase_options.gen.go -from-struct=Options
@@ -36,17 +39,17 @@ func (u UseCase) Handle(ctx context.Context, req Request) (Response, error) {
 		return Response{}, err
 	}
 
-	alreadyInPool, err := u.mPool.Contains(ctx, req.ManagerID)
-	if err != nil {
-		return Response{}, fmt.Errorf("manager pool service call: %v", err)
-	}
-	if alreadyInPool {
-		return Response{Result: false}, nil
-	}
-
-	result, err := u.mLoadSvc.CanManagerTakeProblem(ctx, req.ManagerID)
+	ok, err := u.mLoadSvc.CanManagerTakeProblem(ctx, req.ManagerID)
 	if err != nil {
 		return Response{}, fmt.Errorf("manager load service call: %v", err)
 	}
-	return Response{Result: result}, nil
+	if !ok {
+		return Response{}, fmt.Errorf("%w: manager cannot take more problems", ErrManagerOverloaded)
+	}
+
+	if err := u.mPool.Put(ctx, req.ManagerID); err != nil {
+		return Response{}, fmt.Errorf("put manager in the pool: %v", err)
+	}
+
+	return Response{}, nil
 }

@@ -8,10 +8,10 @@ import (
 )
 
 func (s *Service) CanManagerTakeProblem(ctx context.Context, managerID types.UserID) (bool, error) {
-	count, err := s.problemsRepo.GetManagerOpenProblemsCount(ctx, managerID)
+	pCount, err := s.problemsRepo.GetManagerOpenProblemsCount(ctx, managerID)
 	if err != nil {
-		return false, fmt.Errorf("get manager open problem err: %v", err)
+		return false, fmt.Errorf("get manager open problems count: %v", err)
 	}
 
-	return count < s.maxProblemsAtTime, nil
+	return pCount < s.maxProblemsAtTime, nil
 }

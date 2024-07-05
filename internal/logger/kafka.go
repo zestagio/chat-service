@@ -1,47 +1,37 @@
 package logger
 
 import (
-	"fmt"
-
 	"github.com/segmentio/kafka-go"
 	"go.uber.org/zap"
-)
-
-const (
-	infoType  = "info"
-	errorType = "error"
 )
 
 var _ kafka.Logger = (*KafkaAdapted)(nil)
 
 type KafkaAdapted struct {
-	lg      *zap.Logger
-	logType string
+	forErrors bool
+	z         *zap.Logger
 }
 
 func NewKafkaAdapted() *KafkaAdapted {
 	return &KafkaAdapted{
-		lg:      zap.L(),
-		logType: infoType,
+		z: zap.L(),
 	}
-}
-
-func (k *KafkaAdapted) Printf(format string, v ...any) {
-	result := fmt.Sprintf(format, v...)
-	switch k.logType {
-	case infoType:
-		k.lg.Info(result)
-	case errorType:
-		k.lg.Error(result)
-	}
-}
-
-func (k *KafkaAdapted) WithServiceName(name string) *KafkaAdapted {
-	k.lg.Named(name)
-	return k
 }
 
 func (k *KafkaAdapted) ForErrors() *KafkaAdapted {
-	k.logType = errorType
+	k.forErrors = true
 	return k
+}
+
+func (k *KafkaAdapted) WithServiceName(n string) *KafkaAdapted {
+	k.z = k.z.Named(n)
+	return k
+}
+
+func (k *KafkaAdapted) Printf(s string, args ...any) {
+	if k.forErrors {
+		k.z.Sugar().Errorf(s, args...)
+	} else {
+		k.z.Sugar().Debugf(s, args...)
+	}
 }
