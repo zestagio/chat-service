@@ -21,6 +21,7 @@ func NewOptions(
 	requiredResource string,
 	requiredRole string,
 	handlersRegistrar func(e *echo.Echo),
+	wsHandler wsHTTPHandler,
 	options ...OptOptionsSetter,
 ) Options {
 	o := Options{}
@@ -41,6 +42,8 @@ func NewOptions(
 
 	o.handlersRegistrar = handlersRegistrar
 
+	o.wsHandler = wsHandler
+
 	for _, opt := range options {
 		opt(&o)
 	}
@@ -56,6 +59,7 @@ func (o *Options) Validate() error {
 	errs.Add(errors461e464ebed9.NewValidationError("requiredResource", _validate_Options_requiredResource(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("requiredRole", _validate_Options_requiredRole(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("handlersRegistrar", _validate_Options_handlersRegistrar(o)))
+	errs.Add(errors461e464ebed9.NewValidationError("wsHandler", _validate_Options_wsHandler(o)))
 	return errs.AsError()
 }
 
@@ -104,6 +108,13 @@ func _validate_Options_requiredRole(o *Options) error {
 func _validate_Options_handlersRegistrar(o *Options) error {
 	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.handlersRegistrar, "required"); err != nil {
 		return fmt461e464ebed9.Errorf("field `handlersRegistrar` did not pass the test: %w", err)
+	}
+	return nil
+}
+
+func _validate_Options_wsHandler(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.wsHandler, "required"); err != nil {
+		return fmt461e464ebed9.Errorf("field `wsHandler` did not pass the test: %w", err)
 	}
 	return nil
 }

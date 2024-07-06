@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 
 	keycloakclient "github.com/zestagio/chat-service/internal/clients/keycloak"
+	"github.com/zestagio/chat-service/internal/middlewares"
 	"github.com/zestagio/chat-service/internal/server"
 	servermanager "github.com/zestagio/chat-service/internal/server-manager"
 	managererrhandler "github.com/zestagio/chat-service/internal/server-manager/errhandler"
@@ -16,6 +17,7 @@ import (
 	managerpool "github.com/zestagio/chat-service/internal/services/manager-pool"
 	canreceiveproblems "github.com/zestagio/chat-service/internal/usecases/manager/can-receive-problems"
 	freehandssignal "github.com/zestagio/chat-service/internal/usecases/manager/free-hands-signal"
+	websocketstream "github.com/zestagio/chat-service/internal/websocket-stream"
 )
 
 const nameServerManager = "server-manager"
@@ -33,6 +35,8 @@ func initServerManager(
 
 	mLoadSvc *managerload.Service,
 	mPool managerpool.Pool,
+
+	wsHTTPHandler *websocketstream.HTTPHandler,
 ) (*server.Server, error) {
 	canReceiveProblemsUseCase, err := canreceiveproblems.New(canreceiveproblems.NewOptions(mLoadSvc, mPool))
 	if err != nil {
@@ -66,7 +70,13 @@ func initServerManager(
 		keycloak,
 		requiredResource,
 		requiredRole,
-		servermanager.NewHandlersRegistrar(v1Swagger, v1Handlers, httpErrorHandler.Handle),
+		servermanager.NewHandlersRegistrar(
+			v1Swagger,
+			v1Handlers,
+			httpErrorHandler.Handle,
+			middlewares.NewKeycloakTokenAuth(keycloak, requiredResource, requiredRole),
+		),
+		wsHTTPHandler,
 	))
 	if err != nil {
 		return nil, fmt.Errorf("build server: %v", err)

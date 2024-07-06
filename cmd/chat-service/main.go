@@ -29,6 +29,7 @@ import (
 	"github.com/zestagio/chat-service/internal/services/outbox"
 	sendclientmessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-client-message"
 	"github.com/zestagio/chat-service/internal/store"
+	websocketstream "github.com/zestagio/chat-service/internal/websocket-stream"
 )
 
 var configPath = flag.String("config", "configs/config.toml", "Path to config file")
@@ -165,6 +166,34 @@ func run() (errReturned error) {
 		outBox.MustRegisterJob(j)
 	}
 
+	shutdown := make(chan struct{})
+
+	// Websocket client stream.
+	wsClient, err := websocketstream.NewHTTPHandler(websocketstream.NewOptions(
+		zap.L().Named("websocket-client"),
+		websocketstream.DummyEventStream{},
+		websocketstream.DummyAdapter{},
+		websocketstream.JSONEventWriter{},
+		websocketstream.NewUpgrader(cfg.Servers.Client.AllowOrigins, cfg.Servers.Client.SecWSProtocol),
+		shutdown,
+	))
+	if err != nil {
+		return fmt.Errorf("websocket client stream: %v", err)
+	}
+
+	// Websocket manager stream.
+	wsManager, err := websocketstream.NewHTTPHandler(websocketstream.NewOptions(
+		zap.L().Named("websocket-client"),
+		websocketstream.DummyEventStream{},
+		websocketstream.DummyAdapter{},
+		websocketstream.JSONEventWriter{},
+		websocketstream.NewUpgrader(cfg.Servers.Manager.AllowOrigins, cfg.Servers.Manager.SecWSProtocol),
+		shutdown,
+	))
+	if err != nil {
+		return fmt.Errorf("websocket manager stream: %v", err)
+	}
+
 	// Servers.
 	clientV1Swagger, err := clientv1.GetSwagger()
 	if err != nil {
@@ -184,6 +213,7 @@ func run() (errReturned error) {
 		chatsRepo,
 		msgRepo,
 		problemsRepo,
+		wsClient,
 	)
 	if err != nil {
 		return fmt.Errorf("init client server: %v", err)
@@ -204,6 +234,7 @@ func run() (errReturned error) {
 		cfg.Servers.Manager.RequiredAccess.Role,
 		managerLoad,
 		managerPool, // как sql-конфиг
+		wsManager,
 	)
 	if err != nil {
 		return fmt.Errorf("init manager server: %v", err)
@@ -227,6 +258,14 @@ func run() (errReturned error) {
 
 	// Run services.
 	eg.Go(func() error { return outBox.Run(ctx) })
+
+	// Websocket shutdown.
+	eg.Go(func() error {
+		<-ctx.Done()
+
+		shutdown <- struct{}{}
+		return nil
+	})
 
 	if err = eg.Wait(); err != nil && !errors.Is(err, context.Canceled) {
 		return fmt.Errorf("wait app stop: %v", err)

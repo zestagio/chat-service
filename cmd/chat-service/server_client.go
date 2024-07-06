@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 
 	keycloakclient "github.com/zestagio/chat-service/internal/clients/keycloak"
+	"github.com/zestagio/chat-service/internal/middlewares"
 	chatsrepo "github.com/zestagio/chat-service/internal/repositories/chats"
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
 	problemsrepo "github.com/zestagio/chat-service/internal/repositories/problems"
@@ -19,6 +20,7 @@ import (
 	"github.com/zestagio/chat-service/internal/store"
 	gethistory "github.com/zestagio/chat-service/internal/usecases/client/get-history"
 	sendmessage "github.com/zestagio/chat-service/internal/usecases/client/send-message"
+	websocketstream "github.com/zestagio/chat-service/internal/websocket-stream"
 )
 
 const nameServerClient = "server-client"
@@ -40,6 +42,8 @@ func initServerClient(
 	chatsRepo *chatsrepo.Repo,
 	msgRepo *messagesrepo.Repo,
 	problemsRepo *problemsrepo.Repo,
+
+	wsHTTPHandler *websocketstream.HTTPHandler,
 ) (*server.Server, error) {
 	getHistoryUseCase, err := gethistory.New(gethistory.NewOptions(msgRepo))
 	if err != nil {
@@ -76,7 +80,13 @@ func initServerClient(
 		keycloak,
 		requiredResource,
 		requiredRole,
-		serverclient.NewHandlersRegistrar(v1Swagger, v1Handlers, httpErrorHandler.Handle),
+		serverclient.NewHandlersRegistrar(
+			v1Swagger,
+			v1Handlers,
+			httpErrorHandler.Handle,
+			middlewares.NewKeycloakTokenAuth(keycloak, requiredResource, requiredRole),
+		),
+		wsHTTPHandler,
 	))
 	if err != nil {
 		return nil, fmt.Errorf("build server: %v", err)
