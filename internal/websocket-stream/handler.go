@@ -161,7 +161,7 @@ func (h *HTTPHandler) writeEvent(ws Websocket, event eventstream.Event) error {
 		return fmt.Errorf("set write deadline: %v", err)
 	}
 
-	w, err := ws.NextWriter(websocket.BinaryMessage)
+	w, err := ws.NextWriter(websocket.TextMessage)
 	if err != nil && !websocket.IsCloseError(err) {
 		return fmt.Errorf("get next writer: %v", err)
 	}

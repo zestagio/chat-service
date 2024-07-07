@@ -1,13 +1,11 @@
 package websocketstream
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 
 	eventstream "github.com/zestagio/chat-service/internal/services/event-stream"
-	"github.com/zestagio/chat-service/internal/types"
 )
 
 // EventAdapter converts the event from the stream to the appropriate object.
@@ -32,21 +30,4 @@ func (JSONEventWriter) Write(event any, out io.Writer) error {
 		return fmt.Errorf("write event: %v", err)
 	}
 	return nil
-}
-
-type DummyAdapter struct{}
-
-func (DummyAdapter) Adapt(event eventstream.Event) (any, error) {
-	return event, nil
-}
-
-type DummyEventStream struct{}
-
-func (DummyEventStream) Subscribe(ctx context.Context, _ types.UserID) (<-chan eventstream.Event, error) {
-	events := make(chan eventstream.Event)
-	go func() {
-		defer close(events)
-		<-ctx.Done()
-	}()
-	return events, nil
 }

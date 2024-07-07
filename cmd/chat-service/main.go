@@ -20,9 +20,11 @@ import (
 	jobsrepo "github.com/zestagio/chat-service/internal/repositories/jobs"
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
 	problemsrepo "github.com/zestagio/chat-service/internal/repositories/problems"
+	clientevents "github.com/zestagio/chat-service/internal/server-client/events"
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 	serverdebug "github.com/zestagio/chat-service/internal/server-debug"
 	managerv1 "github.com/zestagio/chat-service/internal/server-manager/v1"
+	inmemeventstream "github.com/zestagio/chat-service/internal/services/event-stream/in-mem"
 	managerload "github.com/zestagio/chat-service/internal/services/manager-load"
 	inmemmanagerpool "github.com/zestagio/chat-service/internal/services/manager-pool/in-mem"
 	msgproducer "github.com/zestagio/chat-service/internal/services/msg-producer"
@@ -159,9 +161,11 @@ func run() (errReturned error) {
 		return fmt.Errorf("create manager load service: %v", err)
 	}
 
+	eventStream := inmemeventstream.New()
+
 	// Application Services. Jobs.
 	for _, j := range []outbox.Job{
-		sendclientmessagejob.Must(sendclientmessagejob.NewOptions(msgProducer, msgRepo)),
+		sendclientmessagejob.Must(sendclientmessagejob.NewOptions(msgProducer, msgRepo, eventStream)),
 	} {
 		outBox.MustRegisterJob(j)
 	}
@@ -171,8 +175,8 @@ func run() (errReturned error) {
 	// Websocket client stream.
 	wsClient, err := websocketstream.NewHTTPHandler(websocketstream.NewOptions(
 		zap.L().Named("websocket-client"),
-		websocketstream.DummyEventStream{},
-		websocketstream.DummyAdapter{},
+		eventStream,
+		clientevents.Adapter{},
 		websocketstream.JSONEventWriter{},
 		websocketstream.NewUpgrader(cfg.Servers.Client.AllowOrigins, cfg.Servers.Client.SecWSProtocol),
 		shutdown,
@@ -184,8 +188,8 @@ func run() (errReturned error) {
 	// Websocket manager stream.
 	wsManager, err := websocketstream.NewHTTPHandler(websocketstream.NewOptions(
 		zap.L().Named("websocket-manager"),
-		websocketstream.DummyEventStream{},
-		websocketstream.DummyAdapter{},
+		eventStream,
+		clientevents.Adapter{},
 		websocketstream.JSONEventWriter{},
 		websocketstream.NewUpgrader(cfg.Servers.Manager.AllowOrigins, cfg.Servers.Manager.SecWSProtocol),
 		shutdown,
@@ -240,10 +244,16 @@ func run() (errReturned error) {
 		return fmt.Errorf("init manager server: %v", err)
 	}
 
+	eventsSwagger, err := clientevents.GetSwagger()
+	if err != nil {
+		return fmt.Errorf("get events swagger: %v", err)
+	}
+
 	srvDebug, err := serverdebug.New(serverdebug.NewOptions(
 		cfg.Servers.Debug.Addr,
 		clientV1Swagger,
 		managerV1Swagger,
+		eventsSwagger,
 	))
 	if err != nil {
 		return fmt.Errorf("init debug server: %v", err)

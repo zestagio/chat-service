@@ -1,0 +1,87 @@
+openapi: 3.0.0
+info:
+  title: Bank Support Chat Client Events
+  version: v1
+
+servers:
+  - url: ws://localhost:8080/ws
+    description: Development server
+
+paths:
+  /stub:
+    get:
+      description: It uses for generating events. Otherwise it doesn't.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+
+components:
+  schemas:
+    Message:
+      oneOf:
+        - $ref: "#/components/schemas/NewMessageEvent"
+      discriminator:
+        propertyName: eventType
+
+    CommonMessage:
+      required: [ eventType, eventId, messageId, requestId ]
+      properties:
+        eventType:
+          $ref: "#/components/schemas/EventType"
+        eventId:
+          type: string
+          format: uuid
+          x-go-type: types.EventID
+          x-go-name: EventID
+          x-go-type-import:
+            path: "github.com/zestagio/chat-service/internal/types"
+        messageId:
+          type: string
+          format: uuid
+          x-go-name: MessageID
+          x-go-type: types.MessageID
+          x-go-type-import:
+            path: "github.com/zestagio/chat-service/internal/types"
+        requestId:
+          type: string
+          format: uuid
+          x-go-name: RequestID
+          x-go-type: types.RequestID
+          x-go-type-import:
+            path: "github.com/zestagio/chat-service/internal/types"
+
+    NewMessageEvent:
+      allOf:
+        - $ref: "#/components/schemas/CommonMessage"
+        - type: object
+          required: [ createdAt, isService, body ]
+          properties:
+            authorId:
+              type: string
+              format: uuid
+              x-go-name: AuthorID
+              x-go-type: types.UserID
+              x-go-type-import:
+                path: "github.com/zestagio/chat-service/internal/types"
+            createdAt:
+              type: string
+              format: date-time
+            body:
+              type: string
+            isService:
+              type: boolean
+
+    MessageSentEvent:
+      allOf:
+        - $ref: "#/components/schemas/CommonMessage"
+
+    EventType:
+      type: string
+      enum:
+        - NewMessageEvent
+        - MessageSentEvent
+        - MessageBlockedEvent
