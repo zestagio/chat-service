@@ -27,7 +27,7 @@ type Introspector interface {
 // each request is verified by the Keycloak server.
 func NewKeycloakTokenAuth(introspector Introspector, resource, role string) echo.MiddlewareFunc {
 	return middleware.KeyAuthWithConfig(middleware.KeyAuthConfig{
-		KeyLookup:  "header:Authorization",
+		KeyLookup:  "header:" + echo.HeaderAuthorization,
 		AuthScheme: "Bearer",
 		Validator:  validator(introspector, resource, role),
 	})

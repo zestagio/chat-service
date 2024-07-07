@@ -183,7 +183,7 @@ func run() (errReturned error) {
 
 	// Websocket manager stream.
 	wsManager, err := websocketstream.NewHTTPHandler(websocketstream.NewOptions(
-		zap.L().Named("websocket-client"),
+		zap.L().Named("websocket-manager"),
 		websocketstream.DummyEventStream{},
 		websocketstream.DummyAdapter{},
 		websocketstream.JSONEventWriter{},

@@ -62,6 +62,60 @@ func (id ChatID) AsPointer() *ChatID {
 	return &id
 }
 
+type EventID uuid.UUID
+
+var EventIDNil EventID
+
+func NewEventID() EventID {
+	return EventID(uuid.New())
+}
+
+func (id EventID) String() string {
+	return (uuid.UUID)(id).String()
+}
+
+func (id *EventID) Scan(src interface{}) error {
+	return (*uuid.UUID)(id).Scan(src)
+}
+
+func (id EventID) Value() (driver.Value, error) {
+	return (uuid.UUID)(id).Value()
+}
+
+func (id EventID) MarshalText() ([]byte, error) {
+	return (uuid.UUID)(id).MarshalText()
+}
+
+func (id *EventID) UnmarshalText(data []byte) error {
+	return (*uuid.UUID)(id).UnmarshalText(data)
+}
+
+func (id EventID) IsZero() bool {
+	return id.String() == uuid.Nil.String()
+}
+
+func (id EventID) Matches(x interface{}) bool {
+	switch x := x.(type) {
+	case EventID:
+		return id.String() == x.String()
+	}
+	return false
+}
+
+func (id EventID) Validate() error {
+	if id.IsZero() {
+		return errors.New("zero EventID")
+	}
+	return nil
+}
+
+func (id EventID) AsPointer() *EventID {
+	if id.IsZero() {
+		return nil
+	}
+	return &id
+}
+
 type FailedJobID uuid.UUID
 
 var FailedJobIDNil FailedJobID
@@ -387,7 +441,7 @@ func (id UserID) AsPointer() *UserID {
 }
 
 type TypeSet = interface {
-	ChatID | FailedJobID | JobID | MessageID | ProblemID | RequestID | UserID
+	ChatID | EventID | FailedJobID | JobID | MessageID | ProblemID | RequestID | UserID
 }
 
 func Parse[T TypeSet](s string) (T, error) {
