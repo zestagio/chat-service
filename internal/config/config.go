@@ -75,9 +75,10 @@ type KeycloakConfig struct {
 }
 
 type ServicesConfig struct {
-	ManagerLoad ManagerLoadConfig `toml:"manager_load"`
-	MsgProducer MsgProducerConfig `toml:"msg_producer"`
-	Outbox      OutboxConfig      `toml:"outbox"`
+	ManagerLoad          ManagerLoadConfig          `toml:"manager_load"`
+	MsgProducer          MsgProducerConfig          `toml:"msg_producer"`
+	Outbox               OutboxConfig               `toml:"outbox"`
+	AFCVerdictsProcessor AFCVerdictsProcessorConfig `toml:"afc_verdicts_processor"`
 }
 
 type ManagerLoadConfig struct {
@@ -95,4 +96,13 @@ type OutboxConfig struct {
 	Workers    int           `toml:"workers" validate:"min=1,max=32"`
 	IdleTime   time.Duration `toml:"idle_time" validate:"min=1s,max=10s"`
 	ReserveFor time.Duration `toml:"reserve_for" validate:"min=3s,max=10m"`
+}
+
+type AFCVerdictsProcessorConfig struct {
+	Brokers                  []string `toml:"brokers" validate:"required,gt=0,dive,required,hostname_port"`
+	Consumers                int      `toml:"consumers" validate:"min=1,max=16"`
+	ConsumerGroup            string   `toml:"consumer_group" validate:"required"`
+	VerdictsTopic            string   `toml:"verdicts_topic" validate:"required"`
+	VerdictsDLQTopic         string   `toml:"verdicts_dlq_topic" validate:"required"`
+	VerdictsSigningPublicKey string   `toml:"verdicts_signing_public_key" validate:"required"`
 }

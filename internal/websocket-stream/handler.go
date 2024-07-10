@@ -91,10 +91,9 @@ func (h *HTTPHandler) Serve(eCtx echo.Context) error {
 	})
 
 	eg.Go(func() error {
-		select {
-		case <-h.shutdownCh:
-		case <-ctx.Done():
-		}
+		<-h.shutdownCh
+
+		h.logger.Info("graceful shutdown websocket service")
 
 		closer.Close(websocket.CloseNormalClosure)
 		return nil

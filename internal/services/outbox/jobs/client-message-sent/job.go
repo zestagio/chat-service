@@ -1,4 +1,4 @@
-package sendclientmessagejob
+package clientmessagesentjob
 
 import (
 	"context"
@@ -8,19 +8,14 @@ import (
 
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
 	eventstream "github.com/zestagio/chat-service/internal/services/event-stream"
-	msgproducer "github.com/zestagio/chat-service/internal/services/msg-producer"
 	"github.com/zestagio/chat-service/internal/services/outbox"
 	"github.com/zestagio/chat-service/internal/services/outbox/jobs"
 	"github.com/zestagio/chat-service/internal/types"
 )
 
-//go:generate mockgen -source=$GOFILE -destination=mocks/job_mock.gen.go -package=sendclientmessagejobmocks
+//go:generate mockgen -source=$GOFILE -destination=mocks/job_mock.gen.go -package=clientmessagesentjobmocks
 
-const Name = "send-client-message"
-
-type messageProducer interface {
-	ProduceMessage(ctx context.Context, message msgproducer.Message) error
-}
+const Name = "client-message-sent"
 
 type messageRepository interface {
 	GetMessageByID(ctx context.Context, msgID types.MessageID) (*messagesrepo.Message, error)
@@ -32,7 +27,6 @@ type eventStream interface {
 
 //go:generate options-gen -out-filename=job_options.gen.go -from-struct=Options
 type Options struct {
-	msgProducer messageProducer   `option:"mandatory" validate:"required"`
 	msgRepo     messageRepository `option:"mandatory" validate:"required"`
 	eventStream eventStream       `option:"mandatory" validate:"required"`
 }
@@ -78,27 +72,12 @@ func (j *Job) Handle(ctx context.Context, payload string) error {
 		return fmt.Errorf("get message: %v", err)
 	}
 
-	if err := j.msgProducer.ProduceMessage(ctx, msgproducer.Message{
-		ID:         m.ID,
-		ChatID:     m.ChatID,
-		Body:       m.Body,
-		FromClient: true,
-	}); err != nil {
-		return fmt.Errorf("produce message to queue: %v", err)
-	}
-
-	if err := j.eventStream.Publish(ctx, m.AuthorID, eventstream.NewNewMessageEvent(
+	if err := j.eventStream.Publish(ctx, m.AuthorID, eventstream.NewMessageSentEvent(
 		types.NewEventID(),
 		m.InitialRequestID,
-		m.ChatID,
 		m.ID,
-		m.AuthorID,
-		m.CreatedAt,
-		m.Body,
-		m.IsService,
 	)); err != nil {
 		return fmt.Errorf("publish message to event stream: %v", err)
 	}
-
 	return nil
 }

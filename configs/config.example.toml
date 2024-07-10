@@ -47,6 +47,21 @@ debug_mode = false
 [services.manager_load]
 max_problems_at_same_time = 5
 
+[services.afc_verdicts_processor]
+brokers = ["localhost:9092"]
+consumers = 2
+consumer_group = "afc_verdicts_processor:afc.msg-verdicts"
+verdicts_topic = "afc.msg-verdicts"
+verdicts_dlq_topic = "afc.msg-verdicts.dlq"
+verdicts_signing_public_key = """
+-----BEGIN PUBLIC KEY-----
+MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCWGE9s/zarbHq5YEhCLl7LzYo8
+TvHvfidpOeC1fCESBk1hsUN+JD4fF35dd0OP/vrs4UEyZ5xletMLqtNIYwvHvP03
++KuJLGSac4EwYkSEWBzjkok8Kytcq/HI87qjCKNNGCRpYW3+h7INL9LNQay+uXdg
+dpuCt+cAdO3CEB1vZQIDAQAB
+-----END PUBLIC KEY-----
+"""
+
 [services.msg_producer]
 brokers = ["localhost:9092"]
 topic = "chat.messages"

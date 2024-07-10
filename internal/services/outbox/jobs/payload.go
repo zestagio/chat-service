@@ -1,4 +1,4 @@
-package sendclientmessagejob
+package jobs
 
 import (
 	"encoding/json"
@@ -8,16 +8,16 @@ import (
 	"github.com/zestagio/chat-service/internal/validator"
 )
 
-type payload struct {
+type Payload struct {
 	MessageID types.MessageID `json:"messageId" validate:"required"`
 }
 
-func (p payload) Validate() error {
+func (p Payload) Validate() error {
 	return validator.Validator.Struct(p)
 }
 
 func MarshalPayload(messageID types.MessageID) (string, error) {
-	p := payload{
+	p := Payload{
 		MessageID: messageID,
 	}
 	if err := p.Validate(); err != nil {
@@ -31,9 +31,9 @@ func MarshalPayload(messageID types.MessageID) (string, error) {
 	return string(data), nil
 }
 
-func unmarshalPayload(data string) (p payload, err error) {
+func UnmarshalPayload(data string) (p Payload, err error) {
 	if err := json.Unmarshal([]byte(data), &p); err != nil {
-		return payload{}, fmt.Errorf("unmarshal: %v", err)
+		return Payload{}, fmt.Errorf("unmarshal: %v", err)
 	}
 
 	return p, nil

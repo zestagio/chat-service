@@ -7,6 +7,7 @@ import (
 	"time"
 
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
+	"github.com/zestagio/chat-service/internal/services/outbox/jobs"
 	sendclientmessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-client-message"
 	"github.com/zestagio/chat-service/internal/types"
 )
@@ -96,7 +97,7 @@ func (u UseCase) Handle(ctx context.Context, req Request) (Response, error) {
 			return fmt.Errorf("create client visible message: %v", err)
 		}
 
-		payload, err := sendclientmessagejob.MarshalPayload(m.ID)
+		payload, err := jobs.MarshalPayload(m.ID)
 		if err != nil {
 			return fmt.Errorf("new job payload: %v", err)
 		}

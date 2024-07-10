@@ -37,6 +37,13 @@ func (Adapter) Adapt(ev eventstream.Event) (any, error) {
 			RequestID: e.RequestID,
 			EventType: EventTypeMessageSentEvent,
 		}, nil
+	case *eventstream.MessageBlockedEvent:
+		return &MessageBlockedEvent{
+			EventID:   e.EventID,
+			MessageID: e.MessageID,
+			RequestID: e.RequestID,
+			EventType: EventTypeMessageBlockedEvent,
+		}, nil
 	}
 	return nil, errors.New("invalid type")
 }

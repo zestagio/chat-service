@@ -64,8 +64,8 @@ type MessageSentEvent struct {
 	MessageID types.MessageID `validate:"required"`
 }
 
-func (m MessageSentEvent) Validate() error {
-	return validator.Validator.Struct(m)
+func (e MessageSentEvent) Validate() error {
+	return validator.Validator.Struct(e)
 }
 
 func NewMessageSentEvent(
@@ -74,6 +74,30 @@ func NewMessageSentEvent(
 	msgID types.MessageID,
 ) *MessageSentEvent {
 	return &MessageSentEvent{
+		EventID:   eventID,
+		RequestID: reqID,
+		MessageID: msgID,
+	}
+}
+
+type MessageBlockedEvent struct {
+	event
+
+	EventID   types.EventID   `validate:"required"`
+	RequestID types.RequestID `validate:"required"`
+	MessageID types.MessageID `validate:"required"`
+}
+
+func (e MessageBlockedEvent) Validate() error {
+	return validator.Validator.Struct(e)
+}
+
+func NewMessageBlockedEvent(
+	eventID types.EventID,
+	reqID types.RequestID,
+	msgID types.MessageID,
+) *MessageBlockedEvent {
+	return &MessageBlockedEvent{
 		EventID:   eventID,
 		RequestID: reqID,
 		MessageID: msgID,

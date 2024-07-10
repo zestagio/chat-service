@@ -12,6 +12,7 @@ import (
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
 	eventstream "github.com/zestagio/chat-service/internal/services/event-stream"
 	msgproducer "github.com/zestagio/chat-service/internal/services/msg-producer"
+	"github.com/zestagio/chat-service/internal/services/outbox/jobs"
 	sendclientmessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-client-message"
 	sendclientmessagejobmocks "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-client-message/mocks"
 	"github.com/zestagio/chat-service/internal/types"
@@ -71,7 +72,7 @@ func TestJob_Handle(t *testing.T) {
 	)).Return(nil)
 
 	// Action & assert.
-	payload, err := sendclientmessagejob.MarshalPayload(msgID)
+	payload, err := jobs.MarshalPayload(msgID)
 	require.NoError(t, err)
 
 	err = job.Handle(ctx, payload)

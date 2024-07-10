@@ -1,4 +1,4 @@
-package sendclientmessagejob_test
+package jobs_test
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	sendclientmessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-client-message"
+	sendclientmessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs"
 	"github.com/zestagio/chat-service/internal/types"
 )
 

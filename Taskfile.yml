@@ -67,6 +67,9 @@ vars:
   ### E2E tests ###
   E2E_CLIENT_V1_DST: ./tests/e2e/api/client/v1/client.gen.go
   E2E_CLIENT_V1_PKG: apiclientv1
+
+  E2E_CLIENT_EVENTS_DST: ./tests/e2e/api/client/events/events.gen.go
+  E2E_CLIENT_EVENTS_PKG: apiclientevents
   ###
 
 tasks:
@@ -214,6 +217,8 @@ tasks:
     cmds:
       - echo "[E2E] Generate client API..."
       - .{{.DEV_TOOLS_PATH}}/oapi-codegen --old-config-style -generate types,client -package {{.E2E_CLIENT_V1_PKG}} {{.CLIENT_V1_SRC}} > {{.E2E_CLIENT_V1_DST}}
+      - echo "[E2E] Generate client events API..."
+      - .{{.DEV_TOOLS_PATH}}/oapi-codegen --old-config-style -generate skip-prune,types -package {{.E2E_CLIENT_EVENTS_PKG}} {{.CLIENT_EVENTS_SRC}} > {{.E2E_CLIENT_EVENTS_DST}}
 
   kc:export:
     vars:

@@ -24,11 +24,14 @@ import (
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 	serverdebug "github.com/zestagio/chat-service/internal/server-debug"
 	managerv1 "github.com/zestagio/chat-service/internal/server-manager/v1"
+	afcverdictsprocessor "github.com/zestagio/chat-service/internal/services/afc-verdicts-processor"
 	inmemeventstream "github.com/zestagio/chat-service/internal/services/event-stream/in-mem"
 	managerload "github.com/zestagio/chat-service/internal/services/manager-load"
 	inmemmanagerpool "github.com/zestagio/chat-service/internal/services/manager-pool/in-mem"
 	msgproducer "github.com/zestagio/chat-service/internal/services/msg-producer"
 	"github.com/zestagio/chat-service/internal/services/outbox"
+	clientmessageblockedjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/client-message-blocked"
+	clientmessagesentjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/client-message-sent"
 	sendclientmessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-client-message"
 	"github.com/zestagio/chat-service/internal/store"
 	websocketstream "github.com/zestagio/chat-service/internal/websocket-stream"
@@ -149,6 +152,25 @@ func run() (errReturned error) {
 		return fmt.Errorf("create outbox service: %v", err)
 	}
 
+	afcVerdictProcessor, err := afcverdictsprocessor.New(afcverdictsprocessor.NewOptions(
+		cfg.Services.AFCVerdictsProcessor.Brokers,
+		cfg.Services.AFCVerdictsProcessor.Consumers,
+		cfg.Services.AFCVerdictsProcessor.ConsumerGroup,
+		cfg.Services.AFCVerdictsProcessor.VerdictsTopic,
+		afcverdictsprocessor.NewKafkaReader,
+		afcverdictsprocessor.NewKafkaDLQWriter(
+			cfg.Services.AFCVerdictsProcessor.Brokers,
+			cfg.Services.AFCVerdictsProcessor.VerdictsDLQTopic,
+		),
+		db,
+		msgRepo,
+		outBox,
+		afcverdictsprocessor.WithVerdictsSignKey(cfg.Services.AFCVerdictsProcessor.VerdictsSigningPublicKey),
+	))
+	if err != nil {
+		return fmt.Errorf("create afc verdicts processor service: %v", err)
+	}
+
 	managerPool := inmemmanagerpool.New()
 	defer multierr.AppendInvoke(&errReturned, multierr.Close(managerPool))
 
@@ -162,10 +184,13 @@ func run() (errReturned error) {
 	}
 
 	eventStream := inmemeventstream.New()
+	defer eventStream.Close()
 
 	// Application Services. Jobs.
 	for _, j := range []outbox.Job{
 		sendclientmessagejob.Must(sendclientmessagejob.NewOptions(msgProducer, msgRepo, eventStream)),
+		clientmessagesentjob.Must(clientmessagesentjob.NewOptions(msgRepo, eventStream)),
+		clientmessageblockedjob.Must(clientmessageblockedjob.NewOptions(msgRepo, eventStream)),
 	} {
 		outBox.MustRegisterJob(j)
 	}
@@ -268,6 +293,7 @@ func run() (errReturned error) {
 
 	// Run services.
 	eg.Go(func() error { return outBox.Run(ctx) })
+	eg.Go(func() error { return afcVerdictProcessor.Run(ctx) })
 
 	// Websocket shutdown.
 	eg.Go(func() error {
