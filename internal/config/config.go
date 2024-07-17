@@ -7,9 +7,9 @@ type Config struct {
 	Log      LogConfig      `toml:"log"`
 	Sentry   SentryConfig   `toml:"sentry"`
 	Servers  ServersConfig  `toml:"servers"`
-	Services ServicesConfig `toml:"services"`
 	Stores   StoresConfig   `toml:"stores"`
 	Clients  ClientsConfig  `toml:"clients"`
+	Services ServicesConfig `toml:"services"`
 }
 
 type GlobalConfig struct {
@@ -25,7 +25,7 @@ type LogConfig struct {
 }
 
 type SentryConfig struct {
-	Dsn string `toml:"dsn" validate:"omitempty,url"`
+	DSN string `toml:"dsn" validate:"omitempty,url"`
 }
 
 type ServersConfig struct {
@@ -42,34 +42,12 @@ type APIServerConfig struct {
 	Addr           string               `toml:"addr" validate:"required,hostname_port"`
 	AllowOrigins   []string             `toml:"allow_origins" validate:"required"`
 	RequiredAccess RequiredAccessConfig `toml:"required_access"`
+	SecWSProtocol  string               `toml:"sec_ws_protocol" validate:"required"`
 }
 
 type RequiredAccessConfig struct {
 	Resource string `toml:"resource" validate:"required"`
 	Role     string `toml:"role" validate:"required"`
-}
-
-type ServicesConfig struct {
-	Outbox      OutboxConfig      `toml:"outbox"`
-	MsgProducer MsgProducerConfig `toml:"msg_producer"`
-	ManagerLoad ManagerLoadConfig `toml:"manager_load"`
-}
-
-type OutboxConfig struct {
-	Workers    int           `toml:"workers" validate:"required,min=1"`
-	IDLE       time.Duration `toml:"idle_time" validate:"required,min=500ms,max=10s"`
-	ReserveFor time.Duration `toml:"reserve_for" validate:"required"`
-}
-
-type MsgProducerConfig struct {
-	Brokers    []string `toml:"brokers" validate:"required,gt=0,dive,required,hostname_port"`
-	Topic      string   `toml:"topic" validate:"required"`
-	BatchSize  int      `toml:"batch_size" validate:"required,min=1"`
-	EncryptKey string   `toml:"encrypt_key" validate:"omitempty,hexadecimal"`
-}
-
-type ManagerLoadConfig struct {
-	MaxProblemsAtSameTime int `toml:"max_problems_at_same_time" validate:"required,gt=0"`
 }
 
 type StoresConfig struct {
@@ -94,4 +72,37 @@ type KeycloakConfig struct {
 	ClientID     string `toml:"client_id" validate:"required"`
 	ClientSecret string `toml:"client_secret" validate:"required,alphanum"`
 	DebugMode    bool   `toml:"debug_mode"`
+}
+
+type ServicesConfig struct {
+	ManagerLoad          ManagerLoadConfig          `toml:"manager_load"`
+	MsgProducer          MsgProducerConfig          `toml:"msg_producer"`
+	Outbox               OutboxConfig               `toml:"outbox"`
+	AFCVerdictsProcessor AFCVerdictsProcessorConfig `toml:"afc_verdicts_processor"`
+}
+
+type ManagerLoadConfig struct {
+	MaxProblemsAtSameTime int `toml:"max_problems_at_same_time" validate:"min=1,max=30"`
+}
+
+type MsgProducerConfig struct {
+	Brokers    []string `toml:"brokers" validate:"min=1"`
+	Topic      string   `toml:"topic" validate:"required"`
+	BatchSize  int      `toml:"batch_size" validate:"min=1,max=1000"`
+	EncryptKey string   `toml:"encrypt_key" validate:"omitempty,hexadecimal"`
+}
+
+type OutboxConfig struct {
+	Workers    int           `toml:"workers" validate:"min=1,max=32"`
+	IdleTime   time.Duration `toml:"idle_time" validate:"min=1s,max=10s"`
+	ReserveFor time.Duration `toml:"reserve_for" validate:"min=3s,max=10m"`
+}
+
+type AFCVerdictsProcessorConfig struct {
+	Brokers                  []string `toml:"brokers" validate:"required,gt=0,dive,required,hostname_port"`
+	Consumers                int      `toml:"consumers" validate:"min=1,max=16"`
+	ConsumerGroup            string   `toml:"consumer_group" validate:"required"`
+	VerdictsTopic            string   `toml:"verdicts_topic" validate:"required"`
+	VerdictsDLQTopic         string   `toml:"verdicts_dlq_topic" validate:"required"`
+	VerdictsSigningPublicKey string   `toml:"verdicts_signing_public_key"`
 }

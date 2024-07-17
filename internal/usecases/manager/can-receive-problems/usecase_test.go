@@ -29,7 +29,6 @@ func TestUseCaseSuite(t *testing.T) {
 
 func (s *UseCaseSuite) SetupTest() {
 	s.ctrl = gomock.NewController(s.T())
-
 	s.mLoadMock = canreceiveproblemsmocks.NewMockmanagerLoadService(s.ctrl)
 	s.mPoolMock = canreceiveproblemsmocks.NewMockmanagerPool(s.ctrl)
 
@@ -55,124 +54,102 @@ func (s *UseCaseSuite) TestRequestValidationError() {
 
 	// Assert.
 	s.Require().Error(err)
-	s.Require().ErrorIs(err, canreceiveproblems.ErrInvalidRequest)
 }
 
-func (s *UseCaseSuite) TestManagerPoolError() {
+func (s *UseCaseSuite) TestContains_Error() {
 	// Arrange.
-	reqID := types.NewRequestID()
 	managerID := types.NewUserID()
 
-	s.mPoolMock.EXPECT().Contains(gomock.Any(), managerID).
-		Return(false, errors.New("unexpected"))
+	s.mPoolMock.EXPECT().Contains(gomock.Any(), managerID).Return(false, errors.New("unexpected"))
 
 	req := canreceiveproblems.Request{
-		ID:        reqID,
+		ID:        types.NewRequestID(),
 		ManagerID: managerID,
 	}
 
 	// Action.
-	_, err := s.uCase.Handle(s.Ctx, req)
+	result, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
 	s.Require().Error(err)
-	s.Require().ErrorIs(err, canreceiveproblems.ErrManagerPoolContains)
+	s.False(result.Result)
 }
 
-func (s *UseCaseSuite) TestManagerInPool() {
+func (s *UseCaseSuite) TestContains_True() {
 	// Arrange.
-	reqID := types.NewRequestID()
 	managerID := types.NewUserID()
 
-	s.mPoolMock.EXPECT().Contains(gomock.Any(), managerID).
-		Return(true, nil)
+	s.mPoolMock.EXPECT().Contains(gomock.Any(), managerID).Return(true, nil)
 
 	req := canreceiveproblems.Request{
-		ID:        reqID,
+		ID:        types.NewRequestID(),
 		ManagerID: managerID,
 	}
 
 	// Action.
-	response, err := s.uCase.Handle(s.Ctx, req)
+	result, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
 	s.Require().NoError(err)
-	s.Require().False(response.Available)
-	s.Require().True(response.InPool)
+	s.False(result.Result)
 }
 
-func (s *UseCaseSuite) TestManagerCanTakeProblem_Error() {
+func (s *UseCaseSuite) TestCanManagerTakeProblem_Error() {
 	// Arrange.
-	reqID := types.NewRequestID()
 	managerID := types.NewUserID()
 
-	s.mPoolMock.EXPECT().Contains(gomock.Any(), managerID).
-		Return(false, nil)
-
-	s.mLoadMock.EXPECT().CanManagerTakeProblem(gomock.Any(), managerID).
-		Return(false, errors.New("unexpected"))
+	s.mPoolMock.EXPECT().Contains(gomock.Any(), managerID).Return(false, nil)
+	s.mLoadMock.EXPECT().CanManagerTakeProblem(gomock.Any(), managerID).Return(false, errors.New("unexpected"))
 
 	req := canreceiveproblems.Request{
-		ID:        reqID,
+		ID:        types.NewRequestID(),
 		ManagerID: managerID,
 	}
 
 	// Action.
-	response, err := s.uCase.Handle(s.Ctx, req)
+	result, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
 	s.Require().Error(err)
-	s.Require().ErrorIs(err, canreceiveproblems.ErrManagerLoadService)
-	s.Require().False(response.Available)
-	s.Require().False(response.InPool)
+	s.False(result.Result)
 }
 
-func (s *UseCaseSuite) TestManagerCanTakeProblem_True() {
+func (s *UseCaseSuite) TestCanManagerTakeProblem_True() {
 	// Arrange.
-	reqID := types.NewRequestID()
 	managerID := types.NewUserID()
 
-	s.mPoolMock.EXPECT().Contains(gomock.Any(), managerID).
-		Return(false, nil)
-
-	s.mLoadMock.EXPECT().CanManagerTakeProblem(gomock.Any(), managerID).
-		Return(true, nil)
+	s.mPoolMock.EXPECT().Contains(gomock.Any(), managerID).Return(false, nil)
+	s.mLoadMock.EXPECT().CanManagerTakeProblem(gomock.Any(), managerID).Return(true, nil)
 
 	req := canreceiveproblems.Request{
-		ID:        reqID,
+		ID:        types.NewRequestID(),
 		ManagerID: managerID,
 	}
 
 	// Action.
-	response, err := s.uCase.Handle(s.Ctx, req)
+	result, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
 	s.Require().NoError(err)
-	s.Require().True(response.Available)
-	s.Require().False(response.InPool)
+	s.True(result.Result)
 }
 
-func (s *UseCaseSuite) TestManagerCanTakeProblem_False() {
+func (s *UseCaseSuite) TestCanManagerTakeProblem_False() {
 	// Arrange.
-	reqID := types.NewRequestID()
 	managerID := types.NewUserID()
 
-	s.mPoolMock.EXPECT().Contains(gomock.Any(), managerID).
-		Return(false, nil)
-
-	s.mLoadMock.EXPECT().CanManagerTakeProblem(gomock.Any(), managerID).
-		Return(false, nil)
+	s.mPoolMock.EXPECT().Contains(gomock.Any(), managerID).Return(false, nil)
+	s.mLoadMock.EXPECT().CanManagerTakeProblem(gomock.Any(), managerID).Return(false, nil)
 
 	req := canreceiveproblems.Request{
-		ID:        reqID,
+		ID:        types.NewRequestID(),
 		ManagerID: managerID,
 	}
 
 	// Action.
-	response, err := s.uCase.Handle(s.Ctx, req)
+	result, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
 	s.Require().NoError(err)
-	s.Require().False(response.Available)
-	s.Require().False(response.InPool)
+	s.False(result.Result)
 }

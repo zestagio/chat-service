@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"go.uber.org/zap"
+
 	managerpool "github.com/zestagio/chat-service/internal/services/manager-pool"
 	"github.com/zestagio/chat-service/internal/types"
 )
@@ -14,83 +16,69 @@ const (
 )
 
 type Service struct {
-	sync.RWMutex
-	q []types.UserID
+	managers []types.UserID
+	mu       sync.RWMutex
+	lg       *zap.Logger
 }
 
 func New() *Service {
 	return &Service{
-		q: make([]types.UserID, 0, managersMax),
+		managers: make([]types.UserID, 0, managersMax),
+		mu:       sync.RWMutex{},
+		lg:       zap.L().Named(serviceName),
 	}
 }
 
 func (s *Service) Close() error {
-	s.Lock()
-	defer s.Unlock()
-
-	s.q = s.q[0:]
 	return nil
 }
 
-func (s *Service) Get(ctx context.Context) (types.UserID, error) {
-	select {
-	case <-ctx.Done():
-		return types.UserIDNil, ctx.Err()
-	default:
-	}
+func (s *Service) Size() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return len(s.managers)
+}
 
-	if s.Size() == 0 {
+func (s *Service) Get(_ context.Context) (types.UserID, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if len(s.managers) == 0 {
 		return types.UserIDNil, managerpool.ErrNoAvailableManagers
 	}
 
-	var firstID types.UserID
-	s.Lock()
-	firstID, s.q = s.q[0], s.q[1:]
-	s.Unlock()
+	first := s.managers[0]
+	s.managers = s.managers[1:]
 
-	return firstID, nil
+	s.lg.Info("manager removed", zap.Stringer("manager_id", first))
+	return first, nil
 }
 
 func (s *Service) Put(ctx context.Context, managerID types.UserID) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.contains(ctx, managerID) {
+		return nil
 	}
 
-	contains, err := s.Contains(ctx, managerID)
-	if err != nil {
-		return err
-	}
-
-	s.Lock()
-	if !contains {
-		s.q = append(s.q, managerID)
-	}
-	s.Unlock()
+	s.managers = append(s.managers, managerID)
+	s.lg.Info("manager stored", zap.Stringer("manager_id", managerID))
 
 	return nil
 }
 
 func (s *Service) Contains(ctx context.Context, managerID types.UserID) (bool, error) {
-	select {
-	case <-ctx.Done():
-		return false, ctx.Err()
-	default:
-	}
-
-	s.RLock()
-	defer s.RUnlock()
-	for _, el := range s.q {
-		if el.Matches(managerID) {
-			return true, nil
-		}
-	}
-	return false, nil
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.contains(ctx, managerID), nil
 }
 
-func (s *Service) Size() int {
-	s.RLock()
-	defer s.RUnlock()
-	return len(s.q)
+func (s *Service) contains(_ context.Context, managerID types.UserID) bool {
+	for _, mID := range s.managers { // Small O(N).
+		if mID == managerID {
+			return true
+		}
+	}
+	return false
 }

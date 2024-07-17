@@ -23,7 +23,8 @@ func (cm CursorMatcher) Matches(x any) bool {
 		return false
 	}
 
-	return cm.c.PageSize == v.PageSize && cm.c.LastCreatedAt.Equal(v.LastCreatedAt)
+	return cm.c.PageSize == v.PageSize &&
+		cm.c.LastCreatedAt.Equal(v.LastCreatedAt)
 }
 
 func (cm CursorMatcher) String() string {

@@ -10,6 +10,7 @@ import (
 	"io"
 
 	"github.com/segmentio/kafka-go"
+	"go.uber.org/zap"
 )
 
 type KafkaWriter interface {
@@ -34,27 +35,33 @@ func New(opts Options) (*Service, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, fmt.Errorf("validate options: %v", err)
 	}
-
 	if opts.nonceFactory == nil {
 		opts.nonceFactory = defaultNonceFactory
 	}
 
 	var aeadCipher cipher.AEAD
-	if opts.encryptKey != "" {
-		key, err := hex.DecodeString(opts.encryptKey)
+	if key := opts.encryptKey; key != "" {
+		key, err := hex.DecodeString(key)
 		if err != nil {
-			return nil, fmt.Errorf("msg producer decode encrypt key error: %v", err)
+			return nil, fmt.Errorf("decode encryption key from HEX: %v", err)
 		}
 
-		block, err := aes.NewCipher(key)
+		aesBlockCipher, err := aes.NewCipher(key)
 		if err != nil {
-			return nil, fmt.Errorf("msg producer new cipher error: %v", err)
+			return nil, fmt.Errorf("build AES cipher: %v", err)
 		}
 
-		aeadCipher, err = cipher.NewGCM(block)
+		aeadCipher, err = cipher.NewGCM(aesBlockCipher)
 		if err != nil {
-			return nil, fmt.Errorf("msg producer new gcm error: %v", err)
+			return nil, fmt.Errorf("build AEAD cipher: %v", err)
 		}
+	}
+
+	log := zap.L().Named(serviceName)
+	if aeadCipher == nil {
+		log.Info("encryption disabled")
+	} else {
+		log.Info("encryption enabled")
 	}
 
 	return &Service{

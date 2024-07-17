@@ -10,6 +10,7 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
@@ -29,6 +30,7 @@ type Options struct {
 
 	clientSwagger  *openapi3.T `option:"mandatory" validate:"required"`
 	managerSwagger *openapi3.T `option:"mandatory" validate:"required"`
+	eventsSwagger  *openapi3.T `option:"mandatory" validate:"required"`
 }
 
 type Server struct {
@@ -44,8 +46,10 @@ func New(opts Options) (*Server, error) {
 	lg := zap.L().Named("server-debug")
 
 	e := echo.New()
-	e.Use(middlewares.NewRecovery(lg))
-	e.Use(middlewares.NewRequestLogger(lg))
+	e.Use(
+		middleware.Recover(),
+		middlewares.NewRequestLogger(lg),
+	)
 
 	s := &Server{
 		lg: lg,
@@ -82,11 +86,12 @@ func New(opts Options) (*Server, error) {
 	{
 		e.GET("/schema/client", s.ExposeSchema(opts.clientSwagger))
 		index.addPage("/schema/client", "Get client OpenAPI specification")
-	}
 
-	{
 		e.GET("/schema/manager", s.ExposeSchema(opts.managerSwagger))
 		index.addPage("/schema/manager", "Get manager OpenAPI specification")
+
+		e.GET("/schema/events", s.ExposeSchema(opts.eventsSwagger))
+		index.addPage("/schema/events", "Get events OpenAPI specification")
 	}
 
 	e.GET("/", index.handler)

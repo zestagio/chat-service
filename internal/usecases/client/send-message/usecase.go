@@ -7,6 +7,7 @@ import (
 	"time"
 
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
+	"github.com/zestagio/chat-service/internal/services/outbox/jobs"
 	sendclientmessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-client-message"
 	"github.com/zestagio/chat-service/internal/types"
 )
@@ -51,7 +52,7 @@ type transactor interface {
 type Options struct {
 	chatsRepo    chatsRepository    `option:"mandatory" validate:"required"`
 	msgRepo      messagesRepository `option:"mandatory" validate:"required"`
-	outboxSrv    outboxService      `option:"mandatory" validate:"required"`
+	outBox       outboxService      `option:"mandatory" validate:"required"`
 	problemsRepo problemsRepository `option:"mandatory" validate:"required"`
 	txtor        transactor         `option:"mandatory" validate:"required"`
 }
@@ -96,8 +97,18 @@ func (u UseCase) Handle(ctx context.Context, req Request) (Response, error) {
 			return fmt.Errorf("create client visible message: %v", err)
 		}
 
+		payload, err := jobs.MarshalPayload(m.ID)
+		if err != nil {
+			return fmt.Errorf("new job payload: %v", err)
+		}
+
+		_, err = u.outBox.Put(ctx, sendclientmessagejob.Name, payload, time.Now())
+		if err != nil {
+			return fmt.Errorf("create `send client message` job: %v", err)
+		}
+
 		msg = m
-		return u.putIntoOutbox(ctx, m.ID)
+		return nil
 	}); err != nil {
 		return Response{}, fmt.Errorf("`send client message` tx: %w", err)
 	}
@@ -107,17 +118,4 @@ func (u UseCase) Handle(ctx context.Context, req Request) (Response, error) {
 		MessageID: msg.ID,
 		CreatedAt: msg.CreatedAt,
 	}, nil
-}
-
-func (u UseCase) putIntoOutbox(ctx context.Context, msgID types.MessageID) error {
-	outboxPayload, err := sendclientmessagejob.MarshalPayload(msgID)
-	if err != nil {
-		return err
-	}
-
-	if _, err = u.outboxSrv.Put(ctx, sendclientmessagejob.Name, outboxPayload, time.Now()); err != nil {
-		return err
-	}
-
-	return nil
 }

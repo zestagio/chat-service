@@ -2,11 +2,10 @@ package schema_test
 
 import (
 	"context"
-	"testing"
-
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"testing"
 
 	"github.com/zestagio/chat-service/internal/store"
 	storechat "github.com/zestagio/chat-service/internal/store/chat"

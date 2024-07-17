@@ -11,17 +11,17 @@ import (
 type OptOptionsSetter func(o *Options)
 
 func NewOptions(
-	managerLoadSrv managerLoadService,
-	managerPool managerPool,
+	mLoadSvc managerLoadService,
+	mPool managerPool,
 	options ...OptOptionsSetter,
 ) Options {
 	o := Options{}
 
 	// Setting defaults from field tag (if present)
 
-	o.managerLoadSrv = managerLoadSrv
+	o.mLoadSvc = mLoadSvc
 
-	o.managerPool = managerPool
+	o.mPool = mPool
 
 	for _, opt := range options {
 		opt(&o)
@@ -31,21 +31,21 @@ func NewOptions(
 
 func (o *Options) Validate() error {
 	errs := new(errors461e464ebed9.ValidationErrors)
-	errs.Add(errors461e464ebed9.NewValidationError("managerLoadSrv", _validate_Options_managerLoadSrv(o)))
-	errs.Add(errors461e464ebed9.NewValidationError("managerPool", _validate_Options_managerPool(o)))
+	errs.Add(errors461e464ebed9.NewValidationError("mLoadSvc", _validate_Options_mLoadSvc(o)))
+	errs.Add(errors461e464ebed9.NewValidationError("mPool", _validate_Options_mPool(o)))
 	return errs.AsError()
 }
 
-func _validate_Options_managerLoadSrv(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.managerLoadSrv, "required"); err != nil {
-		return fmt461e464ebed9.Errorf("field `managerLoadSrv` did not pass the test: %w", err)
+func _validate_Options_mLoadSvc(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.mLoadSvc, "required"); err != nil {
+		return fmt461e464ebed9.Errorf("field `mLoadSvc` did not pass the test: %w", err)
 	}
 	return nil
 }
 
-func _validate_Options_managerPool(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.managerPool, "required"); err != nil {
-		return fmt461e464ebed9.Errorf("field `managerPool` did not pass the test: %w", err)
+func _validate_Options_mPool(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.mPool, "required"); err != nil {
+		return fmt461e464ebed9.Errorf("field `mPool` did not pass the test: %w", err)
 	}
 	return nil
 }

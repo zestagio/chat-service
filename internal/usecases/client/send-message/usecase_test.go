@@ -64,6 +64,7 @@ func (s *UseCaseSuite) TestRequestValidationError() {
 	_, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
+	s.Require().Error(err)
 	s.Require().ErrorIs(err, sendmessage.ErrInvalidRequest)
 }
 
@@ -154,6 +155,7 @@ func (s *UseCaseSuite) TestCreateChatError() {
 	_, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
+	s.Require().Error(err)
 	s.Require().ErrorIs(err, sendmessage.ErrChatNotCreated)
 }
 

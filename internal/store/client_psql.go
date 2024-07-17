@@ -2,12 +2,14 @@ package store
 
 import (
 	"database/sql"
-	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
 	"fmt"
 	"net/url"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"go.uber.org/zap"
+
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
 )
 
 //go:generate options-gen -out-filename=client_psql_options.gen.go -from-struct=PSQLOptions
@@ -29,13 +31,13 @@ func NewPSQLClient(opts PSQLOptions) (*Client, error) {
 		return nil, fmt.Errorf("init db driver: %v", err)
 	}
 
-	drv := entsql.OpenDB(dialect.Postgres, db)
-
-	clientOpts := []Option{Driver(drv)}
+	clientOpts := []Option{Driver(entsql.OpenDB(dialect.Postgres, db))}
 	if opts.debug {
-		clientOpts = append(clientOpts, Debug())
+		l := func(a ...any) {
+			zap.L().Named("store").Sugar().Debug(a...)
+		}
+		clientOpts = append(clientOpts, Debug(), Log(l))
 	}
-
 	return NewClient(clientOpts...), nil
 }
 
@@ -49,20 +51,14 @@ type PgxOptions struct {
 
 func NewPgxDB(opts PgxOptions) (*sql.DB, error) {
 	if err := opts.Validate(); err != nil {
-		return nil, fmt.Errorf("validate pgx options: %v", err)
+		return nil, fmt.Errorf("validate options: %v", err)
 	}
 
-	connUrl := (&url.URL{
-		Scheme: "postgres",
+	dsn := (&url.URL{
+		Scheme: "postgresql",
 		User:   url.UserPassword(opts.username, opts.password),
 		Host:   opts.address,
 		Path:   opts.database,
 	}).String()
-
-	db, err := sql.Open("pgx", connUrl)
-	if err != nil {
-		return nil, fmt.Errorf("unable to connect to database: %v", err)
-	}
-
-	return db, nil
+	return sql.Open("pgx", dsn)
 }

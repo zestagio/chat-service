@@ -37,7 +37,7 @@ func (o *Options) Validate() error {
 }
 
 func _validate_Options_maxProblemsAtTime(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.maxProblemsAtTime, "required,min=1,max=30"); err != nil {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.maxProblemsAtTime, "min=1,max=30"); err != nil {
 		return fmt461e464ebed9.Errorf("field `maxProblemsAtTime` did not pass the test: %w", err)
 	}
 	return nil

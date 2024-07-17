@@ -7,16 +7,20 @@ import (
 	"go.uber.org/zap"
 
 	keycloakclient "github.com/zestagio/chat-service/internal/clients/keycloak"
+	"github.com/zestagio/chat-service/internal/middlewares"
 	chatsrepo "github.com/zestagio/chat-service/internal/repositories/chats"
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
 	problemsrepo "github.com/zestagio/chat-service/internal/repositories/problems"
 	"github.com/zestagio/chat-service/internal/server"
+	serverclient "github.com/zestagio/chat-service/internal/server-client"
+	clienterrhandler "github.com/zestagio/chat-service/internal/server-client/errhandler"
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 	"github.com/zestagio/chat-service/internal/server/errhandler"
 	"github.com/zestagio/chat-service/internal/services/outbox"
 	"github.com/zestagio/chat-service/internal/store"
 	gethistory "github.com/zestagio/chat-service/internal/usecases/client/get-history"
 	sendmessage "github.com/zestagio/chat-service/internal/usecases/client/send-message"
+	websocketstream "github.com/zestagio/chat-service/internal/websocket-stream"
 )
 
 const nameServerClient = "server-client"
@@ -32,12 +36,14 @@ func initServerClient(
 	requiredResource string,
 	requiredRole string,
 
+	outBox *outbox.Service,
+
 	db *store.Database,
 	chatsRepo *chatsrepo.Repo,
 	msgRepo *messagesrepo.Repo,
 	problemsRepo *problemsrepo.Repo,
 
-	outboxSrv *outbox.Service,
+	wsHTTPHandler *websocketstream.HTTPHandler,
 ) (*server.Server, error) {
 	getHistoryUseCase, err := gethistory.New(gethistory.NewOptions(msgRepo))
 	if err != nil {
@@ -47,7 +53,7 @@ func initServerClient(
 	sendMessageUseCase, err := sendmessage.New(sendmessage.NewOptions(
 		chatsRepo,
 		msgRepo,
-		outboxSrv,
+		outBox,
 		problemsRepo,
 		db,
 	))
@@ -62,11 +68,7 @@ func initServerClient(
 
 	lg := zap.L().Named(nameServerClient)
 
-	httpErrorHandler, err := errhandler.New(errhandler.NewOptions(
-		lg,
-		productionMode,
-		errhandler.ResponseBuilder,
-	))
+	httpErrorHandler, err := errhandler.New(errhandler.NewOptions(lg, productionMode, clienterrhandler.ResponseBuilder))
 	if err != nil {
 		return nil, fmt.Errorf("create http error handler: %v", err)
 	}
@@ -78,11 +80,13 @@ func initServerClient(
 		keycloak,
 		requiredResource,
 		requiredRole,
-		v1Swagger,
-		func(router server.EchoRouter) {
-			clientv1.RegisterHandlers(router, v1Handlers)
-		},
-		httpErrorHandler.Handle,
+		serverclient.NewHandlersRegistrar(
+			v1Swagger,
+			v1Handlers,
+			httpErrorHandler.Handle,
+			middlewares.NewKeycloakTokenAuth(keycloak, requiredResource, requiredRole),
+		),
+		wsHTTPHandler,
 	))
 	if err != nil {
 		return nil, fmt.Errorf("build server: %v", err)

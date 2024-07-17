@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/zestagio/chat-service/internal/logger"
+	clientevents "github.com/zestagio/chat-service/internal/server-client/events"
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 	serverdebug "github.com/zestagio/chat-service/internal/server-debug"
 	managerv1 "github.com/zestagio/chat-service/internal/server-manager/v1"
@@ -31,7 +32,10 @@ func TestServer_LoggerLevel(t *testing.T) {
 	managerV1Swagger, err := managerv1.GetSwagger()
 	require.NoError(t, err)
 
-	srv, err := serverdebug.New(serverdebug.NewOptions(":80", clientV1Swagger, managerV1Swagger))
+	eventsSwagger, err := clientevents.GetSwagger()
+	require.NoError(t, err)
+
+	srv, err := serverdebug.New(serverdebug.NewOptions(":80", clientV1Swagger, managerV1Swagger, eventsSwagger))
 	require.NoError(t, err)
 
 	testSrv := httptest.NewServer(srv.Handler())

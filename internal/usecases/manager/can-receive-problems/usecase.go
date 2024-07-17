@@ -2,16 +2,9 @@ package canreceiveproblems
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/zestagio/chat-service/internal/types"
-)
-
-var (
-	ErrInvalidRequest      = errors.New("invalid request")
-	ErrManagerPoolContains = errors.New("manager pool error")
-	ErrManagerLoadService  = errors.New("manager load service error")
 )
 
 //go:generate mockgen -source=$GOFILE -destination=mocks/usecase_mock.gen.go -package=canreceiveproblemsmocks
@@ -26,8 +19,8 @@ type managerPool interface {
 
 //go:generate options-gen -out-filename=usecase_options.gen.go -from-struct=Options
 type Options struct {
-	managerLoadSrv managerLoadService `option:"mandatory" validate:"required"`
-	managerPool    managerPool        `option:"mandatory" validate:"required"`
+	mLoadSvc managerLoadService `option:"mandatory" validate:"required"`
+	mPool    managerPool        `option:"mandatory" validate:"required"`
 }
 
 type UseCase struct {
@@ -35,30 +28,25 @@ type UseCase struct {
 }
 
 func New(opts Options) (UseCase, error) {
-	if err := opts.Validate(); err != nil {
-		return UseCase{}, fmt.Errorf("validate options: %v", err)
-	}
-	return UseCase{Options: opts}, nil
+	return UseCase{Options: opts}, opts.Validate()
 }
 
 func (u UseCase) Handle(ctx context.Context, req Request) (Response, error) {
 	if err := req.Validate(); err != nil {
-		return Response{}, fmt.Errorf("validate request: %w: %v", ErrInvalidRequest, err)
+		return Response{}, err
 	}
 
-	inPool, err := u.managerPool.Contains(ctx, req.ManagerID)
+	alreadyInPool, err := u.mPool.Contains(ctx, req.ManagerID)
 	if err != nil {
-		return Response{}, ErrManagerPoolContains
+		return Response{}, fmt.Errorf("manager pool service call: %v", err)
+	}
+	if alreadyInPool {
+		return Response{Result: false}, nil
 	}
 
-	if inPool {
-		return Response{Available: false, InPool: true}, nil
-	}
-
-	canTakeProblem, err := u.managerLoadSrv.CanManagerTakeProblem(ctx, req.ManagerID)
+	result, err := u.mLoadSvc.CanManagerTakeProblem(ctx, req.ManagerID)
 	if err != nil {
-		return Response{}, ErrManagerLoadService
+		return Response{}, fmt.Errorf("manager load service call: %v", err)
 	}
-
-	return Response{Available: canTakeProblem, InPool: false}, nil
+	return Response{Result: result}, nil
 }

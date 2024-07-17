@@ -17,6 +17,5 @@ func ParseAndValidate(filename string) (Config, error) {
 	if err := validator.Validator.Struct(cfg); err != nil {
 		return Config{}, fmt.Errorf("validate: %v", err)
 	}
-
 	return cfg, nil
 }

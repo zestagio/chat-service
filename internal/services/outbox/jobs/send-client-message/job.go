@@ -7,8 +7,10 @@ import (
 	"go.uber.org/zap"
 
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
+	eventstream "github.com/zestagio/chat-service/internal/services/event-stream"
 	msgproducer "github.com/zestagio/chat-service/internal/services/msg-producer"
 	"github.com/zestagio/chat-service/internal/services/outbox"
+	"github.com/zestagio/chat-service/internal/services/outbox/jobs"
 	"github.com/zestagio/chat-service/internal/types"
 )
 
@@ -24,26 +26,38 @@ type messageRepository interface {
 	GetMessageByID(ctx context.Context, msgID types.MessageID) (*messagesrepo.Message, error)
 }
 
+type eventStream interface {
+	Publish(ctx context.Context, userID types.UserID, event eventstream.Event) error
+}
+
 //go:generate options-gen -out-filename=job_options.gen.go -from-struct=Options
 type Options struct {
 	msgProducer messageProducer   `option:"mandatory" validate:"required"`
 	msgRepo     messageRepository `option:"mandatory" validate:"required"`
+	eventStream eventStream       `option:"mandatory" validate:"required"`
 }
 
 type Job struct {
 	outbox.DefaultJob
 	Options
-	lg *zap.Logger
+	logger *zap.Logger
+}
+
+func Must(opts Options) *Job {
+	j, err := New(opts)
+	if err != nil {
+		panic(err)
+	}
+	return j
 }
 
 func New(opts Options) (*Job, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, fmt.Errorf("validate options: %v", err)
 	}
-
 	return &Job{
 		Options: opts,
-		lg:      zap.L().Named(Name),
+		logger:  zap.L().Named("job." + Name),
 	}, nil
 }
 
@@ -52,27 +66,39 @@ func (j *Job) Name() string {
 }
 
 func (j *Job) Handle(ctx context.Context, payload string) error {
-	msgID, err := unmarshalPayload(payload)
+	j.logger.Info("start processing", zap.String("payload", payload))
+
+	p, err := jobs.UnmarshalPayload(payload)
 	if err != nil {
-		j.lg.Error("unmarshal payload err", zap.Error(err))
-		return err
+		return fmt.Errorf("unmarshal payload: %v", err)
 	}
 
-	msg, err := j.msgRepo.GetMessageByID(ctx, msgID)
+	m, err := j.msgRepo.GetMessageByID(ctx, p.MessageID)
 	if err != nil {
-		j.lg.Error("get msg err", zap.Error(err))
-		return err
+		return fmt.Errorf("get message: %v", err)
 	}
 
 	if err := j.msgProducer.ProduceMessage(ctx, msgproducer.Message{
-		ID:         msg.ID,
-		ChatID:     msg.ChatID,
-		Body:       msg.Body,
+		ID:         m.ID,
+		ChatID:     m.ChatID,
+		Body:       m.Body,
 		FromClient: true,
 	}); err != nil {
-		j.lg.Error("produce msg err", zap.Error(err))
+		return fmt.Errorf("produce message to queue: %v", err)
 	}
 
-	j.lg.Info("msg produce successful")
+	if err := j.eventStream.Publish(ctx, m.AuthorID, eventstream.NewNewMessageEvent(
+		types.NewEventID(),
+		m.InitialRequestID,
+		m.ChatID,
+		m.ID,
+		m.AuthorID,
+		m.CreatedAt,
+		m.Body,
+		m.IsService,
+	)); err != nil {
+		return fmt.Errorf("publish message to event stream: %v", err)
+	}
+
 	return nil
 }

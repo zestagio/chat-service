@@ -295,16 +295,6 @@ func AvailableAtLTE(v time.Time) predicate.Job {
 	return predicate.Job(sql.FieldLTE(FieldAvailableAt, v))
 }
 
-// AvailableAtIsNil applies the IsNil predicate on the "available_at" field.
-func AvailableAtIsNil() predicate.Job {
-	return predicate.Job(sql.FieldIsNull(FieldAvailableAt))
-}
-
-// AvailableAtNotNil applies the NotNil predicate on the "available_at" field.
-func AvailableAtNotNil() predicate.Job {
-	return predicate.Job(sql.FieldNotNull(FieldAvailableAt))
-}
-
 // ReservedUntilEQ applies the EQ predicate on the "reserved_until" field.
 func ReservedUntilEQ(v time.Time) predicate.Job {
 	return predicate.Job(sql.FieldEQ(FieldReservedUntil, v))
@@ -343,16 +333,6 @@ func ReservedUntilLT(v time.Time) predicate.Job {
 // ReservedUntilLTE applies the LTE predicate on the "reserved_until" field.
 func ReservedUntilLTE(v time.Time) predicate.Job {
 	return predicate.Job(sql.FieldLTE(FieldReservedUntil, v))
-}
-
-// ReservedUntilIsNil applies the IsNil predicate on the "reserved_until" field.
-func ReservedUntilIsNil() predicate.Job {
-	return predicate.Job(sql.FieldIsNull(FieldReservedUntil))
-}
-
-// ReservedUntilNotNil applies the NotNil predicate on the "reserved_until" field.
-func ReservedUntilNotNil() predicate.Job {
-	return predicate.Job(sql.FieldNotNull(FieldReservedUntil))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

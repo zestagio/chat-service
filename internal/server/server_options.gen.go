@@ -4,7 +4,6 @@ package server
 import (
 	fmt461e464ebed9 "fmt"
 
-	"github.com/getkin/kin-openapi/openapi3"
 	errors461e464ebed9 "github.com/kazhuravlev/options-gen/pkg/errors"
 	validator461e464ebed9 "github.com/kazhuravlev/options-gen/pkg/validator"
 	"github.com/labstack/echo/v4"
@@ -21,9 +20,8 @@ func NewOptions(
 	introspector middlewares.Introspector,
 	requiredResource string,
 	requiredRole string,
-	v1Swagger *openapi3.T,
-	registerHandlers func(router EchoRouter),
-	errorHandler echo.HTTPErrorHandler,
+	handlersRegistrar func(e *echo.Echo),
+	wsHandler wsHTTPHandler,
 	options ...OptOptionsSetter,
 ) Options {
 	o := Options{}
@@ -42,11 +40,9 @@ func NewOptions(
 
 	o.requiredRole = requiredRole
 
-	o.v1Swagger = v1Swagger
+	o.handlersRegistrar = handlersRegistrar
 
-	o.registerHandlers = registerHandlers
-
-	o.errorHandler = errorHandler
+	o.wsHandler = wsHandler
 
 	for _, opt := range options {
 		opt(&o)
@@ -62,9 +58,8 @@ func (o *Options) Validate() error {
 	errs.Add(errors461e464ebed9.NewValidationError("introspector", _validate_Options_introspector(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("requiredResource", _validate_Options_requiredResource(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("requiredRole", _validate_Options_requiredRole(o)))
-	errs.Add(errors461e464ebed9.NewValidationError("v1Swagger", _validate_Options_v1Swagger(o)))
-	errs.Add(errors461e464ebed9.NewValidationError("registerHandlers", _validate_Options_registerHandlers(o)))
-	errs.Add(errors461e464ebed9.NewValidationError("errorHandler", _validate_Options_errorHandler(o)))
+	errs.Add(errors461e464ebed9.NewValidationError("handlersRegistrar", _validate_Options_handlersRegistrar(o)))
+	errs.Add(errors461e464ebed9.NewValidationError("wsHandler", _validate_Options_wsHandler(o)))
 	return errs.AsError()
 }
 
@@ -110,23 +105,16 @@ func _validate_Options_requiredRole(o *Options) error {
 	return nil
 }
 
-func _validate_Options_v1Swagger(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.v1Swagger, "required"); err != nil {
-		return fmt461e464ebed9.Errorf("field `v1Swagger` did not pass the test: %w", err)
+func _validate_Options_handlersRegistrar(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.handlersRegistrar, "required"); err != nil {
+		return fmt461e464ebed9.Errorf("field `handlersRegistrar` did not pass the test: %w", err)
 	}
 	return nil
 }
 
-func _validate_Options_registerHandlers(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.registerHandlers, "required"); err != nil {
-		return fmt461e464ebed9.Errorf("field `registerHandlers` did not pass the test: %w", err)
-	}
-	return nil
-}
-
-func _validate_Options_errorHandler(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.errorHandler, "required"); err != nil {
-		return fmt461e464ebed9.Errorf("field `errorHandler` did not pass the test: %w", err)
+func _validate_Options_wsHandler(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.wsHandler, "required"); err != nil {
+		return fmt461e464ebed9.Errorf("field `wsHandler` did not pass the test: %w", err)
 	}
 	return nil
 }
