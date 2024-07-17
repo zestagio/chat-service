@@ -228,23 +228,24 @@ func (c *Chat) HandleEvent(_ context.Context, data []byte) error {
 	switch vv := v.(type) {
 	case apiclientevents.NewMessageEvent:
 		msg := &Message{
-			ID:        vv.MessageID,
+			ID:        vv.MessageId,
 			Body:      vv.Body,
 			IsService: vv.IsService,
 			CreatedAt: vv.CreatedAt,
 		}
-		if uid := vv.AuthorID; uid != nil {
+		if uid := vv.AuthorId; uid != nil {
 			msg.AuthorID = *uid
 		}
 
 		c.addMessageToEnd(msg)
-	case apiclientevents.CommonEvent:
+
+	case apiclientevents.MessageId:
 		c.msgMu.Lock()
 		defer c.msgMu.Unlock()
 
-		msg, ok := c.messagesByID[vv.MessageID]
+		msg, ok := c.messagesByID[vv.MessageId]
 		if !ok {
-			return fmt.Errorf("unknown message: %v", vv.MessageID)
+			return fmt.Errorf("unknown message: %v", vv.MessageId)
 		}
 
 		switch event.EventType {
@@ -253,7 +254,6 @@ func (c *Chat) HandleEvent(_ context.Context, data []byte) error {
 
 		case "MessageBlockedEvent":
 			msg.IsBlocked = true
-		default:
 		}
 	}
 

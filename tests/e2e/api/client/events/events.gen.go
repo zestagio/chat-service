@@ -13,47 +13,36 @@ import (
 	"github.com/zestagio/chat-service/internal/types"
 )
 
-// Defines values for EventType.
-const (
-	EventTypeMessageBlockedEvent EventType = "MessageBlockedEvent"
-	EventTypeMessageSentEvent    EventType = "MessageSentEvent"
-	EventTypeNewMessageEvent     EventType = "NewMessageEvent"
-)
-
-// CommonEvent defines model for CommonEvent.
-type CommonEvent struct {
-	EventID   types.EventID   `json:"eventId"`
-	EventType EventType       `json:"eventType"`
-	MessageID types.MessageID `json:"messageId"`
-	RequestID types.RequestID `json:"requestId"`
-}
-
 // Event defines model for Event.
 type Event struct {
-	EventType EventType `json:"eventType"`
+	EventId   types.EventID   `json:"eventId"`
+	EventType string          `json:"eventType"`
+	RequestId types.RequestID `json:"requestId"`
 	union     json.RawMessage
 }
 
-// EventType defines model for EventType.
-type EventType string
-
-// MessageBlockedEvent defines model for MessageBlockedEvent.
-type MessageBlockedEvent = CommonEvent
-
-// MessageSentEvent defines model for MessageSentEvent.
-type MessageSentEvent = CommonEvent
-
-// NewMessageEvent defines model for NewMessageEvent.
-type NewMessageEvent struct {
-	AuthorID  *types.UserID   `json:"authorId,omitempty"`
+// Message defines model for Message.
+type Message struct {
+	AuthorId  *types.UserID   `json:"authorId,omitempty"`
 	Body      string          `json:"body"`
 	CreatedAt time.Time       `json:"createdAt"`
-	EventID   types.EventID   `json:"eventId"`
-	EventType EventType       `json:"eventType"`
 	IsService bool            `json:"isService"`
-	MessageID types.MessageID `json:"messageId"`
-	RequestID types.RequestID `json:"requestId"`
+	MessageId types.MessageID `json:"messageId"`
 }
+
+// MessageBlockedEvent defines model for MessageBlockedEvent.
+type MessageBlockedEvent = MessageId
+
+// MessageId defines model for MessageId.
+type MessageId struct {
+	MessageId types.MessageID `json:"messageId"`
+}
+
+// MessageSentEvent defines model for MessageSentEvent.
+type MessageSentEvent = MessageId
+
+// NewMessageEvent defines model for NewMessageEvent.
+type NewMessageEvent = Message
 
 // AsNewMessageEvent returns the union data inside the Event as a NewMessageEvent
 func (t Event) AsNewMessageEvent() (NewMessageEvent, error) {
@@ -183,9 +172,19 @@ func (t Event) MarshalJSON() ([]byte, error) {
 		}
 	}
 
+	object["eventId"], err = json.Marshal(t.EventId)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling 'eventId': %w", err)
+	}
+
 	object["eventType"], err = json.Marshal(t.EventType)
 	if err != nil {
 		return nil, fmt.Errorf("error marshaling 'eventType': %w", err)
+	}
+
+	object["requestId"], err = json.Marshal(t.RequestId)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling 'requestId': %w", err)
 	}
 
 	b, err = json.Marshal(object)
@@ -203,10 +202,24 @@ func (t *Event) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
+	if raw, found := object["eventId"]; found {
+		err = json.Unmarshal(raw, &t.EventId)
+		if err != nil {
+			return fmt.Errorf("error reading 'eventId': %w", err)
+		}
+	}
+
 	if raw, found := object["eventType"]; found {
 		err = json.Unmarshal(raw, &t.EventType)
 		if err != nil {
 			return fmt.Errorf("error reading 'eventType': %w", err)
+		}
+	}
+
+	if raw, found := object["requestId"]; found {
+		err = json.Unmarshal(raw, &t.RequestId)
+		if err != nil {
+			return fmt.Errorf("error reading 'requestId': %w", err)
 		}
 	}
 

@@ -20,7 +20,7 @@ import (
 	"github.com/zestagio/chat-service/internal/middlewares"
 	eventstream "github.com/zestagio/chat-service/internal/services/event-stream"
 	"github.com/zestagio/chat-service/internal/types"
-	websocketstream2 "github.com/zestagio/chat-service/internal/websocket-stream"
+	websocketstream "github.com/zestagio/chat-service/internal/websocket-stream"
 )
 
 func init() {
@@ -52,14 +52,14 @@ func TestHTTPHandler(t *testing.T) {
 
 	log := zap.L().Named("TestHTTPHandler")
 
-	h, err := websocketstream2.NewHTTPHandler(websocketstream2.NewOptions(
+	h, err := websocketstream.NewHTTPHandler(websocketstream.NewOptions(
 		zap.L(),
 		eventStreamMock{uid: uid, ch: eventsCh},
 		eventAdapter{},
-		websocketstream2.JSONEventWriter{},
-		websocketstream2.NewUpgrader([]string{origin}, secWsProtocol),
+		websocketstream.JSONEventWriter{},
+		websocketstream.NewUpgrader([]string{origin}, secWsProtocol),
 		shutdownCh,
-		websocketstream2.WithPingPeriod(pingInterval),
+		websocketstream.WithPingPeriod(pingInterval),
 	))
 	require.NoError(t, err)
 
@@ -96,7 +96,11 @@ func TestHTTPHandler(t *testing.T) {
 
 	events := make([]eventstream.Event, 0, eventsNum)
 	for i := 0; i < eventsNum; i++ {
-		events = append(events, new(eventstream.MessageSentEvent))
+		events = append(events, eventstream.NewMessageSentEvent(
+			types.NewEventID(),
+			types.NewRequestID(),
+			types.NewMessageID(),
+		))
 	}
 
 	go func() {

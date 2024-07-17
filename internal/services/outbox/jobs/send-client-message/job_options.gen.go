@@ -11,20 +11,20 @@ import (
 type OptOptionsSetter func(o *Options)
 
 func NewOptions(
+	eventStream eventStream,
 	msgProducer messageProducer,
 	msgRepo messageRepository,
-	eventStream eventStream,
 	options ...OptOptionsSetter,
 ) Options {
 	o := Options{}
 
 	// Setting defaults from field tag (if present)
 
+	o.eventStream = eventStream
+
 	o.msgProducer = msgProducer
 
 	o.msgRepo = msgRepo
-
-	o.eventStream = eventStream
 
 	for _, opt := range options {
 		opt(&o)
@@ -34,10 +34,17 @@ func NewOptions(
 
 func (o *Options) Validate() error {
 	errs := new(errors461e464ebed9.ValidationErrors)
+	errs.Add(errors461e464ebed9.NewValidationError("eventStream", _validate_Options_eventStream(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("msgProducer", _validate_Options_msgProducer(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("msgRepo", _validate_Options_msgRepo(o)))
-	errs.Add(errors461e464ebed9.NewValidationError("eventStream", _validate_Options_eventStream(o)))
 	return errs.AsError()
+}
+
+func _validate_Options_eventStream(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.eventStream, "required"); err != nil {
+		return fmt461e464ebed9.Errorf("field `eventStream` did not pass the test: %w", err)
+	}
+	return nil
 }
 
 func _validate_Options_msgProducer(o *Options) error {
@@ -50,13 +57,6 @@ func _validate_Options_msgProducer(o *Options) error {
 func _validate_Options_msgRepo(o *Options) error {
 	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.msgRepo, "required"); err != nil {
 		return fmt461e464ebed9.Errorf("field `msgRepo` did not pass the test: %w", err)
-	}
-	return nil
-}
-
-func _validate_Options_eventStream(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.eventStream, "required"); err != nil {
-		return fmt461e464ebed9.Errorf("field `eventStream` did not pass the test: %w", err)
 	}
 	return nil
 }

@@ -21,77 +21,69 @@ paths:
 
 components:
   schemas:
+    MessageId:
+      required: [ messageId ]
+      properties:
+        messageId:
+          type: string
+          format: uuid
+          x-go-type: types.MessageID
+          x-go-type-import:
+            path: "github.com/zestagio/chat-service/internal/types"
+
+    Message:
+      allOf:
+        - $ref: "#/components/schemas/MessageId"
+        - type: object
+          required: [ body, createdAt, isService ]
+          properties:
+            authorId:
+              type: string
+              format: uuid
+              x-go-type: types.UserID
+              x-go-type-import:
+                path: "github.com/zestagio/chat-service/internal/types"
+            body:
+              type: string
+            createdAt:
+              type: string
+              format: date-time
+            isService:
+              type: boolean
+
     Event:
-      required: [ eventType ]
+      required: [ eventType, eventId, requestId ]
       properties:
         eventType:
-          $ref: "#/components/schemas/EventType"
+          type: string
+        eventId:
+          type: string
+          format: uuid
+          x-go-type: types.EventID
+          x-go-type-import:
+            path: "github.com/zestagio/chat-service/internal/types"
+        requestId:
+          type: string
+          format: uuid
+          x-go-type: types.RequestID
+          x-go-type-import:
+            path: "github.com/zestagio/chat-service/internal/types"
       oneOf:
         - $ref: "#/components/schemas/NewMessageEvent"
         - $ref: "#/components/schemas/MessageSentEvent"
         - $ref: "#/components/schemas/MessageBlockedEvent"
       discriminator:
         propertyName: eventType
-
-    CommonEvent:
-      required: [ eventType, eventId, messageId, requestId ]
-      properties:
-        eventType:
-          $ref: "#/components/schemas/EventType"
-        eventId:
-          type: string
-          format: uuid
-          x-go-type: types.EventID
-          x-go-name: EventID
-          x-go-type-import:
-            path: "github.com/zestagio/chat-service/internal/types"
-        messageId:
-          type: string
-          format: uuid
-          x-go-name: MessageID
-          x-go-type: types.MessageID
-          x-go-type-import:
-            path: "github.com/zestagio/chat-service/internal/types"
-        requestId:
-          type: string
-          format: uuid
-          x-go-name: RequestID
-          x-go-type: types.RequestID
-          x-go-type-import:
-            path: "github.com/zestagio/chat-service/internal/types"
+        mapping:
+          NewMessageEvent: "#/components/schemas/NewMessageEvent"
+          MessageSentEvent: "#/components/schemas/MessageSentEvent"
+          MessageBlockedEvent: "#/components/schemas/MessageBlockedEvent"
 
     NewMessageEvent:
-      allOf:
-        - $ref: "#/components/schemas/CommonEvent"
-        - type: object
-          required: [ createdAt, isService, body ]
-          properties:
-            authorId:
-              type: string
-              format: uuid
-              x-go-name: AuthorID
-              x-go-type: types.UserID
-              x-go-type-import:
-                path: "github.com/zestagio/chat-service/internal/types"
-            createdAt:
-              type: string
-              format: date-time
-            body:
-              type: string
-            isService:
-              type: boolean
+      $ref: "#/components/schemas/Message"
 
     MessageSentEvent:
-      allOf:
-        - $ref: "#/components/schemas/CommonEvent"
+      $ref: "#/components/schemas/MessageId"
 
     MessageBlockedEvent:
-      allOf:
-        - $ref: "#/components/schemas/CommonEvent"
-
-    EventType:
-      type: string
-      enum:
-        - NewMessageEvent
-        - MessageSentEvent
-        - MessageBlockedEvent
+      $ref: "#/components/schemas/MessageId"

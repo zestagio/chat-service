@@ -65,7 +65,7 @@ func (s *UseCaseSuite) TestRequestValidationError() {
 
 	// Assert.
 	s.Require().Error(err)
-	s.Require().ErrorIs(err, sendmessage.ErrInvalidRequest)
+	s.ErrorIs(err, sendmessage.ErrInvalidRequest)
 }
 
 func (s *UseCaseSuite) TestGetMessageByRequestID_UnexpectedError() {

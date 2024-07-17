@@ -22,10 +22,6 @@ const (
 	shutdownTimeout   = 3 * time.Second
 )
 
-type wsHTTPHandler interface {
-	Serve(eCtx echo.Context) error
-}
-
 //go:generate options-gen -out-filename=server_options.gen.go -from-struct=Options
 type Options struct {
 	logger            *zap.Logger              `option:"mandatory" validate:"required"`
@@ -34,8 +30,9 @@ type Options struct {
 	introspector      middlewares.Introspector `option:"mandatory" validate:"required"`
 	requiredResource  string                   `option:"mandatory" validate:"required"`
 	requiredRole      string                   `option:"mandatory" validate:"required"`
+	secWsProtocol     string                   `option:"mandatory" validate:"required"`
 	handlersRegistrar func(e *echo.Echo)       `option:"mandatory" validate:"required"`
-	wsHandler         wsHTTPHandler            `option:"mandatory" validate:"required"`
+	shutdown          func()                   `option:"mandatory" validate:"required"`
 }
 
 type Server struct {
@@ -56,13 +53,13 @@ func New(opts Options) (*Server, error) {
 			AllowOrigins: opts.allowOrigins,
 			AllowMethods: []string{http.MethodPost},
 		}),
+		middlewares.NewKeycloakTokenAuth(
+			opts.introspector,
+			opts.requiredResource,
+			opts.requiredRole,
+			opts.secWsProtocol,
+		),
 		echomdlwr.BodyLimit(bodyLimit),
-	)
-
-	e.GET(
-		"/ws",
-		opts.wsHandler.Serve,
-		middlewares.NewKeycloakWSTokenAuth(opts.introspector, opts.requiredResource, opts.requiredRole),
 	)
 
 	opts.handlersRegistrar(e)
@@ -72,6 +69,9 @@ func New(opts Options) (*Server, error) {
 		Handler:           e,
 		ReadHeaderTimeout: readHeaderTimeout,
 	}
+
+	// Register custom shutdown function to directly stop long-living connections like websockets.
+	srv.RegisterOnShutdown(opts.shutdown)
 
 	return &Server{
 		lg:  opts.logger,

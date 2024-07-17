@@ -70,6 +70,7 @@ func (s *MsgRepoAPISuite) Test_GetMessageByID() {
 		s.Equal(expectedMsg.IsVisibleForManager, actualMsg.IsVisibleForManager)
 		s.Equal(expectedMsg.IsBlocked, actualMsg.IsBlocked)
 		s.Equal(expectedMsg.IsService, actualMsg.IsService)
+		s.Equal(expectedMsg.InitialRequestID, actualMsg.InitialRequestID)
 	})
 
 	s.Run("message does not exist", func() {
@@ -115,6 +116,7 @@ func (s *MsgRepoAPISuite) Test_GetMessageByRequestID() {
 		s.Equal(expectedMsg.IsVisibleForManager, actualMsg.IsVisibleForManager)
 		s.Equal(expectedMsg.IsBlocked, actualMsg.IsBlocked)
 		s.Equal(expectedMsg.IsService, actualMsg.IsService)
+		s.Equal(expectedMsg.InitialRequestID, actualMsg.InitialRequestID)
 	})
 
 	s.Run("message does not exist", func() {

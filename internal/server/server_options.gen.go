@@ -20,8 +20,9 @@ func NewOptions(
 	introspector middlewares.Introspector,
 	requiredResource string,
 	requiredRole string,
+	secWsProtocol string,
 	handlersRegistrar func(e *echo.Echo),
-	wsHandler wsHTTPHandler,
+	shutdown func(),
 	options ...OptOptionsSetter,
 ) Options {
 	o := Options{}
@@ -40,9 +41,11 @@ func NewOptions(
 
 	o.requiredRole = requiredRole
 
+	o.secWsProtocol = secWsProtocol
+
 	o.handlersRegistrar = handlersRegistrar
 
-	o.wsHandler = wsHandler
+	o.shutdown = shutdown
 
 	for _, opt := range options {
 		opt(&o)
@@ -58,8 +61,9 @@ func (o *Options) Validate() error {
 	errs.Add(errors461e464ebed9.NewValidationError("introspector", _validate_Options_introspector(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("requiredResource", _validate_Options_requiredResource(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("requiredRole", _validate_Options_requiredRole(o)))
+	errs.Add(errors461e464ebed9.NewValidationError("secWsProtocol", _validate_Options_secWsProtocol(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("handlersRegistrar", _validate_Options_handlersRegistrar(o)))
-	errs.Add(errors461e464ebed9.NewValidationError("wsHandler", _validate_Options_wsHandler(o)))
+	errs.Add(errors461e464ebed9.NewValidationError("shutdown", _validate_Options_shutdown(o)))
 	return errs.AsError()
 }
 
@@ -105,6 +109,13 @@ func _validate_Options_requiredRole(o *Options) error {
 	return nil
 }
 
+func _validate_Options_secWsProtocol(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.secWsProtocol, "required"); err != nil {
+		return fmt461e464ebed9.Errorf("field `secWsProtocol` did not pass the test: %w", err)
+	}
+	return nil
+}
+
 func _validate_Options_handlersRegistrar(o *Options) error {
 	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.handlersRegistrar, "required"); err != nil {
 		return fmt461e464ebed9.Errorf("field `handlersRegistrar` did not pass the test: %w", err)
@@ -112,9 +123,9 @@ func _validate_Options_handlersRegistrar(o *Options) error {
 	return nil
 }
 
-func _validate_Options_wsHandler(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.wsHandler, "required"); err != nil {
-		return fmt461e464ebed9.Errorf("field `wsHandler` did not pass the test: %w", err)
+func _validate_Options_shutdown(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.shutdown, "required"); err != nil {
+		return fmt461e464ebed9.Errorf("field `shutdown` did not pass the test: %w", err)
 	}
 	return nil
 }

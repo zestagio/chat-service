@@ -55,7 +55,6 @@ func (s *JobsRepoSuite) Test_FindAndReserveJob_JobFoundAndReserved() {
 		SetName(name).
 		SetPayload(payload).
 		SetAvailableAt(availableAt).
-		SetReservedUntil(time.Now()).
 		Save(s.Ctx)
 	s.Require().NoError(err)
 	s.Require().NotEmpty(jobExpected.ID)

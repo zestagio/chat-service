@@ -1,5 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Run E2E tests" type="GoTestRunConfiguration" factoryName="Go Test">
+    <module name="chat-service" />
     <working_directory value="$PROJECT_DIR$/tests/e2e" />
     <useCustomBuildTags value="true" />
     <EXTENSION ID="net.ashald.envfile">

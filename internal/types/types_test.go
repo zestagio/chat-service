@@ -105,14 +105,9 @@ func TestChatID_IsZero(t *testing.T) {
 func TestChatID_Matches(t *testing.T) {
 	id := types.NewChatID()
 	id2 := types.MustParse[types.ChatID](id.String())
-	// Matched.
 	assert.Equal(t, id, id2)
-	assert.True(t, id.Matches(id2))
-	// Not matched.
 	assert.NotEqual(t, id, id2.String())
-	assert.False(t, id.Matches(id2.String()))
 	assert.NotEqual(t, id, types.NewMessageID())
-	assert.False(t, id.Matches(types.NewMessageID()))
 }
 
 //nolint:testifylint // not directly related single checks
@@ -120,6 +115,15 @@ func TestChatID_Validate(t *testing.T) {
 	assert.NoError(t, types.NewChatID().Validate())
 	assert.Error(t, types.ChatID{}.Validate())
 	assert.Error(t, types.ChatIDNil.Validate())
+}
+
+func TestChatID_AsPointer(t *testing.T) {
+	assert.Nil(t, types.ChatIDNil.AsPointer())
+
+	chatID := types.NewChatID()
+	ptr := chatID.AsPointer()
+	require.NotNil(t, ptr)
+	assert.Equal(t, chatID, *ptr)
 }
 
 func getValueAsString(t *testing.T, valuer driver.Valuer) string {

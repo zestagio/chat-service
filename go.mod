@@ -6,6 +6,7 @@ require (
 	entgo.io/ent v0.13.1
 	github.com/BurntSushi/toml v1.4.0
 	github.com/TheZeroSlave/zapsentry v1.22.1
+	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/getkin/kin-openapi v0.125.0
 	github.com/getsentry/sentry-go v0.20.0
 	github.com/go-playground/validator/v10 v10.21.0
@@ -14,6 +15,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
+	github.com/imkira/go-observer v1.0.3
 	github.com/jackc/pgx/v5 v5.6.0
 	github.com/kazhuravlev/options-gen v0.33.0
 	github.com/kelseyhightower/envconfig v1.4.0

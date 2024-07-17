@@ -15,7 +15,10 @@ import (
 
 //go:generate mockgen -source=$GOFILE -destination=mocks/introspector_mock.gen.go -package=middlewaresmocks Introspector
 
-const tokenCtxKey = "user-token"
+const (
+	tokenCtxKey                = "user-token"
+	headerSecWebSocketProtocol = "Sec-WebSocket-Protocol"
+)
 
 var ErrNoRequiredResourceRole = errors.New("no required resource role")
 
@@ -25,50 +28,48 @@ type Introspector interface {
 
 // NewKeycloakTokenAuth returns a middleware that implements "active" authentication:
 // each request is verified by the Keycloak server.
-func NewKeycloakTokenAuth(introspector Introspector, resource, role string) echo.MiddlewareFunc {
+func NewKeycloakTokenAuth(introspector Introspector, resource, role, secWsProtocol string) echo.MiddlewareFunc {
 	return middleware.KeyAuthWithConfig(middleware.KeyAuthConfig{
-		KeyLookup:  "header:" + echo.HeaderAuthorization,
+		KeyLookup: strings.Join([]string{
+			"header:" + echo.HeaderAuthorization,
+			"header:" + headerSecWebSocketProtocol + ":" + secWsProtocol,
+		}, ","),
 		AuthScheme: "Bearer",
-		Validator:  validator(introspector, resource, role),
+		Validator: func(tokenStr string, eCtx echo.Context) (bool, error) {
+			tokenStr = sanitize(tokenStr)
+
+			res, err := introspector.IntrospectToken(eCtx.Request().Context(), tokenStr)
+			if err != nil {
+				return false, err
+			}
+			if !res.Active {
+				return false, nil
+			}
+
+			var cl claims
+			t, _, err := new(jwt.Parser).ParseUnverified(tokenStr, &cl)
+			if err != nil {
+				// Unreachable.
+				return false, err
+			}
+			if err := t.Claims.Valid(); err != nil {
+				return false, err
+			}
+			if !cl.ResourcesAccess.HasResourceRole(resource, role) {
+				return false, echo.ErrForbidden.WithInternal(ErrNoRequiredResourceRole)
+			}
+
+			eCtx.Set(tokenCtxKey, t)
+			return true, nil
+		},
 	})
 }
 
-func NewKeycloakWSTokenAuth(introspector Introspector, resource, role string) echo.MiddlewareFunc {
-	return middleware.KeyAuthWithConfig(middleware.KeyAuthConfig{
-		KeyLookup:  "header:Sec-WebSocket-Protocol",
-		AuthScheme: "chat-service-protocol,",
-		Validator:  validator(introspector, resource, role),
-	})
-}
-
-func validator(introspector Introspector, resource, role string) func(tokenStr string, eCtx echo.Context) (bool, error) {
-	return func(tokenStr string, eCtx echo.Context) (bool, error) {
-		tokenStr, _ = strings.CutPrefix(tokenStr, "chat-service-protocol, ")
-
-		res, err := introspector.IntrospectToken(eCtx.Request().Context(), tokenStr)
-		if err != nil {
-			return false, err
-		}
-		if !res.Active {
-			return false, nil
-		}
-
-		var cl claims
-		t, _, err := new(jwt.Parser).ParseUnverified(tokenStr, &cl)
-		if err != nil {
-			// Unreachable.
-			return false, err
-		}
-		if err := t.Claims.Valid(); err != nil {
-			return false, err
-		}
-		if !cl.ResourcesAccess.HasResourceRole(resource, role) {
-			return false, echo.ErrForbidden.WithInternal(ErrNoRequiredResourceRole)
-		}
-
-		eCtx.Set(tokenCtxKey, t)
-		return true, nil
+func sanitize(t string) string {
+	for _, ch := range []string{" ", ","} {
+		t = strings.ReplaceAll(t, ch, "")
 	}
+	return t
 }
 
 func MustUserID(eCtx echo.Context) types.UserID {

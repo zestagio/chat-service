@@ -7,12 +7,12 @@ import (
 	"go.uber.org/zap"
 
 	keycloakclient "github.com/zestagio/chat-service/internal/clients/keycloak"
-	"github.com/zestagio/chat-service/internal/middlewares"
 	"github.com/zestagio/chat-service/internal/server"
 	servermanager "github.com/zestagio/chat-service/internal/server-manager"
 	managererrhandler "github.com/zestagio/chat-service/internal/server-manager/errhandler"
 	managerv1 "github.com/zestagio/chat-service/internal/server-manager/v1"
 	"github.com/zestagio/chat-service/internal/server/errhandler"
+	eventstream "github.com/zestagio/chat-service/internal/services/event-stream"
 	managerload "github.com/zestagio/chat-service/internal/services/manager-load"
 	managerpool "github.com/zestagio/chat-service/internal/services/manager-pool"
 	canreceiveproblems "github.com/zestagio/chat-service/internal/usecases/manager/can-receive-problems"
@@ -32,11 +32,11 @@ func initServerManager(
 	keycloak *keycloakclient.Client,
 	requiredResource string,
 	requiredRole string,
+	secWsProtocol string,
 
+	eventStream eventstream.EventStream,
 	mLoadSvc *managerload.Service,
 	mPool managerpool.Pool,
-
-	wsHTTPHandler *websocketstream.HTTPHandler,
 ) (*server.Server, error) {
 	canReceiveProblemsUseCase, err := canreceiveproblems.New(canreceiveproblems.NewOptions(mLoadSvc, mPool))
 	if err != nil {
@@ -56,7 +56,24 @@ func initServerManager(
 		return nil, fmt.Errorf("create v1 handlers: %v", err)
 	}
 
+	shutdownCh := make(chan struct{})
+	shutdownFn := func() {
+		close(shutdownCh)
+	}
+
 	lg := zap.L().Named(nameServerManager)
+
+	wsHandler, err := websocketstream.NewHTTPHandler(websocketstream.NewOptions(
+		lg,
+		eventStream,
+		dummyAdapter{},
+		websocketstream.JSONEventWriter{},
+		websocketstream.NewUpgrader(allowOrigins, secWsProtocol),
+		shutdownCh,
+	))
+	if err != nil {
+		return nil, fmt.Errorf("create ws handler: %v", err)
+	}
 
 	httpErrorHandler, err := errhandler.New(errhandler.NewOptions(lg, productionMode, managererrhandler.ResponseBuilder))
 	if err != nil {
@@ -70,17 +87,19 @@ func initServerManager(
 		keycloak,
 		requiredResource,
 		requiredRole,
-		servermanager.NewHandlersRegistrar(
-			v1Swagger,
-			v1Handlers,
-			httpErrorHandler.Handle,
-			middlewares.NewKeycloakTokenAuth(keycloak, requiredResource, requiredRole),
-		),
-		wsHTTPHandler,
+		secWsProtocol,
+		servermanager.NewHandlersRegistrar(v1Swagger, v1Handlers, wsHandler.Serve, httpErrorHandler.Handle),
+		shutdownFn,
 	))
 	if err != nil {
 		return nil, fmt.Errorf("build server: %v", err)
 	}
 
 	return srv, nil
+}
+
+type dummyAdapter struct{}
+
+func (dummyAdapter) Adapt(event eventstream.Event) (any, error) {
+	return event, nil
 }

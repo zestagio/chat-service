@@ -29,13 +29,18 @@ func TestServer_LoggerLevel(t *testing.T) {
 	clientV1Swagger, err := clientv1.GetSwagger()
 	require.NoError(t, err)
 
+	clientEventsSwagger, err := clientevents.GetSwagger()
+	require.NoError(t, err)
+
 	managerV1Swagger, err := managerv1.GetSwagger()
 	require.NoError(t, err)
 
-	eventsSwagger, err := clientevents.GetSwagger()
-	require.NoError(t, err)
-
-	srv, err := serverdebug.New(serverdebug.NewOptions(":80", clientV1Swagger, managerV1Swagger, eventsSwagger))
+	srv, err := serverdebug.New(serverdebug.NewOptions(
+		":80",
+		clientV1Swagger,
+		clientEventsSwagger,
+		managerV1Swagger,
+	))
 	require.NoError(t, err)
 
 	testSrv := httptest.NewServer(srv.Handler())
