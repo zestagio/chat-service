@@ -77,6 +77,7 @@ type KeycloakConfig struct {
 type ServicesConfig struct {
 	AFCVerdictsProcessor AFCVerdictsProcessorConfig `toml:"afc_verdicts_processor"`
 	ManagerLoad          ManagerLoadConfig          `toml:"manager_load"`
+	ManagerScheduler     ManagerSchedulerConfig     `toml:"manager_scheduler"`
 	MsgProducer          MsgProducerConfig          `toml:"msg_producer"`
 	Outbox               OutboxConfig               `toml:"outbox"`
 }
@@ -93,6 +94,10 @@ type AFCVerdictsProcessorConfig struct {
 
 type ManagerLoadConfig struct {
 	MaxProblemsAtSameTime int `toml:"max_problems_at_same_time" validate:"min=1,max=30"`
+}
+
+type ManagerSchedulerConfig struct {
+	Period time.Duration `toml:"period" validate:"required,min=1s,max=10s"`
 }
 
 type MsgProducerConfig struct {

@@ -2240,9 +2240,22 @@ func (m *MessageMutation) OldInitialRequestID(ctx context.Context) (v types.Requ
 	return oldValue.InitialRequestID, nil
 }
 
+// ClearInitialRequestID clears the value of the "initial_request_id" field.
+func (m *MessageMutation) ClearInitialRequestID() {
+	m.initial_request_id = nil
+	m.clearedFields[message.FieldInitialRequestID] = struct{}{}
+}
+
+// InitialRequestIDCleared returns if the "initial_request_id" field was cleared in this mutation.
+func (m *MessageMutation) InitialRequestIDCleared() bool {
+	_, ok := m.clearedFields[message.FieldInitialRequestID]
+	return ok
+}
+
 // ResetInitialRequestID resets all changes to the "initial_request_id" field.
 func (m *MessageMutation) ResetInitialRequestID() {
 	m.initial_request_id = nil
+	delete(m.clearedFields, message.FieldInitialRequestID)
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -2586,6 +2599,9 @@ func (m *MessageMutation) ClearedFields() []string {
 	if m.FieldCleared(message.FieldCheckedAt) {
 		fields = append(fields, message.FieldCheckedAt)
 	}
+	if m.FieldCleared(message.FieldInitialRequestID) {
+		fields = append(fields, message.FieldInitialRequestID)
+	}
 	return fields
 }
 
@@ -2605,6 +2621,9 @@ func (m *MessageMutation) ClearField(name string) error {
 		return nil
 	case message.FieldCheckedAt:
 		m.ClearCheckedAt()
+		return nil
+	case message.FieldInitialRequestID:
+		m.ClearInitialRequestID()
 		return nil
 	}
 	return fmt.Errorf("unknown Message nullable field %s", name)

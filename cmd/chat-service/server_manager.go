@@ -10,6 +10,7 @@ import (
 	"github.com/zestagio/chat-service/internal/server"
 	servermanager "github.com/zestagio/chat-service/internal/server-manager"
 	managererrhandler "github.com/zestagio/chat-service/internal/server-manager/errhandler"
+	managerevents "github.com/zestagio/chat-service/internal/server-manager/events"
 	managerv1 "github.com/zestagio/chat-service/internal/server-manager/v1"
 	"github.com/zestagio/chat-service/internal/server/errhandler"
 	eventstream "github.com/zestagio/chat-service/internal/services/event-stream"
@@ -66,7 +67,7 @@ func initServerManager(
 	wsHandler, err := websocketstream.NewHTTPHandler(websocketstream.NewOptions(
 		lg,
 		eventStream,
-		dummyAdapter{},
+		managerevents.Adapter{},
 		websocketstream.JSONEventWriter{},
 		websocketstream.NewUpgrader(allowOrigins, secWsProtocol),
 		shutdownCh,
@@ -96,10 +97,4 @@ func initServerManager(
 	}
 
 	return srv, nil
-}
-
-type dummyAdapter struct{}
-
-func (dummyAdapter) Adapt(event eventstream.Event) (any, error) {
-	return event, nil
 }

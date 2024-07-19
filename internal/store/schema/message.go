@@ -31,7 +31,7 @@ func (Message) Fields() []ent.Field {
 		field.Time("checked_at").Optional(),
 		field.Bool("is_blocked").Default(false),
 		field.Bool("is_service").Default(false).Immutable(),
-		field.UUID("initial_request_id", types.RequestID{}).Unique().Immutable(),
+		field.UUID("initial_request_id", types.RequestID{}).Optional().Unique().Immutable(),
 		field.Time("created_at").Default(time.Now).Immutable(),
 	}
 }

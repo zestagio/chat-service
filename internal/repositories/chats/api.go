@@ -26,3 +26,13 @@ func (r *Repo) CreateIfNotExists(ctx context.Context, userID types.UserID) (type
 
 	return chatID, nil
 }
+
+func (r *Repo) GetChatByID(ctx context.Context, chatID types.ChatID) (*Chat, error) {
+	c, err := r.db.Chat(ctx).Get(ctx, chatID)
+	if err != nil {
+		return nil, fmt.Errorf("query chat by id: %v", err)
+	}
+
+	cc := adaptStoreChat(c)
+	return &cc, nil
+}

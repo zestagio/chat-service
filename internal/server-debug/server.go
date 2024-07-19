@@ -31,7 +31,8 @@ type Options struct {
 	clientSwagger       *openapi3.T `option:"mandatory" validate:"required"`
 	clientEventsSwagger *openapi3.T `option:"mandatory" validate:"required"`
 
-	managerSwagger *openapi3.T `option:"mandatory" validate:"required"`
+	managerSwagger       *openapi3.T `option:"mandatory" validate:"required"`
+	managerEventsSwagger *openapi3.T `option:"mandatory" validate:"required"`
 }
 
 type Server struct {
@@ -93,6 +94,9 @@ func New(opts Options) (*Server, error) {
 
 		e.GET("/schema/manager", s.ExposeSchema(opts.managerSwagger))
 		index.addPage("/schema/manager", "Get manager OpenAPI specification")
+
+		e.GET("/schema/managerevents", s.ExposeSchema(opts.managerEventsSwagger))
+		index.addPage("/schema/managerevents", "Get manager events OpenAPI specification")
 	}
 
 	e.GET("/", index.handler)

@@ -8,6 +8,7 @@ services:
         {url: 'doc/client.v1.swagger.yml', name: 'Bank Support Chat Client API'},
         {url: 'doc/client.events.swagger.yml', name: 'Bank Support Client Events'},
         {url: 'doc/manager.v1.swagger.yml', name: 'Bank Support Chat Manager API'},
+        {url: 'doc/manager.events.swagger.yml', name: 'Bank Support Manager Events'},
       ]"
     profiles: [ swagger-ui ]
     volumes:

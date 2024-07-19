@@ -23,15 +23,18 @@ import (
 	clientevents "github.com/zestagio/chat-service/internal/server-client/events"
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 	serverdebug "github.com/zestagio/chat-service/internal/server-debug"
+	managerevents "github.com/zestagio/chat-service/internal/server-manager/events"
 	managerv1 "github.com/zestagio/chat-service/internal/server-manager/v1"
 	afcverdictsprocessor "github.com/zestagio/chat-service/internal/services/afc-verdicts-processor"
 	inmemeventstream "github.com/zestagio/chat-service/internal/services/event-stream/in-mem"
 	managerload "github.com/zestagio/chat-service/internal/services/manager-load"
 	inmemmanagerpool "github.com/zestagio/chat-service/internal/services/manager-pool/in-mem"
+	managerscheduler "github.com/zestagio/chat-service/internal/services/manager-scheduler"
 	msgproducer "github.com/zestagio/chat-service/internal/services/msg-producer"
 	"github.com/zestagio/chat-service/internal/services/outbox"
 	clientmessageblockedjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/client-message-blocked"
 	clientmessagesentjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/client-message-sent"
+	managerassignedtoproblemjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/manager-assigned-to-problem"
 	sendclientmessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-client-message"
 	"github.com/zestagio/chat-service/internal/store"
 )
@@ -187,11 +190,26 @@ func run() (errReturned error) {
 		return fmt.Errorf("create afc verdicts processor: %v", err)
 	}
 
+	managerScheduler, err := managerscheduler.New(managerscheduler.NewOptions(
+		cfg.Services.ManagerScheduler.Period,
+		managerPool,
+		msgRepo,
+		problemsRepo,
+		outBox,
+		db,
+	))
+	if err != nil {
+		return fmt.Errorf("create manager scheduler: %v", err)
+	}
+
 	// Application Services. Jobs.
 	for _, j := range []outbox.Job{
 		clientmessageblockedjob.Must(clientmessageblockedjob.NewOptions(eventsStream, msgRepo)),
 		clientmessagesentjob.Must(clientmessagesentjob.NewOptions(eventsStream, msgRepo)),
 		sendclientmessagejob.Must(sendclientmessagejob.NewOptions(eventsStream, msgProducer, msgRepo)),
+		managerassignedtoproblemjob.Must(
+			managerassignedtoproblemjob.NewOptions(eventsStream, chatsRepo, problemsRepo, msgRepo, managerLoad),
+		),
 	} {
 		outBox.MustRegisterJob(j)
 	}
@@ -249,11 +267,17 @@ func run() (errReturned error) {
 		return fmt.Errorf("get client events swagger: %v", err)
 	}
 
+	managerEventsSwagger, err := managerevents.GetSwagger()
+	if err != nil {
+		return fmt.Errorf("get manager events swagger: %v", err)
+	}
+
 	srvDebug, err := serverdebug.New(serverdebug.NewOptions(
 		cfg.Servers.Debug.Addr,
 		clientV1Swagger,
 		clientEventsSwagger,
 		managerV1Swagger,
+		managerEventsSwagger,
 	))
 	if err != nil {
 		return fmt.Errorf("init debug server: %v", err)
@@ -269,6 +293,7 @@ func run() (errReturned error) {
 	// Run services.
 	eg.Go(func() error { return outBox.Run(ctx) })
 	eg.Go(func() error { return afcVerdictsProcessor.Run(ctx) })
+	eg.Go(func() error { return managerScheduler.Run(ctx) })
 
 	if err = eg.Wait(); err != nil && !errors.Is(err, context.Canceled) {
 		return fmt.Errorf("wait app stop: %v", err)

@@ -134,6 +134,14 @@ func (mc *MessageCreate) SetInitialRequestID(ti types.RequestID) *MessageCreate 
 	return mc
 }
 
+// SetNillableInitialRequestID sets the "initial_request_id" field if the given value is not nil.
+func (mc *MessageCreate) SetNillableInitialRequestID(ti *types.RequestID) *MessageCreate {
+	if ti != nil {
+		mc.SetInitialRequestID(*ti)
+	}
+	return mc
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (mc *MessageCreate) SetCreatedAt(t time.Time) *MessageCreate {
 	mc.mutation.SetCreatedAt(t)
@@ -275,9 +283,6 @@ func (mc *MessageCreate) check() error {
 	}
 	if _, ok := mc.mutation.IsService(); !ok {
 		return &ValidationError{Name: "is_service", err: errors.New(`store: missing required field "Message.is_service"`)}
-	}
-	if _, ok := mc.mutation.InitialRequestID(); !ok {
-		return &ValidationError{Name: "initial_request_id", err: errors.New(`store: missing required field "Message.initial_request_id"`)}
 	}
 	if v, ok := mc.mutation.InitialRequestID(); ok {
 		if err := v.Validate(); err != nil {

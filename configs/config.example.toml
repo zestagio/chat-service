@@ -63,6 +63,9 @@ dpuCt+cAdO3CEB1vZQIDAQAB
 [services.manager_load]
 max_problems_at_same_time = 5
 
+[services.manager_scheduler]
+period = "1s"
+
 [services.msg_producer]
 brokers = ["localhost:9092"]
 topic = "chat.messages"

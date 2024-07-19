@@ -35,6 +35,16 @@ func (r *Repo) CreateIfNotExists(ctx context.Context, chatID types.ChatID) (type
 	return p.ID, nil
 }
 
+func (r *Repo) GetProblemByID(ctx context.Context, problemID types.ProblemID) (*Problem, error) {
+	p, err := r.db.Problem(ctx).Get(ctx, problemID)
+	if err != nil {
+		return nil, fmt.Errorf("query problem by id: %v", err)
+	}
+
+	pp := adaptStoreProblem(p)
+	return &pp, nil
+}
+
 func (r *Repo) GetManagerOpenProblemsCount(ctx context.Context, managerID types.UserID) (int, error) {
 	return r.db.Problem(ctx).Query().
 		Unique(false).
