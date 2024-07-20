@@ -87,5 +87,21 @@ func (j *Job) Handle(ctx context.Context, payload string) error {
 		return nil
 	})
 
+	wg.Go(func() error {
+		if err := j.eventStream.Publish(ctx, msg.ManagerID, eventstream.NewNewMessageEvent(
+			types.NewEventID(),
+			msg.InitialRequestID,
+			msg.ChatID,
+			msg.ID,
+			msg.AuthorID,
+			msg.CreatedAt,
+			msg.Body,
+			msg.IsService,
+		)); err != nil {
+			return fmt.Errorf("publish NewMessageEvent to manager: %v", err)
+		}
+		return nil
+	})
+
 	return wg.Wait()
 }
