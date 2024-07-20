@@ -39,18 +39,18 @@ func (m *MockproblemRepository) EXPECT() *MockproblemRepositoryMockRecorder {
 }
 
 // GetAvailableProblems mocks base method.
-func (m *MockproblemRepository) GetAvailableProblems(arg0 context.Context) ([]problemsrepo.Problem, error) {
+func (m *MockproblemRepository) GetAvailableProblems(ctx context.Context) ([]problemsrepo.Problem, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAvailableProblems", arg0)
+	ret := m.ctrl.Call(m, "GetAvailableProblems", ctx)
 	ret0, _ := ret[0].([]problemsrepo.Problem)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetAvailableProblems indicates an expected call of GetAvailableProblems.
-func (mr *MockproblemRepositoryMockRecorder) GetAvailableProblems(arg0 interface{}) *gomock.Call {
+func (mr *MockproblemRepositoryMockRecorder) GetAvailableProblems(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAvailableProblems", reflect.TypeOf((*MockproblemRepository)(nil).GetAvailableProblems), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAvailableProblems", reflect.TypeOf((*MockproblemRepository)(nil).GetAvailableProblems), ctx)
 }
 
 // GetProblemRequestID mocks base method.

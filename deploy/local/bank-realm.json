@@ -399,8 +399,8 @@
   "users" : [ {
     "id" : "bd93b2f9-08cd-4a8d-ae68-63ede99fdd6f",
     "username" : "bond001",
-    "firstName" : "bond001",
-    "lastName" : "bond001",
+    "firstName" : "James",
+    "lastName" : "Bond",
     "email" : "bond001@uk.com",
     "emailVerified" : true,
     "createdTimestamp" : 1719701375313,
@@ -451,9 +451,9 @@
   }, {
     "id" : "9610b892-8f92-4790-95f9-f80d82a0e37f",
     "username" : "bond008",
-    "firstName" : "bond008",
-    "lastName" : "bond008",
-    "email" : "bond008@gmail.com",
+    "firstName" : "James",
+    "lastName" : "Bond",
+    "email" : "bond008@uk.com",
     "emailVerified" : true,
     "createdTimestamp" : 1721428767729,
     "enabled" : true,

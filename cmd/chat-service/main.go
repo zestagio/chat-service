@@ -257,6 +257,7 @@ func run() (errReturned error) {
 		eventsStream,
 		managerLoad,
 		managerPool,
+		chatsRepo,
 	)
 	if err != nil {
 		return fmt.Errorf("init manager server: %v", err)

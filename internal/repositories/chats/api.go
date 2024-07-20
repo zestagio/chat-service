@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/zestagio/chat-service/internal/store/chat"
+	storeproblem "github.com/zestagio/chat-service/internal/store/problem"
 	"github.com/zestagio/chat-service/internal/types"
 )
 
@@ -35,4 +36,24 @@ func (r *Repo) GetChatByID(ctx context.Context, chatID types.ChatID) (*Chat, err
 
 	cc := adaptStoreChat(c)
 	return &cc, nil
+}
+
+func (r *Repo) GetManagerChatsWithProblems(ctx context.Context, managerID types.UserID) ([]Chat, error) {
+	chats, err := r.db.Chat(ctx).Query().
+		Unique(false).
+		Where(chat.HasProblemsWith(
+			storeproblem.ManagerID(managerID),
+			storeproblem.ResolvedAtIsNil(),
+		)).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query manager chats with probkems: %w", err)
+	}
+
+	result := make([]Chat, 0, len(chats))
+	for _, c := range chats {
+		result = append(result, adaptStoreChat(c))
+	}
+
+	return result, nil
 }

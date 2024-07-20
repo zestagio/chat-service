@@ -23,6 +23,7 @@ type HandlersSuite struct {
 	ctrl                      *gomock.Controller
 	canReceiveProblemsUseCase *managerv1mocks.MockcanReceiveProblemsUseCase
 	freeHandsSignalUseCase    *managerv1mocks.MockfreeHandsSignalUseCase
+	getChatsUseCase           *managerv1mocks.MockgetChatsUseCase
 	handlers                  managerv1.Handlers
 
 	managerID types.UserID
@@ -37,11 +38,13 @@ func (s *HandlersSuite) SetupTest() {
 	s.ctrl = gomock.NewController(s.T())
 	s.canReceiveProblemsUseCase = managerv1mocks.NewMockcanReceiveProblemsUseCase(s.ctrl)
 	s.freeHandsSignalUseCase = managerv1mocks.NewMockfreeHandsSignalUseCase(s.ctrl)
+	s.getChatsUseCase = managerv1mocks.NewMockgetChatsUseCase(s.ctrl)
 	{
 		var err error
 		s.handlers, err = managerv1.NewHandlers(managerv1.NewOptions(
 			s.canReceiveProblemsUseCase,
 			s.freeHandsSignalUseCase,
+			s.getChatsUseCase,
 		))
 		s.Require().NoError(err)
 	}

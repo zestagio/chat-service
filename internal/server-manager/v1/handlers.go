@@ -6,6 +6,7 @@ import (
 
 	canreceiveproblems "github.com/zestagio/chat-service/internal/usecases/manager/can-receive-problems"
 	freehandssignal "github.com/zestagio/chat-service/internal/usecases/manager/free-hands-signal"
+	getchats "github.com/zestagio/chat-service/internal/usecases/manager/get-chats"
 )
 
 var _ ServerInterface = (*Handlers)(nil)
@@ -20,10 +21,15 @@ type freeHandsSignalUseCase interface {
 	Handle(ctx context.Context, req freehandssignal.Request) (freehandssignal.Response, error)
 }
 
+type getChatsUseCase interface {
+	Handle(ctx context.Context, req getchats.Request) (getchats.Response, error)
+}
+
 //go:generate options-gen -out-filename=handlers.gen.go -from-struct=Options
 type Options struct {
 	canReceiveProblems canReceiveProblemsUseCase `option:"mandatory" validate:"required"`
 	freeHandsSignal    freeHandsSignalUseCase    `option:"mandatory" validate:"required"`
+	getChatsUseCase    getChatsUseCase           `option:"mandatory" validate:"required"`
 }
 
 type Handlers struct {
