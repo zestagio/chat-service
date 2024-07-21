@@ -156,9 +156,6 @@ class App {
         const app = this;
 
         app.chatArea.scroll(() => {
-            if (app.chatArea.length.is(':empty')) {
-                return;
-            }
             if (app.programScroll || (app.chatArea.scrollTop() !== 0)) {
                 return;
             }

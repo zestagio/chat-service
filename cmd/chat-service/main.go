@@ -258,6 +258,8 @@ func run() (errReturned error) {
 		managerLoad,
 		managerPool,
 		chatsRepo,
+		msgRepo,
+		problemsRepo,
 	)
 	if err != nil {
 		return fmt.Errorf("init manager server: %v", err)

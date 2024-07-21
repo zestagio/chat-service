@@ -8,6 +8,8 @@ import (
 
 	keycloakclient "github.com/zestagio/chat-service/internal/clients/keycloak"
 	chatsrepo "github.com/zestagio/chat-service/internal/repositories/chats"
+	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
+	problemsrepo "github.com/zestagio/chat-service/internal/repositories/problems"
 	"github.com/zestagio/chat-service/internal/server"
 	servermanager "github.com/zestagio/chat-service/internal/server-manager"
 	managererrhandler "github.com/zestagio/chat-service/internal/server-manager/errhandler"
@@ -19,6 +21,7 @@ import (
 	managerpool "github.com/zestagio/chat-service/internal/services/manager-pool"
 	canreceiveproblems "github.com/zestagio/chat-service/internal/usecases/manager/can-receive-problems"
 	freehandssignal "github.com/zestagio/chat-service/internal/usecases/manager/free-hands-signal"
+	getchathistory "github.com/zestagio/chat-service/internal/usecases/manager/get-chat-history"
 	getchats "github.com/zestagio/chat-service/internal/usecases/manager/get-chats"
 	websocketstream "github.com/zestagio/chat-service/internal/websocket-stream"
 )
@@ -42,6 +45,8 @@ func initServerManager(
 	mPool managerpool.Pool,
 
 	chatsRepo *chatsrepo.Repo,
+	msgRepo *messagesrepo.Repo,
+	problemsRepo *problemsrepo.Repo,
 ) (*server.Server, error) {
 	canReceiveProblemsUseCase, err := canreceiveproblems.New(canreceiveproblems.NewOptions(mLoadSvc, mPool))
 	if err != nil {
@@ -58,10 +63,16 @@ func initServerManager(
 		return nil, fmt.Errorf("create getchats usecase: %v", err)
 	}
 
+	getChatHistoryUseCase, err := getchathistory.New(getchathistory.NewOptions(msgRepo, problemsRepo))
+	if err != nil {
+		return nil, fmt.Errorf("create getchathistory usecase: %v", err)
+	}
+
 	v1Handlers, err := managerv1.NewHandlers(managerv1.NewOptions(
 		canReceiveProblemsUseCase,
 		freeHandsSignalUseCase,
 		getChatsUseCase,
+		getChatHistoryUseCase,
 	))
 	if err != nil {
 		return nil, fmt.Errorf("create v1 handlers: %v", err)

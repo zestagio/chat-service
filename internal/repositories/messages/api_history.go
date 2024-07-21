@@ -9,6 +9,7 @@ import (
 	"github.com/zestagio/chat-service/internal/store"
 	"github.com/zestagio/chat-service/internal/store/chat"
 	"github.com/zestagio/chat-service/internal/store/message"
+	"github.com/zestagio/chat-service/internal/store/problem"
 	"github.com/zestagio/chat-service/internal/types"
 )
 
@@ -52,6 +53,24 @@ func (r *Repo) GetClientChatMessages(
 		Unique(false).
 		Where(message.IsVisibleForClient(true)).
 		Where(message.HasChatWith(chat.ClientID(clientID)))
+
+	return r.getChatMessages(ctx, query, pageSize, cursor)
+}
+
+// GetProblemMessages returns Nth page of messages in the chat for manager side (specific problem).
+func (r *Repo) GetProblemMessages(
+	ctx context.Context,
+	problemID types.ProblemID,
+	pageSize int,
+	cursor *Cursor,
+) ([]Message, *Cursor, error) {
+	query := r.db.Message(ctx).Query().
+		Unique(false).
+		Where(message.IsVisibleForManager(true)).
+		Where(message.HasProblemWith(
+			problem.ID(problemID),
+			problem.ResolvedAtIsNil(),
+		))
 
 	return r.getChatMessages(ctx, query, pageSize, cursor)
 }

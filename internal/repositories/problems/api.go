@@ -54,3 +54,23 @@ func (r *Repo) GetManagerOpenProblemsCount(ctx context.Context, managerID types.
 		).
 		Count(ctx)
 }
+
+func (r *Repo) GetOpenProblemForChat(ctx context.Context, chatID types.ChatID, managerID types.UserID) (*Problem, error) {
+	p, err := r.db.Problem(ctx).Query().
+		Unique(false).
+		Where(
+			problem.HasChatWith(chat.ID(chatID)),
+			problem.ResolvedAtIsNil(),
+			problem.ManagerID(managerID),
+		).
+		First(ctx)
+	if err != nil {
+		if store.IsNotFound(err) {
+			return nil, fmt.Errorf("query open problem for chat: %w", ErrProblemNotFound)
+		}
+		return nil, fmt.Errorf("query open problem for chat: %w", err)
+	}
+
+	pp := adaptStoreProblem(p)
+	return &pp, nil
+}

@@ -47,6 +47,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/GetChatsResponse"
 
+  /getChatHistory:
+    post:
+      description: Get chat history.
+      parameters:
+        - $ref: "#/components/parameters/XRequestIDHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GetChatHistoryRequest"
+      responses:
+        '200':
+          description: Messages list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetChatHistoryResponse"
+
 security:
   - bearerAuth: [ ]
 
@@ -101,6 +120,25 @@ components:
         - ErrorCodeManagerOverloaded
       minimum: 400
 
+    MessageHeader:
+      required: [ id, createdAt, authorId ]
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-type: types.MessageID
+          x-go-type-import:
+            path: "github.com/zestagio/chat-service/internal/types"
+        authorId:
+          type: string
+          format: uuid
+          x-go-type: types.UserID
+          x-go-type-import:
+            path: "github.com/zestagio/chat-service/internal/types"
+        createdAt:
+          type: string
+          format: date-time
+
     # /getFreeHandsBtnAvailability
 
     GetFreeHandsBtnAvailabilityResponse:
@@ -153,3 +191,45 @@ components:
               x-go-type: types.UserID
               x-go-type-import:
                 path: "github.com/zestagio/chat-service/internal/types"
+
+    # /getChatHistory
+
+    GetChatHistoryRequest:
+      required: [ chatId ]
+      properties:
+        chatId:
+          type: string
+          format: uuid
+          x-go-type: types.ChatID
+          x-go-type-import:
+            path: "github.com/zestagio/chat-service/internal/types"
+        pageSize:
+          type: integer
+          minimum: 10
+          maximum: 100
+        cursor:
+          type: string
+
+    GetChatHistoryResponse:
+      properties:
+        data:
+          $ref: "#/components/schemas/MessagesPage"
+        error:
+          $ref: "#/components/schemas/Error"
+
+    MessagesPage:
+      required: [ next, messages ]
+      properties:
+        next:
+          type: string
+        messages:
+          type: array
+          items: { $ref: "#/components/schemas/Message" }
+
+    Message:
+      allOf:
+        - $ref: "#/components/schemas/MessageHeader"
+        - required: [ body ]
+          properties:
+            body:
+              type: string
