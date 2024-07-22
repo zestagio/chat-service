@@ -76,6 +76,12 @@ vars:
 
   E2E_CLIENT_EVENTS_DST: ./tests/e2e/api/client/events/events.gen.go
   E2E_CLIENT_EVENTS_PKG: apiclientevents
+
+  E2E_MANAGER_V1_DST: ./tests/e2e/api/manager/v1/client.gen.go
+  E2E_MANAGER_V1_PKG: apimanagerv1
+
+  E2E_MANAGER_EVENTS_DST: ./tests/e2e/api/manager/events/events.gen.go
+  E2E_MANAGER_EVENTS_PKG: apimanagerevents
   ###
 
 tasks:
@@ -134,8 +140,8 @@ tasks:
       - .env
     cmds:
       - echo "- End-to-end tests..."
-      # NOTE: It's important to run tests serial (without `-p` flag) – for correct `clientsPool` sharing.
-      - .{{.DEV_TOOLS_PATH}}/ginkgo --fail-fast --timeout=1m --tags e2e {{.CLI_ARGS}} ./tests/e2e
+      # NOTE: It's important to run tests serial (without `-p` flag) – for correct `usersPool` sharing.
+      - .{{.DEV_TOOLS_PATH}}/ginkgo --fail-fast --timeout=20s --tags e2e {{.CLI_ARGS}} ./tests/e2e
 
   build:
     cmds:
@@ -232,6 +238,12 @@ tasks:
 
       - echo "[E2E] Generate client events..."
       - .{{.DEV_TOOLS_PATH}}/oapi-codegen --old-config-style -generate skip-prune,types -package {{.E2E_CLIENT_EVENTS_PKG}} {{.CLIENT_EVENTS_SRC}} > {{.E2E_CLIENT_EVENTS_DST}}
+
+      - echo "[E2E] Generate manager API..."
+      - .{{.DEV_TOOLS_PATH}}/oapi-codegen --old-config-style -generate types,client -package {{.E2E_MANAGER_V1_PKG}} {{.MANAGER_V1_SRC}} > {{.E2E_MANAGER_V1_DST}}
+
+      - echo "[E2E] Generate manager events..."
+      - .{{.DEV_TOOLS_PATH}}/oapi-codegen --old-config-style -generate skip-prune,types -package {{.E2E_MANAGER_EVENTS_PKG}} {{.MANAGER_EVENTS_SRC}} > {{.E2E_MANAGER_EVENTS_DST}}
 
   kc:export:
     vars:

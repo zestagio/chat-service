@@ -553,6 +553,136 @@
     "notBefore" : 0,
     "groups" : [ ]
   }, {
+    "id" : "716bd6eb-c49c-4dc1-a02d-084bdc076c81",
+    "username" : "e2e_client_3",
+    "firstName" : "e2e_client_3",
+    "lastName" : "e2e_client_3",
+    "email" : "e2e_client_3@gmail.com",
+    "emailVerified" : true,
+    "createdTimestamp" : 1721673466659,
+    "enabled" : true,
+    "totp" : false,
+    "credentials" : [ {
+      "id" : "02f4028f-3157-49f1-b40a-a052529c500f",
+      "type" : "password",
+      "userLabel" : "My password",
+      "createdDate" : 1721673474300,
+      "secretData" : "{\"value\":\"6QKSjrN7XcRfIi28jPMhSPtshnHYT+BPMnzyTe8XPizZwPZxNqXmmo16P2e997v4eCl76PgdvleIMX679UnHqA==\",\"salt\":\"1KWgMISsycQAAMpYh92q7A==\",\"additionalParameters\":{}}",
+      "credentialData" : "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\",\"additionalParameters\":{}}"
+    } ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "default-roles-bank" ],
+    "clientRoles" : {
+      "chat-ui-client" : [ "support-chat-client" ]
+    },
+    "notBefore" : 0,
+    "groups" : [ ]
+  }, {
+    "id" : "a9e378b8-0594-4d54-8d15-ff5e92a03af9",
+    "username" : "e2e_manager_0",
+    "firstName" : "e2e_manager_0",
+    "lastName" : "e2e_manager_0",
+    "email" : "e2e_manager_0@gmail.com",
+    "emailVerified" : true,
+    "createdTimestamp" : 1721673536109,
+    "enabled" : true,
+    "totp" : false,
+    "credentials" : [ {
+      "id" : "f57e5a54-1165-4090-8e0b-a21724e7f4ec",
+      "type" : "password",
+      "userLabel" : "My password",
+      "createdDate" : 1721673541894,
+      "secretData" : "{\"value\":\"LGJhMdI0R2RXLnNoosQSSSwmhReSuot9/sfjxNwD76WHBeupAbAevZuSCeDfzPyQIcdBjvUy4r7GUX6rfjIIoA==\",\"salt\":\"4Q2aUNTBV9339r/iveN8nA==\",\"additionalParameters\":{}}",
+      "credentialData" : "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\",\"additionalParameters\":{}}"
+    } ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "default-roles-bank" ],
+    "clientRoles" : {
+      "chat-ui-manager" : [ "support-chat-manager" ]
+    },
+    "notBefore" : 0,
+    "groups" : [ ]
+  }, {
+    "id" : "b5f6cfbc-40a1-43e7-bcca-be37b2b8efa0",
+    "username" : "e2e_manager_1",
+    "firstName" : "e2e_manager_1",
+    "lastName" : "e2e_manager_1",
+    "email" : "e2e_manager_1@gmail.com",
+    "emailVerified" : true,
+    "createdTimestamp" : 1721673568954,
+    "enabled" : true,
+    "totp" : false,
+    "credentials" : [ {
+      "id" : "697936bb-4774-4b80-8b4f-edcfadf2dcc9",
+      "type" : "password",
+      "userLabel" : "My password",
+      "createdDate" : 1721673576549,
+      "secretData" : "{\"value\":\"cIyXp7OIeo22Wjl5FFNPXQjMC3pZlcIUjcMCD9RmKWpuHBxANmPvJNHd2i2sBviveB0pPQr2JB0wye9eB2iuUQ==\",\"salt\":\"5ivpeg19M1PHo1muNLrp/Q==\",\"additionalParameters\":{}}",
+      "credentialData" : "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\",\"additionalParameters\":{}}"
+    } ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "default-roles-bank" ],
+    "clientRoles" : {
+      "chat-ui-manager" : [ "support-chat-manager" ]
+    },
+    "notBefore" : 0,
+    "groups" : [ ]
+  }, {
+    "id" : "adcd1cad-42d7-4452-bf44-198c8229da34",
+    "username" : "e2e_manager_2",
+    "firstName" : "e2e_manager_2",
+    "lastName" : "e2e_manager_2",
+    "email" : "e2e_manager_2@gmail.com",
+    "emailVerified" : true,
+    "createdTimestamp" : 1721673597761,
+    "enabled" : true,
+    "totp" : false,
+    "credentials" : [ {
+      "id" : "b2ba9c51-2446-4a57-8a8a-e093ef64d188",
+      "type" : "password",
+      "userLabel" : "My password",
+      "createdDate" : 1721673611943,
+      "secretData" : "{\"value\":\"DjVCzSvWFd/h3dYDyXs8Hv/1FaC3CkeNQtTKQGm4XFUGvIcYHdd6lLzrfgnGJNqmt2jH6zVIAOYUKXxDV14D2g==\",\"salt\":\"P2/a8IE16XEENmUZlGIUBg==\",\"additionalParameters\":{}}",
+      "credentialData" : "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\",\"additionalParameters\":{}}"
+    } ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "default-roles-bank" ],
+    "clientRoles" : {
+      "chat-ui-manager" : [ "support-chat-manager" ]
+    },
+    "notBefore" : 0,
+    "groups" : [ ]
+  }, {
+    "id" : "b2aa1a97-2fa7-486e-b3a0-6b4935e5e9ff",
+    "username" : "e2e_manager_3",
+    "firstName" : "e2e_manager_3",
+    "lastName" : "e2e_manager_3",
+    "email" : "e2e_manager_3@gmail.com",
+    "emailVerified" : true,
+    "createdTimestamp" : 1721673640283,
+    "enabled" : true,
+    "totp" : false,
+    "credentials" : [ {
+      "id" : "0d7f4730-7da6-4bfd-9b73-f94529d17e71",
+      "type" : "password",
+      "userLabel" : "My password",
+      "createdDate" : 1721673646730,
+      "secretData" : "{\"value\":\"rgiA0rPTaOkpNO3Stma7mJ+kf1sPiuqtGO7SLiwZnYLuXNITZEv1HyFA6NPdOtB2WWDzysEWlSDV/a4Wug2phA==\",\"salt\":\"6JHWQvlDEAKDeb8aR6KzsQ==\",\"additionalParameters\":{}}",
+      "credentialData" : "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\",\"additionalParameters\":{}}"
+    } ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "default-roles-bank" ],
+    "clientRoles" : {
+      "chat-ui-manager" : [ "support-chat-manager" ]
+    },
+    "notBefore" : 0,
+    "groups" : [ ]
+  }, {
     "id" : "fccd8e93-528d-4172-817a-8127ae514ebc",
     "username" : "integration-testing",
     "firstName" : "integration-testing",
