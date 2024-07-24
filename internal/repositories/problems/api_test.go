@@ -151,10 +151,10 @@ func (s *ProblemsRepoSuite) TestGetOpenProblemByChatID() {
 			Save(s.Ctx)
 		s.Require().NoError(err)
 
-		problem, err := s.repo.GetOpenProblemForChat(s.Ctx, chat.ID, managerID)
+		problemID, err := s.repo.GetAssignedProblemID(s.Ctx, managerID, chat.ID)
 
 		s.Require().ErrorIs(err, problemsrepo.ErrProblemNotFound)
-		s.Empty(problem)
+		s.Empty(problemID)
 	})
 
 	s.Run("error if chat has no problem", func() {
@@ -171,10 +171,10 @@ func (s *ProblemsRepoSuite) TestGetOpenProblemByChatID() {
 			Save(s.Ctx)
 		s.Require().NoError(err)
 
-		problem, err := s.repo.GetOpenProblemForChat(s.Ctx, chat.ID, managerID)
+		problemID, err := s.repo.GetAssignedProblemID(s.Ctx, managerID, chat.ID)
 
 		s.Require().ErrorIs(err, problemsrepo.ErrProblemNotFound)
-		s.Empty(problem)
+		s.Empty(problemID)
 	})
 
 	s.Run("no problem if other manager", func() {
@@ -188,10 +188,10 @@ func (s *ProblemsRepoSuite) TestGetOpenProblemByChatID() {
 			Save(s.Ctx)
 		s.Require().NoError(err)
 
-		problem, err := s.repo.GetOpenProblemForChat(s.Ctx, chat.ID, types.NewUserID())
+		problemID, err := s.repo.GetAssignedProblemID(s.Ctx, types.NewUserID(), chat.ID)
 
 		s.Require().ErrorIs(err, problemsrepo.ErrProblemNotFound)
-		s.Empty(problem)
+		s.Empty(problemID)
 	})
 
 	s.Run("success to get open problem", func() {
@@ -199,18 +199,17 @@ func (s *ProblemsRepoSuite) TestGetOpenProblemByChatID() {
 		chat, err := s.Database.Chat(s.Ctx).Create().SetClientID(types.NewUserID()).Save(s.Ctx)
 		s.Require().NoError(err)
 
-		ep, err := s.Database.Problem(s.Ctx).Create().
+		problem, err := s.Database.Problem(s.Ctx).Create().
 			SetChatID(chat.ID).
 			SetManagerID(managerID).
 			Save(s.Ctx)
 		s.Require().NoError(err)
 
-		problem, err := s.repo.GetOpenProblemForChat(s.Ctx, chat.ID, managerID)
+		problemID, err := s.repo.GetAssignedProblemID(s.Ctx, managerID, chat.ID)
 
 		s.Require().NoError(err)
 		s.NotEmpty(problem)
-		s.Equal(problem.ChatID, chat.ID)
-		s.Equal(problem.ID, ep.ID)
+		s.Equal(problem.ID, problemID)
 	})
 }
 

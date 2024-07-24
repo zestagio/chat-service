@@ -36,6 +36,7 @@ import (
 	clientmessagesentjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/client-message-sent"
 	managerassignedtoproblemjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/manager-assigned-to-problem"
 	sendclientmessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-client-message"
+	sendmanagermessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-manager-message"
 	"github.com/zestagio/chat-service/internal/store"
 )
 
@@ -210,6 +211,7 @@ func run() (errReturned error) {
 		managerassignedtoproblemjob.Must(
 			managerassignedtoproblemjob.NewOptions(eventsStream, chatsRepo, problemsRepo, msgRepo, managerLoad),
 		),
+		sendmanagermessagejob.Must(sendmanagermessagejob.NewOptions(eventsStream, msgProducer, chatsRepo, msgRepo)),
 	} {
 		outBox.MustRegisterJob(j)
 	}
@@ -260,6 +262,8 @@ func run() (errReturned error) {
 		chatsRepo,
 		msgRepo,
 		problemsRepo,
+		outBox,
+		db,
 	)
 	if err != nil {
 		return fmt.Errorf("init manager server: %v", err)

@@ -10,7 +10,6 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
-	problemsrepo "github.com/zestagio/chat-service/internal/repositories/problems"
 	types "github.com/zestagio/chat-service/internal/types"
 )
 
@@ -76,17 +75,17 @@ func (m *MockproblemsRepository) EXPECT() *MockproblemsRepositoryMockRecorder {
 	return m.recorder
 }
 
-// GetOpenProblemForChat mocks base method.
-func (m *MockproblemsRepository) GetOpenProblemForChat(ctx context.Context, chatID types.ChatID, managerID types.UserID) (*problemsrepo.Problem, error) {
+// GetAssignedProblemID mocks base method.
+func (m *MockproblemsRepository) GetAssignedProblemID(ctx context.Context, managerID types.UserID, chatID types.ChatID) (types.ProblemID, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetOpenProblemForChat", ctx, chatID, managerID)
-	ret0, _ := ret[0].(*problemsrepo.Problem)
+	ret := m.ctrl.Call(m, "GetAssignedProblemID", ctx, managerID, chatID)
+	ret0, _ := ret[0].(types.ProblemID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetOpenProblemForChat indicates an expected call of GetOpenProblemForChat.
-func (mr *MockproblemsRepositoryMockRecorder) GetOpenProblemForChat(ctx, chatID, managerID interface{}) *gomock.Call {
+// GetAssignedProblemID indicates an expected call of GetAssignedProblemID.
+func (mr *MockproblemsRepositoryMockRecorder) GetAssignedProblemID(ctx, managerID, chatID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOpenProblemForChat", reflect.TypeOf((*MockproblemsRepository)(nil).GetOpenProblemForChat), ctx, chatID, managerID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAssignedProblemID", reflect.TypeOf((*MockproblemsRepository)(nil).GetAssignedProblemID), ctx, managerID, chatID)
 }

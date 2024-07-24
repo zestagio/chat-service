@@ -11,7 +11,6 @@ import (
 
 	"github.com/zestagio/chat-service/internal/cursor"
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
-	problemsrepo "github.com/zestagio/chat-service/internal/repositories/problems"
 	"github.com/zestagio/chat-service/internal/testingh"
 	"github.com/zestagio/chat-service/internal/types"
 	getchathistory "github.com/zestagio/chat-service/internal/usecases/manager/get-chat-history"
@@ -91,9 +90,8 @@ func (s *UseCaseSuite) TestGetProblemMessages_InvalidCursor() {
 	cursorWithNegativePageSize, err := cursor.Encode(c)
 	s.Require().NoError(err)
 
-	p := problemsrepo.Problem{ID: problemID}
-	s.problemsRepo.EXPECT().GetOpenProblemForChat(gomock.Any(), chatID, managerID).
-		Return(&p, nil)
+	s.problemsRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).
+		Return(problemID, nil)
 	s.msgRepo.EXPECT().GetProblemMessages(s.Ctx, problemID, 0, messagesrepo.NewCursorMatcher(c)).
 		Return(nil, nil, messagesrepo.ErrInvalidCursor)
 
@@ -121,9 +119,8 @@ func (s *UseCaseSuite) TestGetProblemMessages_SomeError() {
 	chatID := types.NewChatID()
 	errExpected := errors.New("any error")
 
-	p := problemsrepo.Problem{ID: problemID}
-	s.problemsRepo.EXPECT().GetOpenProblemForChat(gomock.Any(), chatID, managerID).
-		Return(&p, nil)
+	s.problemsRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).
+		Return(problemID, nil)
 	s.msgRepo.EXPECT().GetProblemMessages(s.Ctx, problemID, 20, (*messagesrepo.Cursor)(nil)).
 		Return(nil, nil, errExpected)
 
@@ -154,9 +151,8 @@ func (s *UseCaseSuite) TestGetProblemMessages_Success_SinglePage() {
 	chatID := types.NewChatID()
 	expectedMsgs := s.createMessages(messagesCount, clientID, chatID)
 
-	p := problemsrepo.Problem{ID: problemID}
-	s.problemsRepo.EXPECT().GetOpenProblemForChat(gomock.Any(), chatID, managerID).
-		Return(&p, nil)
+	s.problemsRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).
+		Return(problemID, nil)
 	s.msgRepo.EXPECT().GetProblemMessages(s.Ctx, problemID, pageSize, (*messagesrepo.Cursor)(nil)).
 		Return(expectedMsgs, nil, nil)
 
@@ -196,9 +192,8 @@ func (s *UseCaseSuite) TestGetProblemMessages_Success_FirstPage() {
 	lastMsg := expectedMsgs[len(expectedMsgs)-1]
 
 	nextCursor := &messagesrepo.Cursor{PageSize: pageSize, LastCreatedAt: lastMsg.CreatedAt}
-	p := problemsrepo.Problem{ID: problemID}
-	s.problemsRepo.EXPECT().GetOpenProblemForChat(gomock.Any(), chatID, managerID).
-		Return(&p, nil)
+	s.problemsRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).
+		Return(problemID, nil)
 	s.msgRepo.EXPECT().GetProblemMessages(s.Ctx, problemID, pageSize, (*messagesrepo.Cursor)(nil)).
 		Return(expectedMsgs, nextCursor, nil)
 
@@ -230,9 +225,8 @@ func (s *UseCaseSuite) TestGetProblemMessages_Success_LastPage() {
 	expectedMsgs := s.createMessages(messagesCount, clientID, chatID)
 
 	c := messagesrepo.Cursor{PageSize: pageSize, LastCreatedAt: time.Now()}
-	p := problemsrepo.Problem{ID: problemID}
-	s.problemsRepo.EXPECT().GetOpenProblemForChat(gomock.Any(), chatID, managerID).
-		Return(&p, nil)
+	s.problemsRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).
+		Return(problemID, nil)
 	s.msgRepo.EXPECT().GetProblemMessages(s.Ctx, problemID, 0, messagesrepo.NewCursorMatcher(c)).
 		Return(expectedMsgs, nil, nil)
 

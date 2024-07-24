@@ -107,10 +107,29 @@ type MessageHeader struct {
 	Id        types.MessageID `json:"id"`
 }
 
+// MessageWithoutBody defines model for MessageWithoutBody.
+type MessageWithoutBody struct {
+	AuthorId  types.UserID    `json:"authorId"`
+	CreatedAt time.Time       `json:"createdAt"`
+	Id        types.MessageID `json:"id"`
+}
+
 // MessagesPage defines model for MessagesPage.
 type MessagesPage struct {
 	Messages []Message `json:"messages"`
 	Next     string    `json:"next"`
+}
+
+// SendMessageRequest defines model for SendMessageRequest.
+type SendMessageRequest struct {
+	ChatId      types.ChatID `json:"chatId"`
+	MessageBody string       `json:"messageBody"`
+}
+
+// SendMessageResponse defines model for SendMessageResponse.
+type SendMessageResponse struct {
+	Data  *MessageWithoutBody `json:"data,omitempty"`
+	Error *Error              `json:"error,omitempty"`
 }
 
 // XRequestIDHeader defines model for XRequestIDHeader.
@@ -136,8 +155,16 @@ type PostGetFreeHandsBtnAvailabilityParams struct {
 	XRequestID XRequestIDHeader `json:"X-Request-ID"`
 }
 
+// PostSendMessageParams defines parameters for PostSendMessage.
+type PostSendMessageParams struct {
+	XRequestID XRequestIDHeader `json:"X-Request-ID"`
+}
+
 // PostGetChatHistoryJSONRequestBody defines body for PostGetChatHistory for application/json ContentType.
 type PostGetChatHistoryJSONRequestBody = GetChatHistoryRequest
+
+// PostSendMessageJSONRequestBody defines body for PostSendMessage for application/json ContentType.
+type PostSendMessageJSONRequestBody = SendMessageRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -153,6 +180,9 @@ type ServerInterface interface {
 
 	// (POST /getFreeHandsBtnAvailability)
 	PostGetFreeHandsBtnAvailability(ctx echo.Context, params PostGetFreeHandsBtnAvailabilityParams) error
+
+	// (POST /sendMessage)
+	PostSendMessage(ctx echo.Context, params PostSendMessageParams) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -292,6 +322,39 @@ func (w *ServerInterfaceWrapper) PostGetFreeHandsBtnAvailability(ctx echo.Contex
 	return err
 }
 
+// PostSendMessage converts echo context to params.
+func (w *ServerInterfaceWrapper) PostSendMessage(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostSendMessageParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-Request-ID" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Request-ID")]; found {
+		var XRequestID XRequestIDHeader
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-Request-ID, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Request-ID", valueList[0], &XRequestID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-Request-ID: %s", err))
+		}
+
+		params.XRequestID = XRequestID
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-Request-ID is required, but not found"))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostSendMessage(ctx, params)
+	return err
+}
+
 // This is a simple interface which specifies echo.Route addition functions which
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
@@ -324,32 +387,35 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.POST(baseURL+"/getChatHistory", wrapper.PostGetChatHistory)
 	router.POST(baseURL+"/getChats", wrapper.PostGetChats)
 	router.POST(baseURL+"/getFreeHandsBtnAvailability", wrapper.PostGetFreeHandsBtnAvailability)
+	router.POST(baseURL+"/sendMessage", wrapper.PostSendMessage)
 
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/9RXbW/bNhD+K8RtwDZAtpR1AwoB+5Cka5NhWYMmwwok/nCWzhJbiVTJkxs30H8fSEl+",
-	"iew4Sxsg+2RLOpLPPc+98RYSXVZakWIL8S1UaLAkJuOf3r+jTzVZPn11QpiSce+kghjy9jEAhSVBDO9H",
-	"neXo9BUEYOhTLQ2lELOpKQCb5FSiWz3TpkSGGOpaphAALyq33rKRKoMAbkaZHnUv3Y8dLyGsfx3JstKG",
-	"W8ScQwyZ5LyejhNdhl/IMmZSh0mOPLJk5jKhUComo7AI/bbQNE3TA/O+Hufo98OieDuD+OoWvjc0gxi+",
-	"C1cUhd2C0FmfptAEt1AZXZFhSX6bpJCk3KdHOfu3JfMEnq4rcrWCOFlC0tMPlDA0kyaAzrV44Nny/X/3",
-	"y+/55H61AHsf/pSWt3vh/0im0v/ZJzM0Sw/RGFzAtnOtP/Z3Y7TZcqZOad9JfumxM2wCSIlRFn7tJrdN",
-	"ACVZixlt+XYHVm8YtOcv8R13aFKyiZEVS+0yOtGKUSorTi4vzwU5Q+HWWYEqFbaiRM5kIqa1lYqsFYXO",
-	"ZLJh9yPnJAq0LMraspiSuK6j6AX9Jg6iKPppDAGQqkuIr36NomgSQCmVLN2LX6JoSbETOfOl5WbkzEdz",
-	"NK7IWOfSEv8ZKszIvJ2TKTSm1Kr+2hCdoErtEavDOcoCp7KQvBgqgu3XYp3GqdYFoRrwuLLdOOMd2Uor",
-	"S8PNU2Rc27fPrQCoD4+9gdAG9xtiF4An0rI2i64Q/h8SM4CkNrb1dRDAFWZ0Ib944kq8aUPgwIXAMiAO",
-	"hvFwT7LfpWmfLvexf9YmjT13mfN4yezXoViWr8ch2JUHXwdqZ3Y9AuTZqog9rN92C7oxZNh2pzpd7C+J",
-	"3mriu9zmhsMCUXOuzfNq4wEkhpApPeQNWCkyjViWNMDWBCAf6ULHz5M3bQ9n5VewYn5NpTYdByJ1He7h",
-	"7bwPu0FHD0DRDe8PIG8VrA6e+CGSktpIXly4U7pwJDRkDmvHUf/0utfgj38uoRs9fd/xX1ei5MxVy5NU",
-	"M+0xSXadCo5QfRQXdeU0EK5GiK4PisPzUwhgTsa23Xx+4HzSFSmsJMTwYhyNX0DgVfMAw1mfzZ5W3faV",
-	"zZHgglQqUFiZKSwEu/NOfyiFIUwXgrVICQvxWXIuFH0WldHTgkrr+rwTCd0uLoHgXNtVSfIgVneMHWm/",
-	"MgkHd5Bm4jRpK5lH/3MUtVOWYlLtDF9VhUw8gvCDdc7crt1BHlTklrXSK7FJzF9auIIptBK2ThKydtzd",
-	"J8Jsoxft5vYNsXB5IvLWcjtrm53tW1Hn3x11BfObsLZ9ULmT6+4q2DyhdDvGgC369VVFFLKFuaacvV8z",
-	"P+NKy0LPvH62TQCXaXsyoJ8MnnkCDAaYLfx5A0/DetzfO31vJfQ4p+SjwDVbR+u1n7GF3+oaxLRm1mon",
-	"pztPffY0753StjB/5MnYpGxWYNbqsNaLvMfrXehq4vxxXbnnY3PnVzSnQlclKRatFQRQm6JrSHEYFjrB",
-	"IteW45fRy4PQtZhJ828AAAD//yi/aGJAEgAA",
+	"H4sIAAAAAAAC/+xX32/bNhD+V4jbgG2AHMnLBhQC9pCka5OhXYOmQwukfqCls8RWIlXy5MYN9L8PpCRL",
+	"quQ4TZstA/aUWDySd993Pz5eQ6TyQkmUZCC8hoJrniOhdr/evMQPJRo6e3yKPEZtvwkJIaT1Tw8kzxFC",
+	"eDNrLGdnj8EDjR9KoTGGkHSJHpgoxZzb3Sulc04QQlmKGDygTWH3G9JCJuDB1SxRs+aj/WMOti70V2ci",
+	"L5Sm2mNKIYREUFouDyKV+5/QEE+E8qOU08ygXosIfSEJteSZ746Fqqqq1jEX60nK3Xk8y16sILy8hu81",
+	"riCE7/wOIr/Z4Fvrsxgq7xoKrQrUJNAdE2UCpV26U7B/GdT3EGmfkcvOxcXWJbV8hxFBtag8aEILR5Ft",
+	"v395XO7Me4+rdrCN4ZkwNB2F+0cQ5u6ffTRDtY2Qa803MHWvcdf+rrXSE3eqGPfd5LaeWMPKgxiJi8zt",
+	"HWJbeZCjMTzBibXP3GoNvfr+rX8njTcxmkiLgoSyFR0pSVxIw05fvTpnaA2Z3WcYlzEzBUZiJSK2LI2Q",
+	"aAzLVCKigd2PlCLLuCGWl4bYEtnbMggO8Tc2D4LgpwPwAGWZQ3j5axAECw9yIUVuP/wSBFuILcmJay1X",
+	"M2s+W3Ntm4yxIW39f84lT1C/WKPOFI+xZv2JRjzlMjbHJI/WXGR8KTJBmzEjvF7N+jAulcqQyxGOne3g",
+	"jpdoCiUNjg+POfHeuW1teYBteuxNhDq5nyLZBDwVhpTeNI3wv1CYHkSlNnWsowQueIIX4pMDLudXdQrM",
+	"bQpsE2I+zocbiv1zmPbxchP6z+uiMee2cu5Omfk6L7bt624e7KqDr3NqZ3XdwcnnXRO73bxtNjQyZDx2",
+	"lyre7G+JzmrhptzwwHGDKClV+mGNcQ8ijZwwPqKBWzEnnJHIceRb5YG4YwgNPvc+tJ07XVxeh3yPpdeC",
+	"UlXScUPy/1T9e1Rt0e6H2KOq7pwjkhoxcnvl1XaIkfjyQOIV7a91Z+V1F1sfL1DGzcG9afqVir+5oU3O",
+	"nF89Q5lYyA+DZqq1H+be7TSbO2tanQ9C+AaTrl9aX9zI7QsKo1IL2lzYtaYXI9eoj0obcfvrSZvVf7x+",
+	"Bc27y4kut9qleUpU1Jkn5Eo5lgVZmQbHXL5nF2Vhs5pZMlgjAtnR+Rl4sEZtaim7nttIVIGSFwJCODwI",
+	"Dg7Bc3XgHPRX7Shz0Kk6DYZ62OLMODMikTxjZO87+yFnGnm8YaRYjDxjHwWlTOJHVmi1zDA3VuRaIrg9",
+	"xbYkOFemm8fOie6BvSPjOhN/9ACvFjZhat6d9z8HQf3EkISyTueiyETkPPDfGRvMde8BfqsJv80sx8QQ",
+	"mD8Vs+nFlGSmjCI05qBJBT8ZCLHd2D5FYrbzsLS2nEZtKOu+FXTuW1ur3wS1aZX+WfckXWJ1j9Tt0MAT",
+	"/LV9mmWidrPHnLmZM/fAE4aYWjn+TF0AttL2VEArix94AYzU+wR+zsDB0M/7G5+ek4CepBi9Z7xna2F9",
+	"6x6YzB31FtiyJFJyJ6Y7b33wMO99okwgf+zAGEK2yniy5cF0s3FPY7c9u5m1tpnbxLYJPQ10b+Q+3C40",
+	"IW3+4RY0pUx29x/WqMeavJ6QcKj2JcTlwmJmRWqL+fDAx7jGTBU5SmK1FXhQ6qxRE6HvZyriWaoMhY+C",
+	"R3Pf6oNF9XcAAAD//wkBG1H6FgAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

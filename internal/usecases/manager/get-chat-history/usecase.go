@@ -7,7 +7,6 @@ import (
 
 	"github.com/zestagio/chat-service/internal/cursor"
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
-	problemsrepo "github.com/zestagio/chat-service/internal/repositories/problems"
 	"github.com/zestagio/chat-service/internal/types"
 )
 
@@ -28,11 +27,11 @@ type messagesRepository interface {
 }
 
 type problemsRepository interface {
-	GetOpenProblemForChat(
+	GetAssignedProblemID(
 		ctx context.Context,
-		chatID types.ChatID,
 		managerID types.UserID,
-	) (*problemsrepo.Problem, error)
+		chatID types.ChatID,
+	) (types.ProblemID, error)
 }
 
 //go:generate options-gen -out-filename=usecase_options.gen.go -from-struct=Options
@@ -61,12 +60,12 @@ func (u UseCase) Handle(ctx context.Context, req Request) (Response, error) {
 		}
 	}
 
-	prblm, err := u.problemsRepo.GetOpenProblemForChat(ctx, req.ChatID, req.ManagerID)
+	problemID, err := u.problemsRepo.GetAssignedProblemID(ctx, req.ManagerID, req.ChatID)
 	if err != nil {
 		return Response{}, fmt.Errorf("get chat history messages: %v", err)
 	}
 
-	msgs, next, err := u.msgRepo.GetProblemMessages(ctx, prblm.ID, req.PageSize, c)
+	msgs, next, err := u.msgRepo.GetProblemMessages(ctx, problemID, req.PageSize, c)
 	if err != nil {
 		if errors.Is(err, messagesrepo.ErrInvalidCursor) {
 			return Response{}, fmt.Errorf("get chat history messages: %w: %v", ErrInvalidCursor, err)

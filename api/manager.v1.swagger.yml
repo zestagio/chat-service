@@ -66,6 +66,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/GetChatHistoryResponse"
 
+  /sendMessage:
+    post:
+      description: Send new message to the chat.
+      parameters:
+        - $ref: "#/components/parameters/XRequestIDHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageRequest"
+      responses:
+        '200':
+          description: Message created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendMessageResponse"
+
 security:
   - bearerAuth: [ ]
 
@@ -233,3 +252,42 @@ components:
           properties:
             body:
               type: string
+
+    # /sendMessage
+
+    SendMessageRequest:
+      allOf:
+        - $ref: "#/components/schemas/ChatId"
+        - type: object
+          required: [ messageBody ]
+          properties:
+            messageBody:
+              type: string
+              minLength: 1
+              maxLength: 3000
+
+    SendMessageResponse:
+      properties:
+        data:
+          $ref: "#/components/schemas/MessageWithoutBody"
+        error:
+          $ref: "#/components/schemas/Error"
+
+    MessageWithoutBody:
+      required: [ id, authorId, createdAt ]
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-type: types.MessageID
+          x-go-type-import:
+            path: "github.com/zestagio/chat-service/internal/types"
+        authorId:
+          type: string
+          format: uuid
+          x-go-type: types.UserID
+          x-go-type-import:
+            path: "github.com/zestagio/chat-service/internal/types"
+        createdAt:
+          type: string
+          format: date-time

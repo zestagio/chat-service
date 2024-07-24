@@ -105,10 +105,29 @@ type MessageHeader struct {
 	Id        types.MessageID `json:"id"`
 }
 
+// MessageWithoutBody defines model for MessageWithoutBody.
+type MessageWithoutBody struct {
+	AuthorId  types.UserID    `json:"authorId"`
+	CreatedAt time.Time       `json:"createdAt"`
+	Id        types.MessageID `json:"id"`
+}
+
 // MessagesPage defines model for MessagesPage.
 type MessagesPage struct {
 	Messages []Message `json:"messages"`
 	Next     string    `json:"next"`
+}
+
+// SendMessageRequest defines model for SendMessageRequest.
+type SendMessageRequest struct {
+	ChatId      types.ChatID `json:"chatId"`
+	MessageBody string       `json:"messageBody"`
+}
+
+// SendMessageResponse defines model for SendMessageResponse.
+type SendMessageResponse struct {
+	Data  *MessageWithoutBody `json:"data,omitempty"`
+	Error *Error              `json:"error,omitempty"`
 }
 
 // XRequestIDHeader defines model for XRequestIDHeader.
@@ -134,8 +153,16 @@ type PostGetFreeHandsBtnAvailabilityParams struct {
 	XRequestID XRequestIDHeader `json:"X-Request-ID"`
 }
 
+// PostSendMessageParams defines parameters for PostSendMessage.
+type PostSendMessageParams struct {
+	XRequestID XRequestIDHeader `json:"X-Request-ID"`
+}
+
 // PostGetChatHistoryJSONRequestBody defines body for PostGetChatHistory for application/json ContentType.
 type PostGetChatHistoryJSONRequestBody = GetChatHistoryRequest
+
+// PostSendMessageJSONRequestBody defines body for PostSendMessage for application/json ContentType.
+type PostSendMessageJSONRequestBody = SendMessageRequest
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -223,6 +250,11 @@ type ClientInterface interface {
 
 	// PostGetFreeHandsBtnAvailability request
 	PostGetFreeHandsBtnAvailability(ctx context.Context, params *PostGetFreeHandsBtnAvailabilityParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostSendMessageWithBody request with any body
+	PostSendMessageWithBody(ctx context.Context, params *PostSendMessageParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostSendMessage(ctx context.Context, params *PostSendMessageParams, body PostSendMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) PostFreeHands(ctx context.Context, params *PostFreeHandsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -275,6 +307,30 @@ func (c *Client) PostGetChats(ctx context.Context, params *PostGetChatsParams, r
 
 func (c *Client) PostGetFreeHandsBtnAvailability(ctx context.Context, params *PostGetFreeHandsBtnAvailabilityParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostGetFreeHandsBtnAvailabilityRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostSendMessageWithBody(ctx context.Context, params *PostSendMessageParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostSendMessageRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostSendMessage(ctx context.Context, params *PostSendMessageParams, body PostSendMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostSendMessageRequest(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -458,6 +514,59 @@ func NewPostGetFreeHandsBtnAvailabilityRequest(server string, params *PostGetFre
 	return req, nil
 }
 
+// NewPostSendMessageRequest calls the generic PostSendMessage builder with application/json body
+func NewPostSendMessageRequest(server string, params *PostSendMessageParams, body PostSendMessageJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostSendMessageRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewPostSendMessageRequestWithBody generates requests for PostSendMessage with any type of body
+func NewPostSendMessageRequestWithBody(server string, params *PostSendMessageParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/sendMessage")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-Request-ID", runtime.ParamLocationHeader, params.XRequestID)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-Request-ID", headerParam0)
+
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -514,6 +623,11 @@ type ClientWithResponsesInterface interface {
 
 	// PostGetFreeHandsBtnAvailabilityWithResponse request
 	PostGetFreeHandsBtnAvailabilityWithResponse(ctx context.Context, params *PostGetFreeHandsBtnAvailabilityParams, reqEditors ...RequestEditorFn) (*PostGetFreeHandsBtnAvailabilityResponse, error)
+
+	// PostSendMessageWithBodyWithResponse request with any body
+	PostSendMessageWithBodyWithResponse(ctx context.Context, params *PostSendMessageParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostSendMessageResponse, error)
+
+	PostSendMessageWithResponse(ctx context.Context, params *PostSendMessageParams, body PostSendMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*PostSendMessageResponse, error)
 }
 
 type PostFreeHandsResponse struct {
@@ -604,6 +718,28 @@ func (r PostGetFreeHandsBtnAvailabilityResponse) StatusCode() int {
 	return 0
 }
 
+type PostSendMessageResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *SendMessageResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostSendMessageResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostSendMessageResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 // PostFreeHandsWithResponse request returning *PostFreeHandsResponse
 func (c *ClientWithResponses) PostFreeHandsWithResponse(ctx context.Context, params *PostFreeHandsParams, reqEditors ...RequestEditorFn) (*PostFreeHandsResponse, error) {
 	rsp, err := c.PostFreeHands(ctx, params, reqEditors...)
@@ -646,6 +782,23 @@ func (c *ClientWithResponses) PostGetFreeHandsBtnAvailabilityWithResponse(ctx co
 		return nil, err
 	}
 	return ParsePostGetFreeHandsBtnAvailabilityResponse(rsp)
+}
+
+// PostSendMessageWithBodyWithResponse request with arbitrary body returning *PostSendMessageResponse
+func (c *ClientWithResponses) PostSendMessageWithBodyWithResponse(ctx context.Context, params *PostSendMessageParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostSendMessageResponse, error) {
+	rsp, err := c.PostSendMessageWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostSendMessageResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostSendMessageWithResponse(ctx context.Context, params *PostSendMessageParams, body PostSendMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*PostSendMessageResponse, error) {
+	rsp, err := c.PostSendMessage(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostSendMessageResponse(rsp)
 }
 
 // ParsePostFreeHandsResponse parses an HTTP response from a PostFreeHandsWithResponse call
@@ -742,6 +895,32 @@ func ParsePostGetFreeHandsBtnAvailabilityResponse(rsp *http.Response) (*PostGetF
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest GetFreeHandsBtnAvailabilityResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostSendMessageResponse parses an HTTP response from a PostSendMessageWithResponse call
+func ParsePostSendMessageResponse(rsp *http.Response) (*PostSendMessageResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostSendMessageResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SendMessageResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
