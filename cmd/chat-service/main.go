@@ -34,6 +34,7 @@ import (
 	"github.com/zestagio/chat-service/internal/services/outbox"
 	clientmessageblockedjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/client-message-blocked"
 	clientmessagesentjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/client-message-sent"
+	closechatjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/close-chat"
 	managerassignedtoproblemjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/manager-assigned-to-problem"
 	sendclientmessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-client-message"
 	sendmanagermessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-manager-message"
@@ -212,6 +213,7 @@ func run() (errReturned error) {
 			managerassignedtoproblemjob.NewOptions(eventsStream, chatsRepo, problemsRepo, msgRepo, managerLoad),
 		),
 		sendmanagermessagejob.Must(sendmanagermessagejob.NewOptions(eventsStream, msgProducer, chatsRepo, msgRepo)),
+		closechatjob.Must(closechatjob.NewOptions(eventsStream, chatsRepo, problemsRepo, managerLoad)),
 	} {
 		outBox.MustRegisterJob(j)
 	}

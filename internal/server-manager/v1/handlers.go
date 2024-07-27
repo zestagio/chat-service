@@ -8,6 +8,7 @@ import (
 	freehandssignal "github.com/zestagio/chat-service/internal/usecases/manager/free-hands-signal"
 	getchathistory "github.com/zestagio/chat-service/internal/usecases/manager/get-chat-history"
 	getchats "github.com/zestagio/chat-service/internal/usecases/manager/get-chats"
+	resolveproblem "github.com/zestagio/chat-service/internal/usecases/manager/resolve-problem"
 	sendmessage "github.com/zestagio/chat-service/internal/usecases/manager/send-message"
 )
 
@@ -35,6 +36,10 @@ type sendMessageUseCase interface {
 	Handle(ctx context.Context, req sendmessage.Request) (sendmessage.Response, error)
 }
 
+type resolveProblemUseCase interface {
+	Handle(ctx context.Context, req resolveproblem.Request) error
+}
+
 //go:generate options-gen -out-filename=handlers.gen.go -from-struct=Options
 type Options struct {
 	canReceiveProblems    canReceiveProblemsUseCase `option:"mandatory" validate:"required"`
@@ -42,6 +47,7 @@ type Options struct {
 	getChatsUseCase       getChatsUseCase           `option:"mandatory" validate:"required"`
 	getChatHistoryUseCase getChatHistoryUseCase     `option:"mandatory" validate:"required"`
 	sendMessageUseCase    sendMessageUseCase        `option:"mandatory" validate:"required"`
+	resolveProblemUseCase resolveProblemUseCase     `option:"mandatory" validate:"required"`
 }
 
 type Handlers struct {

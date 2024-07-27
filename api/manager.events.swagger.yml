@@ -61,11 +61,13 @@ components:
       oneOf:
         - $ref: "#/components/schemas/NewChatEvent"
         - $ref: "#/components/schemas/NewMessageEvent"
+        - $ref: "#/components/schemas/ChatClosedEvent"
       discriminator:
         propertyName: eventType
         mapping:
           NewChatEvent: "#/components/schemas/NewChatEvent"
           NewMessageEvent: "#/components/schemas/NewMessageEvent"
+          ChatClosedEvent: "#/components/schemas/ChatClosedEvent"
 
     NewChatEvent:
       allOf:
@@ -100,3 +102,12 @@ components:
               x-go-type: types.UserID
               x-go-type-import:
                 path: "github.com/zestagio/chat-service/internal/types"
+
+    ChatClosedEvent:
+      allOf:
+        - $ref: "#/components/schemas/ChatId"
+        - type: object
+          required: [ canTakeMoreProblems ]
+          properties:
+            canTakeMoreProblems:
+              type: boolean

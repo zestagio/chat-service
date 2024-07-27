@@ -25,6 +25,7 @@ import (
 	freehandssignal "github.com/zestagio/chat-service/internal/usecases/manager/free-hands-signal"
 	getchathistory "github.com/zestagio/chat-service/internal/usecases/manager/get-chat-history"
 	getchats "github.com/zestagio/chat-service/internal/usecases/manager/get-chats"
+	resolveproblem "github.com/zestagio/chat-service/internal/usecases/manager/resolve-problem"
 	sendmessage "github.com/zestagio/chat-service/internal/usecases/manager/send-message"
 	websocketstream "github.com/zestagio/chat-service/internal/websocket-stream"
 )
@@ -78,12 +79,18 @@ func initServerManager(
 		return nil, fmt.Errorf("create sendmessage usecase: %v", err)
 	}
 
+	resolveProblemUseCase, err := resolveproblem.New(resolveproblem.NewOptions(problemsRepo, outboxSvc, db))
+	if err != nil {
+		return nil, fmt.Errorf("create resolveproblem usecase: %v", err)
+	}
+
 	v1Handlers, err := managerv1.NewHandlers(managerv1.NewOptions(
 		canReceiveProblemsUseCase,
 		freeHandsSignalUseCase,
 		getChatsUseCase,
 		getChatHistoryUseCase,
 		sendMessageUseCase,
+		resolveProblemUseCase,
 	))
 	if err != nil {
 		return nil, fmt.Errorf("create v1 handlers: %v", err)

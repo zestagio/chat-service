@@ -13,6 +13,7 @@ import (
 	freehandssignal "github.com/zestagio/chat-service/internal/usecases/manager/free-hands-signal"
 	getchathistory "github.com/zestagio/chat-service/internal/usecases/manager/get-chat-history"
 	getchats "github.com/zestagio/chat-service/internal/usecases/manager/get-chats"
+	resolveproblem "github.com/zestagio/chat-service/internal/usecases/manager/resolve-problem"
 	sendmessage "github.com/zestagio/chat-service/internal/usecases/manager/send-message"
 )
 
@@ -204,4 +205,41 @@ func (m *MocksendMessageUseCase) Handle(ctx context.Context, req sendmessage.Req
 func (mr *MocksendMessageUseCaseMockRecorder) Handle(ctx, req interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Handle", reflect.TypeOf((*MocksendMessageUseCase)(nil).Handle), ctx, req)
+}
+
+// MockresolveProblemUseCase is a mock of resolveProblemUseCase interface.
+type MockresolveProblemUseCase struct {
+	ctrl     *gomock.Controller
+	recorder *MockresolveProblemUseCaseMockRecorder
+}
+
+// MockresolveProblemUseCaseMockRecorder is the mock recorder for MockresolveProblemUseCase.
+type MockresolveProblemUseCaseMockRecorder struct {
+	mock *MockresolveProblemUseCase
+}
+
+// NewMockresolveProblemUseCase creates a new mock instance.
+func NewMockresolveProblemUseCase(ctrl *gomock.Controller) *MockresolveProblemUseCase {
+	mock := &MockresolveProblemUseCase{ctrl: ctrl}
+	mock.recorder = &MockresolveProblemUseCaseMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockresolveProblemUseCase) EXPECT() *MockresolveProblemUseCaseMockRecorder {
+	return m.recorder
+}
+
+// Handle mocks base method.
+func (m *MockresolveProblemUseCase) Handle(ctx context.Context, req resolveproblem.Request) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Handle", ctx, req)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Handle indicates an expected call of Handle.
+func (mr *MockresolveProblemUseCaseMockRecorder) Handle(ctx, req interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Handle", reflect.TypeOf((*MockresolveProblemUseCase)(nil).Handle), ctx, req)
 }
