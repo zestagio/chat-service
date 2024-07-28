@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	chatsrepo "github.com/zestagio/chat-service/internal/repositories/chats"
+	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
 	problemsrepo "github.com/zestagio/chat-service/internal/repositories/problems"
 	eventstream "github.com/zestagio/chat-service/internal/services/event-stream"
 	closechatjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/close-chat"
@@ -28,8 +29,9 @@ func TestJob_Handle(t *testing.T) {
 	eventStream := closechatjobmocks.NewMockeventStream(ctrl)
 	chatsRepo := closechatjobmocks.NewMockchatsRepository(ctrl)
 	problemRepo := closechatjobmocks.NewMockproblemRepository(ctrl)
+	msgRepo := closechatjobmocks.NewMockmessageRepository(ctrl)
 	managerLoad := closechatjobmocks.NewMockmanagerLoadService(ctrl)
-	job, err := closechatjob.New(closechatjob.NewOptions(eventStream, chatsRepo, problemRepo, managerLoad))
+	job, err := closechatjob.New(closechatjob.NewOptions(eventStream, chatsRepo, problemRepo, msgRepo, managerLoad))
 	require.NoError(t, err)
 
 	reqID := types.NewRequestID()
@@ -37,21 +39,30 @@ func TestJob_Handle(t *testing.T) {
 	managerID := types.NewUserID()
 	chatID := types.NewChatID()
 	problemID := types.NewProblemID()
+	messageID := types.NewMessageID()
 
-	problem := problemsrepo.Problem{
+	msg := messagesrepo.Message{
+		ID:                 messageID,
+		ChatID:             chatID,
+		ProblemID:          problemID,
+		Body:               "Your question has been marked as resolved.\nThank you for being with us!",
+		CreatedAt:          time.Now(),
+		IsVisibleForClient: true,
+		IsService:          true,
+	}
+	msgRepo.EXPECT().GetMessageByID(gomock.Any(), messageID).
+		Return(&msg, nil)
+	chatsRepo.EXPECT().GetChatByID(gomock.Any(), chatID).
+		Return(&chatsrepo.Chat{
+			ID:       chatID,
+			ClientID: clientID,
+		}, nil)
+	problemRepo.EXPECT().GetProblemByID(gomock.Any(), problemID).Return(&problemsrepo.Problem{
 		ID:        problemID,
 		ChatID:    chatID,
 		ManagerID: managerID,
-	}
-	problemRepo.EXPECT().GetProblemByID(gomock.Any(), problemID).Return(&problem, nil)
-	problemRepo.EXPECT().GetProblemRequestID(ctx, problemID).Return(reqID, nil)
-
-	chat := chatsrepo.Chat{
-		ID:       chatID,
-		ClientID: clientID,
-	}
-	chatsRepo.EXPECT().GetChatByID(gomock.Any(), chatID).Return(&chat, nil)
-
+	}, nil)
+	problemRepo.EXPECT().GetProblemRequestID(gomock.Any(), problemID).Return(reqID, nil)
 	managerLoad.EXPECT().CanManagerTakeProblem(gomock.Any(), managerID).Return(true, nil)
 
 	eventStream.EXPECT().Publish(gomock.Any(), clientID, newMessageEventMatcher{
@@ -59,11 +70,11 @@ func TestJob_Handle(t *testing.T) {
 			EventID:     types.EventIDNil, // No possibility to check.
 			RequestID:   reqID,
 			ChatID:      chatID,
-			MessageID:   types.MessageIDNil, // No possibility to check.
-			AuthorID:    types.UserIDNil,    // No possibility to check.
-			CreatedAt:   time.Now(),         // No possibility to check.
-			MessageBody: closechatjob.CloseMsgBody,
-			IsService:   true,
+			MessageID:   msg.ID,
+			AuthorID:    msg.AuthorID,
+			CreatedAt:   msg.CreatedAt,
+			MessageBody: msg.Body,
+			IsService:   msg.IsService,
 		},
 	})
 
@@ -77,7 +88,7 @@ func TestJob_Handle(t *testing.T) {
 	})
 
 	// Action & assert.
-	err = job.Handle(ctx, simpleid.MustMarshal(problemID))
+	err = job.Handle(ctx, simpleid.MustMarshal(messageID))
 	require.NoError(t, err)
 }
 

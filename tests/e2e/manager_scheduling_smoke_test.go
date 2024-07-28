@@ -126,4 +126,70 @@ var _ = Describe("Manager Scheduling Smoke", Ordered, func() {
 		Expect(lastMsg.AuthorID.String()).Should(Equal(clientChat.ClientID().String()))
 		Expect(lastMsg.CreatedAt.IsZero()).Should(BeFalse())
 	})
+
+	It("manager answers back", func() {
+		lastChat, ok := managerWs.LastChat()
+		Expect(ok).Should(BeTrue())
+
+		err := managerWs.SendMessage(ctx, lastChat.ID, "hello")
+		Expect(err).ShouldNot(HaveOccurred())
+
+		waitForEvent(clientStream) // NewMessageEvent
+
+		lastClientMsg, ok := clientChat.LastMessage()
+		Expect(ok).Should(BeTrue())
+		Expect(lastClientMsg.ID).ShouldNot(BeEmpty())
+		Expect(lastClientMsg.AuthorID.String()).Should(Equal(managerWs.ManagerID().String()))
+		Expect(lastClientMsg.CreatedAt).ShouldNot(BeZero())
+
+		waitForEvent(managerStream) // NewMessageEvent
+
+		lastChat, ok = managerWs.LastChat()
+		Expect(ok).Should(BeTrue())
+		lastMsg, ok := lastChat.LastMessage()
+		Expect(ok).Should(BeTrue())
+		Expect(lastMsg.ID).ShouldNot(BeEmpty())
+		Expect(lastMsg.AuthorID.String()).Should(Equal(managerWs.ManagerID().String()))
+		Expect(lastMsg.CreatedAt).ShouldNot(BeZero())
+		Expect(lastMsg.Body).Should(Equal("hello"))
+
+		err = managerWs.Refresh(ctx)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		lastChat, ok = managerWs.LastChat()
+		Expect(ok).Should(BeTrue())
+
+		count := lastChat.MessagesCount()
+		Expect(count).Should(Equal(2))
+	})
+
+	It("manager closes chat", func() {
+		chatsCount := managerWs.ChatsCount()
+		chat, ok := managerWs.LastChat()
+		Expect(ok).Should(BeTrue())
+
+		err := managerWs.CloseChat(ctx, chat.ID)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		waitForEvent(managerStream) // CloseChatEvent
+
+		Expect(chatsCount).Should(BeNumerically(">", managerWs.ChatsCount()))
+
+		canTakeMoreProblem := managerWs.CanTakeMoreProblems()
+		Expect(canTakeMoreProblem).Should(BeTrue())
+
+		waitForEvent(clientStream) // NewMessageEvent (that chat was closed)
+
+		lastClientMsg, ok := clientChat.LastMessage()
+		Expect(ok).Should(BeTrue())
+		Expect(lastClientMsg.AuthorID).Should(BeZero())
+		Expect(lastClientMsg.IsService).Should(BeTrue())
+		Expect(lastClientMsg.CreatedAt).ShouldNot(BeZero())
+
+		err = clientChat.Refresh(ctx)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		clientMessageCount := clientChat.MessagesCount()
+		Expect(clientMessageCount).Should(Equal(4))
+	})
 })

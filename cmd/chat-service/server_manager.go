@@ -79,7 +79,7 @@ func initServerManager(
 		return nil, fmt.Errorf("create sendmessage usecase: %v", err)
 	}
 
-	resolveProblemUseCase, err := resolveproblem.New(resolveproblem.NewOptions(problemsRepo, outboxSvc, db))
+	resolveProblemUseCase, err := resolveproblem.New(resolveproblem.NewOptions(msgRepo, problemsRepo, outboxSvc, db))
 	if err != nil {
 		return nil, fmt.Errorf("create resolveproblem usecase: %v", err)
 	}

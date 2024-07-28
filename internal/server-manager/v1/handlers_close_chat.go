@@ -9,7 +9,7 @@ import (
 
 	internalerrors "github.com/zestagio/chat-service/internal/errors"
 	"github.com/zestagio/chat-service/internal/middlewares"
-	closechat "github.com/zestagio/chat-service/internal/usecases/manager/resolve-problem"
+	resolveproblem "github.com/zestagio/chat-service/internal/usecases/manager/resolve-problem"
 )
 
 func (h Handlers) PostCloseChat(eCtx echo.Context, params PostCloseChatParams) error {
@@ -21,13 +21,16 @@ func (h Handlers) PostCloseChat(eCtx echo.Context, params PostCloseChatParams) e
 		return fmt.Errorf("bind request: %w", err)
 	}
 
-	if err := h.resolveProblemUseCase.Handle(ctx, closechat.Request{
+	if err := h.resolveProblemUseCase.Handle(ctx, resolveproblem.Request{
 		ID:        params.XRequestID,
 		ManagerID: managerID,
 		ChatID:    req.ChatId,
 	}); err != nil {
-		if errors.Is(err, closechat.ErrInvalidRequest) {
+		if errors.Is(err, resolveproblem.ErrInvalidRequest) {
 			return internalerrors.NewServerError(http.StatusBadRequest, "invalid request", err)
+		}
+		if errors.Is(err, resolveproblem.ErrProblemNotFound) {
+			return internalerrors.NewServerError(ErrorCodeNoFoundProblem, "no found problem", err)
 		}
 
 		return fmt.Errorf("handle `resolve problem` use case: %v", err)

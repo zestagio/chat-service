@@ -213,7 +213,7 @@ func run() (errReturned error) {
 			managerassignedtoproblemjob.NewOptions(eventsStream, chatsRepo, problemsRepo, msgRepo, managerLoad),
 		),
 		sendmanagermessagejob.Must(sendmanagermessagejob.NewOptions(eventsStream, msgProducer, chatsRepo, msgRepo)),
-		closechatjob.Must(closechatjob.NewOptions(eventsStream, chatsRepo, problemsRepo, managerLoad)),
+		closechatjob.Must(closechatjob.NewOptions(eventsStream, chatsRepo, problemsRepo, msgRepo, managerLoad)),
 	} {
 		outBox.MustRegisterJob(j)
 	}

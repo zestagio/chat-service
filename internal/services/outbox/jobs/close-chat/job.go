@@ -3,12 +3,12 @@ package closechatjob
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
 	chatsrepo "github.com/zestagio/chat-service/internal/repositories/chats"
+	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
 	problemsrepo "github.com/zestagio/chat-service/internal/repositories/problems"
 	eventstream "github.com/zestagio/chat-service/internal/services/event-stream"
 	"github.com/zestagio/chat-service/internal/services/outbox"
@@ -19,8 +19,7 @@ import (
 //go:generate mockgen -source=$GOFILE -destination=mocks/job_mock.gen.go -package=closechatjobmocks
 
 const (
-	Name         = "close-chat"
-	CloseMsgBody = "Your question has been marked as resolved.\nThank you for being with us!"
+	Name = "close-chat"
 )
 
 type eventStream interface {
@@ -36,6 +35,10 @@ type problemRepository interface {
 	GetProblemRequestID(ctx context.Context, problemID types.ProblemID) (types.RequestID, error)
 }
 
+type messageRepository interface {
+	GetMessageByID(ctx context.Context, msgID types.MessageID) (*messagesrepo.Message, error)
+}
+
 type managerLoadService interface {
 	CanManagerTakeProblem(ctx context.Context, managerID types.UserID) (bool, error)
 }
@@ -45,6 +48,7 @@ type Options struct {
 	eventStream eventStream        `option:"mandatory" validate:"required"`
 	chatsRepo   chatsRepository    `option:"mandatory" validate:"required"`
 	problemRepo problemRepository  `option:"mandatory" validate:"required"`
+	msgRepo     messageRepository  `option:"mandatory" validate:"required"`
 	managerLoad managerLoadService `option:"mandatory" validate:"required"`
 }
 
@@ -79,12 +83,22 @@ func (j *Job) Name() string {
 func (j *Job) Handle(ctx context.Context, payload string) error {
 	j.logger.Info("start processing", zap.String("payload", payload))
 
-	pID, err := simpleid.Unmarshal[types.ProblemID](payload)
+	msgID, err := simpleid.Unmarshal[types.MessageID](payload)
 	if err != nil {
 		return fmt.Errorf("unmarshal payload: %v", err)
 	}
 
-	problem, err := j.problemRepo.GetProblemByID(ctx, pID)
+	msg, err := j.msgRepo.GetMessageByID(ctx, msgID)
+	if err != nil {
+		return fmt.Errorf("get message: %v", err)
+	}
+
+	chat, err := j.chatsRepo.GetChatByID(ctx, msg.ChatID)
+	if err != nil {
+		return fmt.Errorf("get chat: %v", err)
+	}
+
+	problem, err := j.problemRepo.GetProblemByID(ctx, msg.ProblemID)
 	if err != nil {
 		return fmt.Errorf("get problem: %v", err)
 	}
@@ -94,12 +108,7 @@ func (j *Job) Handle(ctx context.Context, payload string) error {
 		return fmt.Errorf("get problem request id: %v", err)
 	}
 
-	chat, err := j.chatsRepo.GetChatByID(ctx, problem.ChatID)
-	if err != nil {
-		return fmt.Errorf("get chat: %v", err)
-	}
-
-	canManagerTakeProblem, err := j.managerLoad.CanManagerTakeProblem(ctx, problem.ManagerID)
+	canTakeMoreProblems, err := j.managerLoad.CanManagerTakeProblem(ctx, problem.ManagerID)
 	if err != nil {
 		return fmt.Errorf("can manager take problem: %v", err)
 	}
@@ -110,12 +119,12 @@ func (j *Job) Handle(ctx context.Context, payload string) error {
 		if err := j.eventStream.Publish(ctx, chat.ClientID, eventstream.NewNewMessageEvent(
 			types.NewEventID(),
 			initReqID,
-			problem.ChatID,
-			types.NewMessageID(),
+			msg.ChatID,
+			msg.ID,
 			types.UserIDNil,
-			time.Now(),
-			CloseMsgBody,
-			true,
+			msg.CreatedAt,
+			msg.Body,
+			msg.IsService,
 		)); err != nil {
 			return fmt.Errorf("publish NewMesaggeEvent to client: %v", err)
 		}
@@ -126,8 +135,8 @@ func (j *Job) Handle(ctx context.Context, payload string) error {
 		if err := j.eventStream.Publish(ctx, problem.ManagerID, eventstream.NewChatClosedEvent(
 			types.NewEventID(),
 			initReqID,
-			problem.ChatID,
-			canManagerTakeProblem,
+			msg.ChatID,
+			canTakeMoreProblems,
 		)); err != nil {
 			return fmt.Errorf("publish ChatClosedEvent to manager: %v", err)
 		}
