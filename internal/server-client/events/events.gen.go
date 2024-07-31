@@ -20,47 +20,36 @@ import (
 	"github.com/zestagio/chat-service/internal/types"
 )
 
-// Defines values for EventType.
-const (
-	EventTypeMessageBlockedEvent EventType = "MessageBlockedEvent"
-	EventTypeMessageSentEvent    EventType = "MessageSentEvent"
-	EventTypeNewMessageEvent     EventType = "NewMessageEvent"
-)
-
-// CommonEvent defines model for CommonEvent.
-type CommonEvent struct {
-	EventID   types.EventID   `json:"eventId"`
-	EventType EventType       `json:"eventType"`
-	MessageID types.MessageID `json:"messageId"`
-	RequestID types.RequestID `json:"requestId"`
-}
-
 // Event defines model for Event.
 type Event struct {
-	EventType EventType `json:"eventType"`
+	EventId   types.EventID   `json:"eventId"`
+	EventType string          `json:"eventType"`
+	RequestId types.RequestID `json:"requestId"`
 	union     json.RawMessage
 }
 
-// EventType defines model for EventType.
-type EventType string
-
-// MessageBlockedEvent defines model for MessageBlockedEvent.
-type MessageBlockedEvent = CommonEvent
-
-// MessageSentEvent defines model for MessageSentEvent.
-type MessageSentEvent = CommonEvent
-
-// NewMessageEvent defines model for NewMessageEvent.
-type NewMessageEvent struct {
-	AuthorID  *types.UserID   `json:"authorId,omitempty"`
+// Message defines model for Message.
+type Message struct {
+	AuthorId  *types.UserID   `json:"authorId,omitempty"`
 	Body      string          `json:"body"`
 	CreatedAt time.Time       `json:"createdAt"`
-	EventID   types.EventID   `json:"eventId"`
-	EventType EventType       `json:"eventType"`
 	IsService bool            `json:"isService"`
-	MessageID types.MessageID `json:"messageId"`
-	RequestID types.RequestID `json:"requestId"`
+	MessageId types.MessageID `json:"messageId"`
 }
+
+// MessageBlockedEvent defines model for MessageBlockedEvent.
+type MessageBlockedEvent = MessageId
+
+// MessageId defines model for MessageId.
+type MessageId struct {
+	MessageId types.MessageID `json:"messageId"`
+}
+
+// MessageSentEvent defines model for MessageSentEvent.
+type MessageSentEvent = MessageId
+
+// NewMessageEvent defines model for NewMessageEvent.
+type NewMessageEvent = Message
 
 // AsNewMessageEvent returns the union data inside the Event as a NewMessageEvent
 func (t Event) AsNewMessageEvent() (NewMessageEvent, error) {
@@ -190,9 +179,19 @@ func (t Event) MarshalJSON() ([]byte, error) {
 		}
 	}
 
+	object["eventId"], err = json.Marshal(t.EventId)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling 'eventId': %w", err)
+	}
+
 	object["eventType"], err = json.Marshal(t.EventType)
 	if err != nil {
 		return nil, fmt.Errorf("error marshaling 'eventType': %w", err)
+	}
+
+	object["requestId"], err = json.Marshal(t.RequestId)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling 'requestId': %w", err)
 	}
 
 	b, err = json.Marshal(object)
@@ -210,10 +209,24 @@ func (t *Event) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
+	if raw, found := object["eventId"]; found {
+		err = json.Unmarshal(raw, &t.EventId)
+		if err != nil {
+			return fmt.Errorf("error reading 'eventId': %w", err)
+		}
+	}
+
 	if raw, found := object["eventType"]; found {
 		err = json.Unmarshal(raw, &t.EventType)
 		if err != nil {
 			return fmt.Errorf("error reading 'eventType': %w", err)
+		}
+	}
+
+	if raw, found := object["requestId"]; found {
+		err = json.Unmarshal(raw, &t.RequestId)
+		if err != nil {
+			return fmt.Errorf("error reading 'requestId': %w", err)
 		}
 	}
 
@@ -223,17 +236,17 @@ func (t *Event) UnmarshalJSON(b []byte) error {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/7RVTW+bQBD9K2haqRdsaHuJuOVLVVQ1ker2FPmwhjFsAjt0Z7CbWvz3ahfsYIdGcZSe",
-	"WO/O15v3ZryBlKqaDBphSDbAaYGV8sdzqioylys04n7Wlmq0otE/oru+ytxxSbZSAgk0jc4gBHmoERJg",
-	"sdrkEMLvSU4Toyp36aNdXWxve1P34enI20RXNdkuvZICEsi1FM1imlIV/UEWlWuK0kLJhNGudIqRNoLW",
-	"qDLyQaFtw67WHz7VBt5bXEIC76JH3FEPOrrcGbYhVMiscjwe47fecRzl6Ovb4LT4q0F+BSvfe8fxikdf",
-	"36LivmRtMYPkdkBTuJPXkIYhwHkbwk6ZmebU6kobJWQHUn247uDhkFYyeLOE5PZ5JVzjuieqy9KGz9v3",
-	"xjM0cpTDWUnpPWa9zzwcm7IjlfvPru56tg2IpqmcySHYEJ7A2V3tFTw/lFU7bpdsQJXlC9o+XDntvB0p",
-	"5PWhDlG+LlJ4uAhVIwXZ42futPMbH7mfjPZ/bIgFZQ8uxBPWUotKMDuVPRiZEpyIrhBGiNY86xINAi6I",
-	"SlTmiQgfww/9+noeVUSLO0w9XS6ANkvysbWU7vVMmftg1tSuD8F5oSQ4LzUaCTw1DCGs0LImAwmsPvpZ",
-	"r9GoWkMCn6fxNIbQ987TFrE0C3fIsdsh6HZILZ37lQQNIwdLskGOBq0SbfLAzxJPgxsp0K41Y6AlyAjZ",
-	"fJAp+HzOkoyTA3xBmbkkrhVck+FOMJ/i2H1SMrKVYV2XOvWO0R27Arb/wy8a+26T7gO4+epu3b1TA1r2",
-	"Kt+3ucAVllRXroWdFYTQ2BISWHMSRSWlqiyIJTmJT+JozY6YvwEAAP//eY7a0TAIAAA=",
+	"H4sIAAAAAAAC/+xWT2vbThD9KmJ+P+hFttz2EnRrklJMaQJ1ewo5rKWxtIm0u90Z2U2NvnuZtWxLTgjG",
+	"NBRCTx5m58+b98arXUNma2cNGiZI10BZibUK5sclGhYj15R5XWuj2Hpx1Mo5bQoxvyCRKvC8stk95l0K",
+	"/JfsqyZdyeSp0HhbYIaGj8nex8VwhavO+2zmYVgbg/PWoeeHK1UjpIDi//bgUM6swesFpDdr+N/j4vii",
+	"z8c/gn9kwoCt9nYHXWPQKCCf5mIurK+VkNA0OocYWOZJgdiLVDH8HBV21Dnlh8ah6PSyfzbStbM+qO4U",
+	"l5BCobls5uPM1skvJFaFtklWKh4R+qXOMNGG0RtVJaEotG3c4zNdH+BoY/D4o0E6GfXXLv2P4+6gaY85",
+	"pDe9IeIdzX3wt+1ueaWtqqoj1qZLmOZB/6GWquHS+lNp+U7oX0LLuc0fnpQx86gY8w88wJsrxhHrGh+B",
+	"bmPQNNs06hWcW1uhMnBIf+jb79JPv90Vt/M7zOSfsVdjeBcdslzvFDiJ5q2AL719e5i9yTagX888vUv/",
+	"VYz16IP071r469eCFNBmYUNtzZWcnitzH80aJzxEF6Xi6KLSaDgKshHEsERP2hpIYfk2PAocGuU0pPB+",
+	"PBlPIA7cBX0S4mYuRoGb1xLKa8nxJn3KUUNI0cL6qECDXrE2RRQ+KDSOrrlEv9KEkeYot0jmDY8h9JNI",
+	"a0R3+IQ8kyZCBTlraLMZ7yYT+cms4e22OVfpLCQmdyQAti86sZ7bwO6BIWwNB7j+LF7xyzagp7DMw5hL",
+	"XGJlXS0UbqIghsZXkMKK0iSpbKaq0hKnZ5OzSbIiEeZ3AAAA//8+7/RMegoAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

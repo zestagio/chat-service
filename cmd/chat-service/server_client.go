@@ -7,15 +7,16 @@ import (
 	"go.uber.org/zap"
 
 	keycloakclient "github.com/zestagio/chat-service/internal/clients/keycloak"
-	"github.com/zestagio/chat-service/internal/middlewares"
 	chatsrepo "github.com/zestagio/chat-service/internal/repositories/chats"
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
 	problemsrepo "github.com/zestagio/chat-service/internal/repositories/problems"
 	"github.com/zestagio/chat-service/internal/server"
 	serverclient "github.com/zestagio/chat-service/internal/server-client"
 	clienterrhandler "github.com/zestagio/chat-service/internal/server-client/errhandler"
+	clientevents "github.com/zestagio/chat-service/internal/server-client/events"
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 	"github.com/zestagio/chat-service/internal/server/errhandler"
+	eventstream "github.com/zestagio/chat-service/internal/services/event-stream"
 	"github.com/zestagio/chat-service/internal/services/outbox"
 	"github.com/zestagio/chat-service/internal/store"
 	gethistory "github.com/zestagio/chat-service/internal/usecases/client/get-history"
@@ -35,15 +36,15 @@ func initServerClient(
 	keycloak *keycloakclient.Client,
 	requiredResource string,
 	requiredRole string,
+	secWsProtocol string,
 
+	eventStream eventstream.EventStream,
 	outBox *outbox.Service,
 
 	db *store.Database,
 	chatsRepo *chatsrepo.Repo,
 	msgRepo *messagesrepo.Repo,
 	problemsRepo *problemsrepo.Repo,
-
-	wsHTTPHandler *websocketstream.HTTPHandler,
 ) (*server.Server, error) {
 	getHistoryUseCase, err := gethistory.New(gethistory.NewOptions(msgRepo))
 	if err != nil {
@@ -61,12 +62,32 @@ func initServerClient(
 		return nil, fmt.Errorf("create sendmessage usecase: %v", err)
 	}
 
-	v1Handlers, err := clientv1.NewHandlers(clientv1.NewOptions(getHistoryUseCase, sendMessageUseCase))
+	v1Handlers, err := clientv1.NewHandlers(clientv1.NewOptions(
+		getHistoryUseCase,
+		sendMessageUseCase,
+	))
 	if err != nil {
 		return nil, fmt.Errorf("create v1 handlers: %v", err)
 	}
 
+	shutdownCh := make(chan struct{})
+	shutdownFn := func() {
+		close(shutdownCh)
+	}
+
 	lg := zap.L().Named(nameServerClient)
+
+	wsHandler, err := websocketstream.NewHTTPHandler(websocketstream.NewOptions(
+		lg,
+		eventStream,
+		clientevents.Adapter{},
+		websocketstream.JSONEventWriter{},
+		websocketstream.NewUpgrader(allowOrigins, secWsProtocol),
+		shutdownCh,
+	))
+	if err != nil {
+		return nil, fmt.Errorf("create ws handler: %v", err)
+	}
 
 	httpErrorHandler, err := errhandler.New(errhandler.NewOptions(lg, productionMode, clienterrhandler.ResponseBuilder))
 	if err != nil {
@@ -80,13 +101,9 @@ func initServerClient(
 		keycloak,
 		requiredResource,
 		requiredRole,
-		serverclient.NewHandlersRegistrar(
-			v1Swagger,
-			v1Handlers,
-			httpErrorHandler.Handle,
-			middlewares.NewKeycloakTokenAuth(keycloak, requiredResource, requiredRole),
-		),
-		wsHTTPHandler,
+		secWsProtocol,
+		serverclient.NewHandlersRegistrar(v1Swagger, v1Handlers, wsHandler.Serve, httpErrorHandler.Handle),
+		shutdownFn,
 	))
 	if err != nil {
 		return nil, fmt.Errorf("build server: %v", err)

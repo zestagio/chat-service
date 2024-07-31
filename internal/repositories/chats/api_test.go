@@ -4,6 +4,7 @@ package chatsrepo_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/suite"
 
@@ -51,5 +52,123 @@ func (s *ChatsRepoSuite) Test_CreateIfNotExists() {
 		s.Require().NoError(err)
 		s.Require().NotEmpty(chatID)
 		s.Equal(chat.ID, chatID)
+	})
+}
+
+func (s *ChatsRepoSuite) Test_GetManagerChatsWithProblems() {
+	s.Run("one existing chat", func() {
+		clientFirst := types.NewUserID()
+		managerID := types.NewUserID()
+
+		chatOne := s.Database.Chat(s.Ctx).Create().SetClientID(clientFirst).SaveX(s.Ctx)
+		s.Database.Problem(s.Ctx).Create().SetChatID(chatOne.ID).SetManagerID(managerID).SaveX(s.Ctx)
+
+		chats, err := s.repo.GetManagerChatsWithProblems(s.Ctx, managerID)
+
+		s.Require().NoError(err)
+
+		{
+			s.Len(chats, 1)
+			s.Equal(chatOne.ID, chats[0].ID)
+			s.IsType(chatsrepo.Chat{}, chats[0])
+		}
+	})
+
+	s.Run("empty chats with resolved problems", func() {
+		clientFirst := types.NewUserID()
+		clientSecond := types.NewUserID()
+		managerID := types.NewUserID()
+		resolveTimeFirst := time.Now().Add(-2 * time.Second)
+		resolveTimeSecond := time.Now().Add(-1 * time.Second)
+
+		c := s.Database.Chat(s.Ctx).Create().SetClientID(clientFirst).SaveX(s.Ctx)
+		s.Database.Problem(s.Ctx).Create().
+			SetChatID(c.ID).
+			SetManagerID(managerID).
+			SetResolvedAt(resolveTimeFirst).
+			SaveX(s.Ctx)
+		c2 := s.Database.Chat(s.Ctx).Create().SetClientID(clientSecond).SaveX(s.Ctx)
+		s.Database.Problem(s.Ctx).Create().
+			SetChatID(c2.ID).
+			SetManagerID(managerID).
+			SetResolvedAt(resolveTimeSecond).
+			SaveX(s.Ctx)
+
+		chats, err := s.repo.GetManagerChatsWithProblems(s.Ctx, managerID)
+
+		{
+			s.Require().NoError(err)
+			s.Empty(chats)
+		}
+	})
+
+	s.Run("empty chats with open problems for other manager", func() {
+		clientFirst := types.NewUserID()
+		clientSecond := types.NewUserID()
+		managerID := types.NewUserID()
+		otherManagerID := types.NewUserID()
+
+		c := s.Database.Chat(s.Ctx).Create().SetClientID(clientFirst).SaveX(s.Ctx)
+		s.Database.Problem(s.Ctx).Create().
+			SetChatID(c.ID).
+			SetManagerID(otherManagerID).
+			SaveX(s.Ctx)
+		c2 := s.Database.Chat(s.Ctx).Create().SetClientID(clientSecond).SaveX(s.Ctx)
+		s.Database.Problem(s.Ctx).Create().
+			SetChatID(c2.ID).
+			SetManagerID(otherManagerID).
+			SaveX(s.Ctx)
+
+		chats, err := s.repo.GetManagerChatsWithProblems(s.Ctx, managerID)
+
+		{
+			s.Require().NoError(err)
+			s.Empty(chats)
+		}
+	})
+
+	s.Run("empty chats with resolved problems for other manager", func() {
+		clientFirst := types.NewUserID()
+		clientSecond := types.NewUserID()
+		managerID := types.NewUserID()
+		otherManagerID := types.NewUserID()
+		resolveTimeFirst := time.Now().Add(-2 * time.Second)
+		resolveTimeSecond := time.Now().Add(-1 * time.Second)
+
+		c := s.Database.Chat(s.Ctx).Create().SetClientID(clientFirst).SaveX(s.Ctx)
+		s.Database.Problem(s.Ctx).Create().
+			SetChatID(c.ID).
+			SetManagerID(otherManagerID).
+			SetResolvedAt(resolveTimeFirst).
+			SaveX(s.Ctx)
+		c2 := s.Database.Chat(s.Ctx).Create().SetClientID(clientSecond).SaveX(s.Ctx)
+		s.Database.Problem(s.Ctx).Create().
+			SetChatID(c2.ID).
+			SetManagerID(otherManagerID).
+			SetResolvedAt(resolveTimeSecond).
+			SaveX(s.Ctx)
+
+		chats, err := s.repo.GetManagerChatsWithProblems(s.Ctx, managerID)
+
+		{
+			s.Require().NoError(err)
+			s.Empty(chats)
+		}
+	})
+
+	s.Run("empty chats", func() {
+		clientFirst := types.NewUserID()
+		clientSecond := types.NewUserID()
+		managerID := types.NewUserID()
+
+		s.Database.Chat(s.Ctx).Create().SetClientID(clientFirst).SaveX(s.Ctx)
+		s.Database.Chat(s.Ctx).Create().SetClientID(clientSecond).SaveX(s.Ctx)
+
+		chats, err := s.repo.GetManagerChatsWithProblems(s.Ctx, managerID)
+
+		{
+			s.Require().NoError(err)
+			s.Empty(chats)
+		}
 	})
 }

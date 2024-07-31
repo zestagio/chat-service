@@ -23,12 +23,14 @@ vars:
     github.com/golang/mock/mockgen@v1.6.0
     github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@v2.2.0
     github.com/kazhuravlev/options-gen/cmd/options-gen@v0.33.0
+    github.com/moznion/gonstructor/cmd/gonstructor@v0.5.1
     github.com/onsi/ginkgo/v2/ginkgo@v2.19.0
+    golang.org/x/tools/cmd/goimports@v0.23.0
     mvdan.cc/gofumpt@v0.6.0
 
   TYPES: |
-    ChatID
     EventID
+    ChatID
     FailedJobID
     JobID
     MessageID
@@ -64,12 +66,22 @@ vars:
   MANAGER_V1_DST: ./internal/server-manager/v1/server.gen.go
   MANAGER_V1_PKG: managerv1
 
+  MANAGER_EVENTS_SRC: ./api/manager.events.swagger.yml
+  MANAGER_EVENTS_DST: ./internal/server-manager/events/events.gen.go
+  MANAGER_EVENTS_PKG: managerevents
+
   ### E2E tests ###
   E2E_CLIENT_V1_DST: ./tests/e2e/api/client/v1/client.gen.go
   E2E_CLIENT_V1_PKG: apiclientv1
 
   E2E_CLIENT_EVENTS_DST: ./tests/e2e/api/client/events/events.gen.go
   E2E_CLIENT_EVENTS_PKG: apiclientevents
+
+  E2E_MANAGER_V1_DST: ./tests/e2e/api/manager/v1/client.gen.go
+  E2E_MANAGER_V1_PKG: apimanagerv1
+
+  E2E_MANAGER_EVENTS_DST: ./tests/e2e/api/manager/events/events.gen.go
+  E2E_MANAGER_EVENTS_PKG: apimanagerevents
   ###
 
 tasks:
@@ -128,8 +140,8 @@ tasks:
       - .env
     cmds:
       - echo "- End-to-end tests..."
-      # NOTE: It's important to run tests serial (without `-p` flag) – for correct `clientsPool` sharing.
-      - .{{.DEV_TOOLS_PATH}}/ginkgo --fail-fast --timeout=1m --tags e2e {{.CLI_ARGS}} ./tests/e2e
+      # NOTE: It's important to run tests serial (without `-p` flag) – for correct `usersPool` sharing.
+      - .{{.DEV_TOOLS_PATH}}/ginkgo --fail-fast --timeout=20s --tags e2e {{.CLI_ARGS}} ./tests/e2e
 
   build:
     cmds:
@@ -207,18 +219,31 @@ tasks:
     cmds:
       - echo "Generate client server..."
       - .{{.DEV_TOOLS_PATH}}/oapi-codegen --old-config-style -generate skip-prune,types,server,spec -package {{.CLIENT_V1_PKG}} {{.CLIENT_V1_SRC}} > {{.CLIENT_V1_DST}}
-      - echo "Generate manager server..."
-      - .{{.DEV_TOOLS_PATH}}/oapi-codegen --old-config-style -generate skip-prune,types,server,spec -package {{.MANAGER_V1_PKG}} {{.MANAGER_V1_SRC}} > {{.MANAGER_V1_DST}}
+
       - echo "Generate client events..."
       - .{{.DEV_TOOLS_PATH}}/oapi-codegen --old-config-style -generate skip-prune,types,spec -package {{.CLIENT_EVENTS_PKG}} {{.CLIENT_EVENTS_SRC}} > {{.CLIENT_EVENTS_DST}}
+
+      - echo "Generate manager server..."
+      - .{{.DEV_TOOLS_PATH}}/oapi-codegen --old-config-style -generate skip-prune,types,server,spec -package {{.MANAGER_V1_PKG}} {{.MANAGER_V1_SRC}} > {{.MANAGER_V1_DST}}
+
+      - echo "Generate manager events..."
+      - .{{.DEV_TOOLS_PATH}}/oapi-codegen --old-config-style -generate skip-prune,types,spec -package {{.MANAGER_EVENTS_PKG}} {{.MANAGER_EVENTS_SRC}} > {{.MANAGER_EVENTS_DST}}
+
       - task: tidy
 
   gen:e2e:
     cmds:
       - echo "[E2E] Generate client API..."
       - .{{.DEV_TOOLS_PATH}}/oapi-codegen --old-config-style -generate types,client -package {{.E2E_CLIENT_V1_PKG}} {{.CLIENT_V1_SRC}} > {{.E2E_CLIENT_V1_DST}}
-      - echo "[E2E] Generate client events API..."
+
+      - echo "[E2E] Generate client events..."
       - .{{.DEV_TOOLS_PATH}}/oapi-codegen --old-config-style -generate skip-prune,types -package {{.E2E_CLIENT_EVENTS_PKG}} {{.CLIENT_EVENTS_SRC}} > {{.E2E_CLIENT_EVENTS_DST}}
+
+      - echo "[E2E] Generate manager API..."
+      - .{{.DEV_TOOLS_PATH}}/oapi-codegen --old-config-style -generate types,client -package {{.E2E_MANAGER_V1_PKG}} {{.MANAGER_V1_SRC}} > {{.E2E_MANAGER_V1_DST}}
+
+      - echo "[E2E] Generate manager events..."
+      - .{{.DEV_TOOLS_PATH}}/oapi-codegen --old-config-style -generate skip-prune,types -package {{.E2E_MANAGER_EVENTS_PKG}} {{.MANAGER_EVENTS_SRC}} > {{.E2E_MANAGER_EVENTS_DST}}
 
   kc:export:
     vars:

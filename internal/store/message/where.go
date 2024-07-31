@@ -396,6 +396,16 @@ func InitialRequestIDLTE(v types.RequestID) predicate.Message {
 	return predicate.Message(sql.FieldLTE(FieldInitialRequestID, v))
 }
 
+// InitialRequestIDIsNil applies the IsNil predicate on the "initial_request_id" field.
+func InitialRequestIDIsNil() predicate.Message {
+	return predicate.Message(sql.FieldIsNull(FieldInitialRequestID))
+}
+
+// InitialRequestIDNotNil applies the NotNil predicate on the "initial_request_id" field.
+func InitialRequestIDNotNil() predicate.Message {
+	return predicate.Message(sql.FieldNotNull(FieldInitialRequestID))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Message {
 	return predicate.Message(sql.FieldEQ(FieldCreatedAt, v))

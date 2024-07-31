@@ -7,6 +7,8 @@ import (
 	"github.com/zestagio/chat-service/internal/validator"
 )
 
+//go:generate gonstructor --output=events.gen.go --type=NewMessageEvent --type=MessageSentEvent --type=MessageBlockedEvent --type=NewChatEvent --type=ChatClosedEvent
+
 type Event interface {
 	eventMarker()
 	Validate() error
@@ -17,89 +19,62 @@ func (*event) eventMarker() {}
 
 // NewMessageEvent is a signal about the appearance of a new message in the chat.
 type NewMessageEvent struct {
-	event
-
+	event       `gonstructor:"-"`
 	EventID     types.EventID   `validate:"required"`
 	RequestID   types.RequestID `validate:"required"`
 	ChatID      types.ChatID    `validate:"required"`
 	MessageID   types.MessageID `validate:"required"`
-	AuthorID    types.UserID    `validate:"omitempty"`
-	CreatedAt   time.Time       `validate:"omitempty"`
-	MessageBody string          `validate:"omitempty"`
+	AuthorID    types.UserID    // Zero if IsService == true.
+	CreatedAt   time.Time       `validate:"required"`
+	MessageBody string          `validate:"required,max=3000"`
 	IsService   bool
 }
 
-func (e NewMessageEvent) Validate() error {
-	return validator.Validator.Struct(e)
-}
+func (e NewMessageEvent) Validate() error { return validator.Validator.Struct(e) }
 
-func NewNewMessageEvent(
-	eventID types.EventID,
-	reqID types.RequestID,
-	chatID types.ChatID,
-	msgID types.MessageID,
-	authorID types.UserID,
-	createdAt time.Time,
-	msgBody string,
-	isService bool,
-) *NewMessageEvent {
-	return &NewMessageEvent{
-		event:       event{},
-		MessageBody: msgBody,
-		EventID:     eventID,
-		RequestID:   reqID,
-		ChatID:      chatID,
-		MessageID:   msgID,
-		AuthorID:    authorID,
-		CreatedAt:   createdAt,
-		IsService:   isService,
-	}
-}
-
+// MessageSentEvent indicates that the message was checked by AFC
+// and was sent to the manager. Two gray ticks.
 type MessageSentEvent struct {
-	event
-
+	event     `gonstructor:"-"`
 	EventID   types.EventID   `validate:"required"`
 	RequestID types.RequestID `validate:"required"`
 	MessageID types.MessageID `validate:"required"`
 }
 
-func (e MessageSentEvent) Validate() error {
-	return validator.Validator.Struct(e)
-}
+func (e MessageSentEvent) Validate() error { return validator.Validator.Struct(e) }
 
-func NewMessageSentEvent(
-	eventID types.EventID,
-	reqID types.RequestID,
-	msgID types.MessageID,
-) *MessageSentEvent {
-	return &MessageSentEvent{
-		EventID:   eventID,
-		RequestID: reqID,
-		MessageID: msgID,
-	}
-}
-
+// MessageBlockedEvent indicates that AFC recognized the message as suspicious.
+// The manager will not receive it, but the client will be warned.
 type MessageBlockedEvent struct {
-	event
-
+	event     `gonstructor:"-"`
 	EventID   types.EventID   `validate:"required"`
 	RequestID types.RequestID `validate:"required"`
 	MessageID types.MessageID `validate:"required"`
 }
 
-func (e MessageBlockedEvent) Validate() error {
-	return validator.Validator.Struct(e)
+func (e MessageBlockedEvent) Validate() error { return validator.Validator.Struct(e) }
+
+// NewChatEvent is a signal about the appearance of a new chat.
+type NewChatEvent struct {
+	event              `gonstructor:"-"`
+	EventID            types.EventID   `validate:"required"`
+	RequestID          types.RequestID `validate:"required"`
+	ChatID             types.ChatID    `validate:"required"`
+	ClientID           types.UserID    `validate:"required"`
+	CanTakeMoreProblem bool
 }
 
-func NewMessageBlockedEvent(
-	eventID types.EventID,
-	reqID types.RequestID,
-	msgID types.MessageID,
-) *MessageBlockedEvent {
-	return &MessageBlockedEvent{
-		EventID:   eventID,
-		RequestID: reqID,
-		MessageID: msgID,
-	}
+func (e NewChatEvent) Validate() error { return validator.Validator.Struct(e) }
+
+// ChatClosedEvent is a signal about the problem is resolved.
+type ChatClosedEvent struct {
+	event              `gonstructor:"-"`
+	EventID            types.EventID   `validate:"required"`
+	RequestID          types.RequestID `validate:"required"`
+	ChatID             types.ChatID    `validate:"required"`
+	CanTakeMoreProblem bool
+}
+
+func (e ChatClosedEvent) Validate() error {
+	return validator.Validator.Struct(e)
 }

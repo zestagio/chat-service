@@ -30,10 +30,6 @@ func NewOptions(
 
 	o.backoffMaxElapsedTime, _ = time.ParseDuration("5s")
 
-	o.expFactor = 2.71828
-
-	o.expJitter = 0.1
-
 	o.processBatchSize = 1
 
 	o.brokers = brokers
@@ -74,20 +70,6 @@ func WithBackoffMaxElapsedTime(opt time.Duration) OptOptionsSetter {
 	}
 }
 
-func WithExpFactor(opt float64) OptOptionsSetter {
-	return func(o *Options) {
-		o.expFactor = opt
-
-	}
-}
-
-func WithExpJitter(opt float64) OptOptionsSetter {
-	return func(o *Options) {
-		o.expJitter = opt
-
-	}
-}
-
 func WithVerdictsSignKey(opt string) OptOptionsSetter {
 	return func(o *Options) {
 		o.verdictsSignKey = opt
@@ -106,12 +88,11 @@ func (o *Options) Validate() error {
 	errs := new(errors461e464ebed9.ValidationErrors)
 	errs.Add(errors461e464ebed9.NewValidationError("backoffInitialInterval", _validate_Options_backoffInitialInterval(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("backoffMaxElapsedTime", _validate_Options_backoffMaxElapsedTime(o)))
-	errs.Add(errors461e464ebed9.NewValidationError("expFactor", _validate_Options_expFactor(o)))
-	errs.Add(errors461e464ebed9.NewValidationError("expJitter", _validate_Options_expJitter(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("brokers", _validate_Options_brokers(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("consumers", _validate_Options_consumers(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("consumerGroup", _validate_Options_consumerGroup(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("verdictsTopic", _validate_Options_verdictsTopic(o)))
+	errs.Add(errors461e464ebed9.NewValidationError("processBatchSize", _validate_Options_processBatchSize(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("readerFactory", _validate_Options_readerFactory(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("dlqWriter", _validate_Options_dlqWriter(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("txtor", _validate_Options_txtor(o)))
@@ -130,20 +111,6 @@ func _validate_Options_backoffInitialInterval(o *Options) error {
 func _validate_Options_backoffMaxElapsedTime(o *Options) error {
 	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.backoffMaxElapsedTime, "min=500ms,max=1m"); err != nil {
 		return fmt461e464ebed9.Errorf("field `backoffMaxElapsedTime` did not pass the test: %w", err)
-	}
-	return nil
-}
-
-func _validate_Options_expFactor(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.expFactor, "min=1.5,max=5.0"); err != nil {
-		return fmt461e464ebed9.Errorf("field `expFactor` did not pass the test: %w", err)
-	}
-	return nil
-}
-
-func _validate_Options_expJitter(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.expJitter, "min=0.1"); err != nil {
-		return fmt461e464ebed9.Errorf("field `expJitter` did not pass the test: %w", err)
 	}
 	return nil
 }
@@ -172,6 +139,13 @@ func _validate_Options_consumerGroup(o *Options) error {
 func _validate_Options_verdictsTopic(o *Options) error {
 	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.verdictsTopic, "required"); err != nil {
 		return fmt461e464ebed9.Errorf("field `verdictsTopic` did not pass the test: %w", err)
+	}
+	return nil
+}
+
+func _validate_Options_processBatchSize(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.processBatchSize, "min=1"); err != nil {
+		return fmt461e464ebed9.Errorf("field `processBatchSize` did not pass the test: %w", err)
 	}
 	return nil
 }

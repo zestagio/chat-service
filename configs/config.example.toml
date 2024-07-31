@@ -44,13 +44,11 @@ client_secret = "BX6KbVXoZREf3hQI7mnRBwTW6wJ0SS8e"
 debug_mode = false
 
 [services]
-[services.manager_load]
-max_problems_at_same_time = 5
-
 [services.afc_verdicts_processor]
 brokers = ["localhost:9092"]
-consumers = 2
-consumer_group = "afc_verdicts_processor:afc.msg-verdicts"
+consumers = 4
+consumer_group = "chat-service"
+batch_size = 1
 verdicts_topic = "afc.msg-verdicts"
 verdicts_dlq_topic = "afc.msg-verdicts.dlq"
 verdicts_signing_public_key = """
@@ -62,6 +60,12 @@ dpuCt+cAdO3CEB1vZQIDAQAB
 -----END PUBLIC KEY-----
 """
 
+[services.manager_load]
+max_problems_at_same_time = 5
+
+[services.manager_scheduler]
+period = "1s"
+
 [services.msg_producer]
 brokers = ["localhost:9092"]
 topic = "chat.messages"
@@ -69,6 +73,6 @@ batch_size = 1
 encrypt_key = "87029346716384975967870919549578" # Leave it blank to disable encryption.
 
 [services.outbox]
-workers = 2
+workers = 10
 idle_time = "1s"
 reserve_for = "5m"

@@ -226,6 +226,9 @@ func (mu *MessageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := mu.mutation.IsBlocked(); ok {
 		_spec.SetField(message.FieldIsBlocked, field.TypeBool, value)
 	}
+	if mu.mutation.InitialRequestIDCleared() {
+		_spec.ClearField(message.FieldInitialRequestID, field.TypeUUID)
+	}
 	if mu.mutation.ChatCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -528,6 +531,9 @@ func (muo *MessageUpdateOne) sqlSave(ctx context.Context) (_node *Message, err e
 	}
 	if value, ok := muo.mutation.IsBlocked(); ok {
 		_spec.SetField(message.FieldIsBlocked, field.TypeBool, value)
+	}
+	if muo.mutation.InitialRequestIDCleared() {
+		_spec.ClearField(message.FieldInitialRequestID, field.TypeUUID)
 	}
 	if muo.mutation.ChatCleared() {
 		edge := &sqlgraph.EdgeSpec{

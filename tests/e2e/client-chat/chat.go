@@ -23,16 +23,6 @@ var (
 	errNoDataInResponse = errors.New("no data field in response")
 )
 
-type Message struct {
-	ID         types.MessageID
-	AuthorID   types.UserID
-	Body       string
-	IsService  bool
-	IsBlocked  bool
-	IsReceived bool
-	CreatedAt  time.Time
-}
-
 //go:generate options-gen -out-filename=chat_options.gen.go -from-struct=Options
 type Options struct {
 	id    types.UserID                     `option:"mandatory" validate:"required"`
@@ -137,18 +127,15 @@ func (c *Chat) GetHistory(ctx context.Context) error {
 	}
 
 	for _, m := range data.Messages {
-		msg := &Message{
-			ID:         m.Id,
-			Body:       m.Body,
-			IsService:  m.IsService,
-			IsBlocked:  m.IsBlocked,
-			IsReceived: m.IsReceived,
-			CreatedAt:  m.CreatedAt,
-		}
-		if uid := m.AuthorId; uid != nil {
-			msg.AuthorID = *uid
-		}
-		c.addMessageToStart(msg)
+		c.pushToFront(NewMessage(
+			m.Id,
+			m.AuthorId,
+			m.Body,
+			m.IsService,
+			m.IsBlocked,
+			m.IsReceived,
+			m.CreatedAt,
+		))
 	}
 
 	c.cursor = data.Next
@@ -194,26 +181,22 @@ func (c *Chat) SendMessage(ctx context.Context, body string, opts ...SendMessage
 		return errNoDataInResponse
 	}
 
-	msg := &Message{
-		ID:         data.Id,
-		AuthorID:   types.UserIDNil,
-		Body:       body,
-		IsService:  false,
-		IsBlocked:  false,
-		IsReceived: false,
-		CreatedAt:  data.CreatedAt,
-	}
-	if uid := data.AuthorId; uid != nil {
-		msg.AuthorID = *uid
-	}
-	c.addMessageToEnd(msg)
+	c.pushToBack(NewMessage(
+		data.Id,
+		&c.id,
+		body,
+		false,
+		false,
+		false,
+		data.CreatedAt,
+	))
 
 	time.Sleep(10 * time.Millisecond)
 	return nil
 }
 
 func (c *Chat) HandleEvent(_ context.Context, data []byte) error {
-	ginkgo.GinkgoWriter.Println("chat client: new event: ", string(data))
+	ginkgo.GinkgoWriter.Printf("client %s chat: new event: %s\n", c.id, string(data))
 
 	var event apiclientevents.Event
 	if err := json.Unmarshal(data, &event); err != nil {
@@ -227,24 +210,23 @@ func (c *Chat) HandleEvent(_ context.Context, data []byte) error {
 
 	switch vv := v.(type) {
 	case apiclientevents.NewMessageEvent:
-		msg := &Message{
-			ID:        vv.MessageID,
-			Body:      vv.Body,
-			IsService: vv.IsService,
-			CreatedAt: vv.CreatedAt,
-		}
-		if uid := vv.AuthorID; uid != nil {
-			msg.AuthorID = *uid
-		}
+		c.pushToBack(NewMessage(
+			vv.MessageId,
+			vv.AuthorId,
+			vv.Body,
+			vv.IsService,
+			false,
+			false,
+			vv.CreatedAt,
+		))
 
-		c.addMessageToEnd(msg)
-	case apiclientevents.CommonEvent:
+	case apiclientevents.MessageId:
 		c.msgMu.Lock()
 		defer c.msgMu.Unlock()
 
-		msg, ok := c.messagesByID[vv.MessageID]
+		msg, ok := c.messagesByID[vv.MessageId]
 		if !ok {
-			return fmt.Errorf("unknown message: %v", vv.MessageID)
+			return fmt.Errorf("unknown message: %v", vv.MessageId)
 		}
 
 		switch event.EventType {
@@ -253,14 +235,13 @@ func (c *Chat) HandleEvent(_ context.Context, data []byte) error {
 
 		case "MessageBlockedEvent":
 			msg.IsBlocked = true
-		default:
 		}
 	}
 
 	return nil
 }
 
-func (c *Chat) addMessageToStart(msg *Message) {
+func (c *Chat) pushToFront(msg *Message) {
 	c.msgMu.Lock()
 	defer c.msgMu.Unlock()
 
@@ -270,7 +251,7 @@ func (c *Chat) addMessageToStart(msg *Message) {
 	}
 }
 
-func (c *Chat) addMessageToEnd(msg *Message) {
+func (c *Chat) pushToBack(msg *Message) {
 	c.msgMu.Lock()
 	defer c.msgMu.Unlock()
 

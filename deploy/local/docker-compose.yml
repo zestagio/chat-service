@@ -56,11 +56,23 @@ services:
     ports:
       - "127.0.0.1:9092:9092"
 
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
+      - KAFKA_CLUSTERS_0_READONLY=true
+    depends_on:
+      - kafka
+    restart: on-failure
+    ports:
+      - "127.0.0.1:9093:8080"
+
   afc_emulator:
     image: antonboom/writing-go-service.afc
     environment:
       AFC_LOG_LEVEL: "DEBUG"
-      AFC_BROKER_ADDR: "kafka:29092"
+      AFC_BROKER_ADDR: kafka:29092
       AFC_MESSAGES_TOPIC: "chat.messages"
       AFC_VERDICTS_TOPIC: "afc.msg-verdicts"
       AFC_MSG_DECRYPTION_KEY: "87029346716384975967870919549578"

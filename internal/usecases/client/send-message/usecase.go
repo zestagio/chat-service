@@ -7,7 +7,7 @@ import (
 	"time"
 
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
-	"github.com/zestagio/chat-service/internal/services/outbox/jobs"
+	"github.com/zestagio/chat-service/internal/services/outbox/jobs/payload/simpleid"
 	sendclientmessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-client-message"
 	"github.com/zestagio/chat-service/internal/types"
 )
@@ -97,12 +97,7 @@ func (u UseCase) Handle(ctx context.Context, req Request) (Response, error) {
 			return fmt.Errorf("create client visible message: %v", err)
 		}
 
-		payload, err := jobs.MarshalPayload(m.ID)
-		if err != nil {
-			return fmt.Errorf("new job payload: %v", err)
-		}
-
-		_, err = u.outBox.Put(ctx, sendclientmessagejob.Name, payload, time.Now())
+		_, err = u.outBox.Put(ctx, sendclientmessagejob.Name, simpleid.MustMarshal(m.ID), time.Now())
 		if err != nil {
 			return fmt.Errorf("create `send client message` job: %v", err)
 		}

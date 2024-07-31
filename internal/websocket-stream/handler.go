@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gorilla/websocket"
+	gorillaws "github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -38,162 +38,144 @@ type Options struct {
 
 type HTTPHandler struct {
 	Options
+	pingPeriod time.Duration
+	pongWait   time.Duration
 }
 
 func NewHTTPHandler(opts Options) (*HTTPHandler, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, fmt.Errorf("validate options: %v", err)
 	}
+	opts.logger = opts.logger.Named("websocket")
 
-	return &HTTPHandler{Options: opts}, nil
+	return &HTTPHandler{
+		Options:    opts,
+		pingPeriod: opts.pingPeriod,
+		pongWait:   pongWait(opts.pingPeriod),
+	}, nil
 }
 
 func (h *HTTPHandler) Serve(eCtx echo.Context) error {
-	ctx := eCtx.Request().Context()
-	userID := middlewares.MustUserID(eCtx)
-
 	ws, err := h.upgrader.Upgrade(eCtx.Response(), eCtx.Request(), nil)
 	if err != nil {
-		return fmt.Errorf("upgrade ws: %v", err)
+		return fmt.Errorf("upgrade request: %v", err)
 	}
 
-	closer := newWsCloser(h.logger, ws)
+	ctx, cancel := context.WithCancel(eCtx.Request().Context())
+	defer cancel()
+
+	wsCloser := newWsCloser(h.logger, ws)
+	uid := middlewares.MustUserID(eCtx)
+
+	events, err := h.eventStream.Subscribe(ctx, uid)
+	if err != nil {
+		h.logger.Error("cannot subscribe for events", zap.Error(err))
+		wsCloser.Close(gorillaws.CloseInternalServerErr)
+		return nil
+	}
 
 	eg, ctx := errgroup.WithContext(ctx)
 
 	eg.Go(func() error {
-		pongDeadline := h.pingPeriod + (h.pingPeriod / 2)
-
-		if err := ws.SetReadDeadline(time.Now().Add(pongDeadline)); err != nil {
-			if websocket.IsCloseError(err) {
-				return nil
-			}
-
-			return fmt.Errorf("set deadline for read pong: %v", err)
-		}
-
-		ws.SetPongHandler(func(string) error {
-			h.logger.Debug("pong")
-
-			return ws.SetReadDeadline(time.Now().Add(pongDeadline))
-		})
-
-		return h.readLoop(ctx, ws)
-	})
-
-	eg.Go(func() error {
-		events, err := h.eventStream.Subscribe(ctx, userID)
-		if err != nil {
-			return fmt.Errorf("subscribe to events for user %v: %v", userID, err)
-		}
-
 		return h.writeLoop(ctx, ws, events)
 	})
 
 	eg.Go(func() error {
-		<-h.shutdownCh
+		return h.readLoop(ctx, ws)
+	})
 
-		h.logger.Info("graceful shutdown websocket service")
-
-		closer.Close(websocket.CloseNormalClosure)
+	eg.Go(func() error {
+		select {
+		case <-ctx.Done():
+		case <-h.shutdownCh:
+			wsCloser.Close(gorillaws.CloseNormalClosure)
+		}
 		return nil
 	})
 
-	if err := eg.Wait(); err != nil && !errors.Is(err, context.Canceled) {
-		if websocket.IsCloseError(err, websocket.CloseNoStatusReceived) {
-			h.logger.Warn("ws closed", zap.Error(err))
-			return nil
+	if err := eg.Wait(); err != nil {
+		if !errors.Is(err, gorillaws.ErrCloseSent) {
+			h.logger.Error("unexpected error", zap.Error(err))
+			wsCloser.Close(gorillaws.CloseInternalServerErr)
 		}
-
-		return fmt.Errorf("wait ws stop: %v", err)
+		return nil
 	}
+
+	wsCloser.Close(gorillaws.CloseNormalClosure)
 	return nil
 }
 
 // readLoop listen PONGs.
 func (h *HTTPHandler) readLoop(_ context.Context, ws Websocket) error {
-	for {
-		if _, _, err := ws.NextReader(); err != nil {
-			if websocket.IsCloseError(err) {
-				return nil
-			}
+	ws.SetPongHandler(func(string) error {
+		h.logger.Debug("pong")
+		return ws.SetReadDeadline(time.Now().Add(h.pongWait))
+	})
 
-			return fmt.Errorf("next read msg: %v", err)
+	if err := ws.SetReadDeadline(time.Now().Add(h.pongWait)); err != nil {
+		return fmt.Errorf("set first read deadline: %v", err)
+	}
+	for {
+		_, _, err := ws.NextReader()
+		if gorillaws.IsCloseError(err, gorillaws.CloseNormalClosure) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("get next reader: %w", err)
 		}
 	}
 }
 
 // writeLoop listen events and writes them into Websocket.
-func (h *HTTPHandler) writeLoop(_ context.Context, ws Websocket, events <-chan eventstream.Event) error {
-	t := time.NewTicker(h.pingPeriod)
+func (h *HTTPHandler) writeLoop(ctx context.Context, ws Websocket, events <-chan eventstream.Event) error {
+	pingTicker := time.NewTicker(h.pingPeriod)
+	defer pingTicker.Stop()
 
 	for {
 		select {
+		case <-ctx.Done():
+			return nil
+
+		case <-pingTicker.C:
+			if err := ws.SetWriteDeadline(time.Now().Add(writeTimeout)); err != nil {
+				return fmt.Errorf("set write deadline: %w", err)
+			}
+			if err := ws.WriteMessage(gorillaws.PingMessage, nil); err != nil {
+				return fmt.Errorf("write ping message: %w", err)
+			}
+			h.logger.Debug("ping")
+
 		case event, ok := <-events:
 			if !ok {
-				if err := ws.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
-					if websocket.IsCloseError(err) {
-						return nil
-					}
-
-					return fmt.Errorf("write close msg: %v", err)
-				}
+				return errors.New("events stream was closed")
 			}
 
-			if err := h.writeEvent(ws, event); err != nil {
-				return err
+			adapted, err := h.eventAdapter.Adapt(event)
+			if err != nil {
+				h.logger.With(zap.Error(err)).Error("cannot adapt event to out stream")
+				continue
 			}
-		case <-t.C:
-			if err := h.writePing(ws); err != nil {
-				return err
+
+			if err := ws.SetWriteDeadline(time.Now().Add(writeTimeout)); err != nil {
+				return fmt.Errorf("set write deadline: %w", err)
+			}
+
+			wr, err := ws.NextWriter(gorillaws.TextMessage)
+			if err != nil {
+				return fmt.Errorf("get next writer: %w", err)
+			}
+
+			if err := h.eventWriter.Write(adapted, wr); err != nil {
+				return fmt.Errorf("write data to connection: %w", err)
+			}
+
+			if err := wr.Close(); err != nil {
+				return fmt.Errorf("flush writer: %w", err)
 			}
 		}
 	}
 }
 
-func (h *HTTPHandler) writeEvent(ws Websocket, event eventstream.Event) error {
-	if err := ws.SetWriteDeadline(time.Now().Add(writeTimeout)); err != nil {
-		if websocket.IsCloseError(err) {
-			return nil
-		}
-
-		return fmt.Errorf("set write deadline: %v", err)
-	}
-
-	w, err := ws.NextWriter(websocket.TextMessage)
-	if err != nil && !websocket.IsCloseError(err) {
-		return fmt.Errorf("get next writer: %v", err)
-	}
-
-	ae, err := h.eventAdapter.Adapt(event)
-	if err != nil {
-		return fmt.Errorf("adapt event for send: %v", err)
-	}
-
-	if err := h.eventWriter.Write(&ae, w); err != nil {
-		return fmt.Errorf("write event: %v", err)
-	}
-
-	w.Close() //nolint:revive // ignore unhandled error
-	return nil
-}
-
-func (h *HTTPHandler) writePing(ws Websocket) error {
-	if err := ws.SetWriteDeadline(time.Now().Add(h.pingPeriod)); err != nil {
-		if websocket.IsCloseError(err) {
-			return nil
-		}
-
-		return fmt.Errorf("set write deadline: %v", err)
-	}
-
-	if err := ws.WriteMessage(websocket.PingMessage, nil); err != nil {
-		if websocket.IsCloseError(err) {
-			return nil
-		}
-
-		return fmt.Errorf("send ping msg: %v", err)
-	}
-	h.logger.Debug("ping")
-	return nil
+func pongWait(ping time.Duration) time.Duration {
+	return ping * 3 / 2
 }

@@ -35,6 +35,16 @@ func (r *Repo) CreateIfNotExists(ctx context.Context, chatID types.ChatID) (type
 	return p.ID, nil
 }
 
+func (r *Repo) GetProblemByID(ctx context.Context, problemID types.ProblemID) (*Problem, error) {
+	p, err := r.db.Problem(ctx).Get(ctx, problemID)
+	if err != nil {
+		return nil, fmt.Errorf("query problem by id: %v", err)
+	}
+
+	pp := adaptStoreProblem(p)
+	return &pp, nil
+}
+
 func (r *Repo) GetManagerOpenProblemsCount(ctx context.Context, managerID types.UserID) (int, error) {
 	return r.db.Problem(ctx).Query().
 		Unique(false).
@@ -43,4 +53,23 @@ func (r *Repo) GetManagerOpenProblemsCount(ctx context.Context, managerID types.
 			problem.ResolvedAtIsNil(),
 		).
 		Count(ctx)
+}
+
+func (r *Repo) GetAssignedProblemID(ctx context.Context, managerID types.UserID, chatID types.ChatID) (types.ProblemID, error) {
+	p, err := r.db.Problem(ctx).Query().
+		Unique(false).
+		Where(
+			problem.HasChatWith(chat.ID(chatID)),
+			problem.ResolvedAtIsNil(),
+			problem.ManagerID(managerID),
+		).
+		First(ctx)
+	if err != nil {
+		if store.IsNotFound(err) {
+			return types.ProblemIDNil, fmt.Errorf("query assigned problem by id: %w", ErrProblemNotFound)
+		}
+		return types.ProblemIDNil, fmt.Errorf("query assigned problem by id: %w", err)
+	}
+
+	return p.ID, nil
 }

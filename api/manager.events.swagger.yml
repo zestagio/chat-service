@@ -1,0 +1,113 @@
+openapi: 3.0.0
+info:
+  title: Bank Support Chat Manager Events
+  version: v1
+
+servers:
+  - url: ws://localhost:8081/ws
+    description: Development server
+
+paths:
+  /stub:
+    get:
+      description: It uses for generating events. Otherwise it doesn't.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+
+components:
+  schemas:
+    ChatId:
+      required: [ chatId ]
+      properties:
+        chatId:
+          type: string
+          format: uuid
+          x-go-type: types.ChatID
+          x-go-type-import:
+            path: "github.com/zestagio/chat-service/internal/types"
+
+    MessageId:
+      required: [ messageId ]
+      properties:
+        messageId:
+          type: string
+          format: uuid
+          x-go-type: types.MessageID
+          x-go-type-import:
+            path: "github.com/zestagio/chat-service/internal/types"
+
+    Event:
+      required: [ eventType, eventId, requestId ]
+      properties:
+        eventType:
+          type: string
+        eventId:
+          type: string
+          format: uuid
+          x-go-type: types.EventID
+          x-go-type-import:
+            path: "github.com/zestagio/chat-service/internal/types"
+        requestId:
+          type: string
+          format: uuid
+          x-go-type: types.RequestID
+          x-go-type-import:
+            path: "github.com/zestagio/chat-service/internal/types"
+      oneOf:
+        - $ref: "#/components/schemas/NewChatEvent"
+        - $ref: "#/components/schemas/NewMessageEvent"
+        - $ref: "#/components/schemas/ChatClosedEvent"
+      discriminator:
+        propertyName: eventType
+        mapping:
+          NewChatEvent: "#/components/schemas/NewChatEvent"
+          NewMessageEvent: "#/components/schemas/NewMessageEvent"
+          ChatClosedEvent: "#/components/schemas/ChatClosedEvent"
+
+    NewChatEvent:
+      allOf:
+        - $ref: "#/components/schemas/ChatId"
+        - type: object
+          required: [ clientId, canTakeMoreProblems ]
+          properties:
+            clientId:
+              type: string
+              format: uuid
+              x-go-type: types.UserID
+              x-go-type-import:
+                path: "github.com/zestagio/chat-service/internal/types"
+            canTakeMoreProblems:
+              type: boolean
+
+    NewMessageEvent:
+      allOf:
+        - $ref: "#/components/schemas/ChatId"
+        - $ref: "#/components/schemas/MessageId"
+        - type: object
+          required: [ createdAt, body, authorId ]
+          properties:
+            createdAt:
+              type: string
+              format: date-time
+            body:
+              type: string
+            authorId:
+              type: string
+              format: uuid
+              x-go-type: types.UserID
+              x-go-type-import:
+                path: "github.com/zestagio/chat-service/internal/types"
+
+    ChatClosedEvent:
+      allOf:
+        - $ref: "#/components/schemas/ChatId"
+        - type: object
+          required: [ canTakeMoreProblems ]
+          properties:
+            canTakeMoreProblems:
+              type: boolean

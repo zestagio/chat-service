@@ -9,26 +9,24 @@ import (
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
 	eventstream "github.com/zestagio/chat-service/internal/services/event-stream"
 	"github.com/zestagio/chat-service/internal/services/outbox"
-	"github.com/zestagio/chat-service/internal/services/outbox/jobs"
+	"github.com/zestagio/chat-service/internal/services/outbox/jobs/payload/simpleid"
 	"github.com/zestagio/chat-service/internal/types"
 )
 
-//go:generate mockgen -source=$GOFILE -destination=mocks/job_mock.gen.go -package=clientmessageblockedjobmocks
-
 const Name = "client-message-blocked"
-
-type messageRepository interface {
-	GetMessageByID(ctx context.Context, msgID types.MessageID) (*messagesrepo.Message, error)
-}
 
 type eventStream interface {
 	Publish(ctx context.Context, userID types.UserID, event eventstream.Event) error
 }
 
+type messageRepository interface {
+	GetMessageByID(ctx context.Context, msgID types.MessageID) (*messagesrepo.Message, error)
+}
+
 //go:generate options-gen -out-filename=job_options.gen.go -from-struct=Options
 type Options struct {
-	msgRepo     messageRepository `option:"mandatory" validate:"required"`
 	eventStream eventStream       `option:"mandatory" validate:"required"`
+	msgRepo     messageRepository `option:"mandatory" validate:"required"`
 }
 
 type Job struct {
@@ -62,23 +60,21 @@ func (j *Job) Name() string {
 func (j *Job) Handle(ctx context.Context, payload string) error {
 	j.logger.Info("start processing", zap.String("payload", payload))
 
-	p, err := jobs.UnmarshalPayload(payload)
+	msgID, err := simpleid.Unmarshal[types.MessageID](payload)
 	if err != nil {
 		return fmt.Errorf("unmarshal payload: %v", err)
 	}
 
-	m, err := j.msgRepo.GetMessageByID(ctx, p.MessageID)
+	msg, err := j.msgRepo.GetMessageByID(ctx, msgID)
 	if err != nil {
 		return fmt.Errorf("get message: %v", err)
 	}
 
-	if err := j.eventStream.Publish(ctx, m.AuthorID, eventstream.NewMessageBlockedEvent(
-		types.NewEventID(),
-		m.InitialRequestID,
-		m.ID,
-	)); err != nil {
-		return fmt.Errorf("publish message to event stream: %v", err)
-	}
-
-	return nil
+	return j.eventStream.Publish(ctx, msg.AuthorID,
+		eventstream.NewMessageBlockedEvent(
+			types.NewEventID(),
+			msg.InitialRequestID,
+			msg.ID,
+		),
+	)
 }

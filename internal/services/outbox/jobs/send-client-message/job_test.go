@@ -12,7 +12,7 @@ import (
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
 	eventstream "github.com/zestagio/chat-service/internal/services/event-stream"
 	msgproducer "github.com/zestagio/chat-service/internal/services/msg-producer"
-	"github.com/zestagio/chat-service/internal/services/outbox/jobs"
+	"github.com/zestagio/chat-service/internal/services/outbox/jobs/payload/simpleid"
 	sendclientmessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-client-message"
 	sendclientmessagejobmocks "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-client-message/mocks"
 	"github.com/zestagio/chat-service/internal/types"
@@ -25,30 +25,28 @@ func TestJob_Handle(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
+	eventStream := sendclientmessagejobmocks.NewMockeventStream(ctrl)
 	msgProducer := sendclientmessagejobmocks.NewMockmessageProducer(ctrl)
 	msgRepo := sendclientmessagejobmocks.NewMockmessageRepository(ctrl)
-	eventStream := sendclientmessagejobmocks.NewMockeventStream(ctrl)
-	job, err := sendclientmessagejob.New(sendclientmessagejob.NewOptions(msgProducer, msgRepo, eventStream))
+	job, err := sendclientmessagejob.New(sendclientmessagejob.NewOptions(eventStream, msgProducer, msgRepo))
 	require.NoError(t, err)
 
 	clientID := types.NewUserID()
 	msgID := types.NewMessageID()
 	chatID := types.NewChatID()
-	reqID := types.NewRequestID()
-	createdAt := time.Now()
 	const body = "Hello!"
 
 	msg := messagesrepo.Message{
 		ID:                  msgID,
 		ChatID:              chatID,
 		AuthorID:            clientID,
-		InitialRequestID:    reqID,
 		Body:                body,
-		CreatedAt:           createdAt,
+		CreatedAt:           time.Now(),
 		IsVisibleForClient:  true,
 		IsVisibleForManager: false,
 		IsBlocked:           false,
 		IsService:           false,
+		InitialRequestID:    types.NewRequestID(),
 	}
 	msgRepo.EXPECT().GetMessageByID(gomock.Any(), msgID).Return(&msg, nil)
 
@@ -59,60 +57,52 @@ func TestJob_Handle(t *testing.T) {
 		FromClient: true,
 	}).Return(nil)
 
-	eventStream.EXPECT().Publish(gomock.Any(), clientID, newMessageEventMatcher(eventstream.NewNewMessageEvent(
-		types.NewEventID(),
-		reqID,
-		chatID,
-		msgID,
-		clientID,
-		createdAt,
-		body,
-		false,
-	),
-	)).Return(nil)
+	eventStream.EXPECT().Publish(gomock.Any(), clientID,
+		newMessageEventMatcher{
+			NewMessageEvent: &eventstream.NewMessageEvent{
+				EventID:     types.EventIDNil, // No possibility to check.
+				RequestID:   msg.InitialRequestID,
+				ChatID:      msg.ChatID,
+				MessageID:   msg.ID,
+				AuthorID:    msg.AuthorID,
+				CreatedAt:   msg.CreatedAt,
+				MessageBody: msg.Body,
+				IsService:   false,
+			},
+		})
 
 	// Action & assert.
-	payload, err := jobs.MarshalPayload(msgID)
-	require.NoError(t, err)
-
-	err = job.Handle(ctx, payload)
+	err = job.Handle(ctx, simpleid.MustMarshal(msgID))
 	require.NoError(t, err)
 }
 
-type eqNewMessageEventParamsMatcher struct {
-	arg *eventstream.NewMessageEvent
+var _ gomock.Matcher = newMessageEventMatcher{}
+
+type newMessageEventMatcher struct {
+	*eventstream.NewMessageEvent
 }
 
-func newMessageEventMatcher(ev *eventstream.NewMessageEvent) gomock.Matcher {
-	return &eqNewMessageEventParamsMatcher{arg: ev}
-}
-
-func (e *eqNewMessageEventParamsMatcher) Matches(x any) bool {
-	ev, ok := x.(*eventstream.NewMessageEvent)
+func (m newMessageEventMatcher) Matches(x any) bool {
+	envelope, ok := x.(eventstream.Event)
 	if !ok {
 		return false
 	}
 
-	switch {
-	case e.arg.RequestID.String() != ev.RequestID.String():
-		return false
-	case !e.arg.AuthorID.Matches(ev.AuthorID):
-		return false
-	case !e.arg.ChatID.Matches(ev.ChatID):
-		return false
-	case !e.arg.MessageID.Matches(ev.MessageID):
-		return false
-	case e.arg.MessageBody != ev.MessageBody:
-		return false
-	case e.arg.IsService != ev.IsService:
-		return false
-	case e.arg.CreatedAt.String() != ev.CreatedAt.String():
+	ev, ok := envelope.(*eventstream.NewMessageEvent)
+	if !ok {
 		return false
 	}
 
-	return true
+	return !ev.EventID.IsZero() &&
+		ev.RequestID == m.RequestID &&
+		ev.ChatID == m.ChatID &&
+		ev.MessageID == m.MessageID &&
+		ev.AuthorID == m.AuthorID &&
+		ev.CreatedAt.Equal(m.CreatedAt) &&
+		ev.MessageBody == m.MessageBody &&
+		ev.IsService == m.IsService
 }
 
-func (e *eqNewMessageEventParamsMatcher) String() string {
-	return fmt.Sprintf("%v", e.arg)
+func (m newMessageEventMatcher) String() string {
+	return fmt.Sprintf("%v", m.NewMessageEvent)
 }

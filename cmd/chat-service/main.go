@@ -23,18 +23,22 @@ import (
 	clientevents "github.com/zestagio/chat-service/internal/server-client/events"
 	clientv1 "github.com/zestagio/chat-service/internal/server-client/v1"
 	serverdebug "github.com/zestagio/chat-service/internal/server-debug"
+	managerevents "github.com/zestagio/chat-service/internal/server-manager/events"
 	managerv1 "github.com/zestagio/chat-service/internal/server-manager/v1"
 	afcverdictsprocessor "github.com/zestagio/chat-service/internal/services/afc-verdicts-processor"
 	inmemeventstream "github.com/zestagio/chat-service/internal/services/event-stream/in-mem"
 	managerload "github.com/zestagio/chat-service/internal/services/manager-load"
 	inmemmanagerpool "github.com/zestagio/chat-service/internal/services/manager-pool/in-mem"
+	managerscheduler "github.com/zestagio/chat-service/internal/services/manager-scheduler"
 	msgproducer "github.com/zestagio/chat-service/internal/services/msg-producer"
 	"github.com/zestagio/chat-service/internal/services/outbox"
 	clientmessageblockedjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/client-message-blocked"
 	clientmessagesentjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/client-message-sent"
+	closechatjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/close-chat"
+	managerassignedtoproblemjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/manager-assigned-to-problem"
 	sendclientmessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-client-message"
+	sendmanagermessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-manager-message"
 	"github.com/zestagio/chat-service/internal/store"
-	websocketstream "github.com/zestagio/chat-service/internal/websocket-stream"
 )
 
 var configPath = flag.String("config", "configs/config.toml", "Path to config file")
@@ -128,6 +132,9 @@ func run() (errReturned error) {
 	}
 
 	// Infrastructure Services.
+	eventsStream := inmemeventstream.New()
+	defer multierr.AppendInvoke(&errReturned, multierr.Close(eventsStream))
+
 	msgProducer, err := msgproducer.New(msgproducer.NewOptions(
 		msgproducer.NewKafkaWriter(
 			cfg.Services.MsgProducer.Brokers,
@@ -152,25 +159,6 @@ func run() (errReturned error) {
 		return fmt.Errorf("create outbox service: %v", err)
 	}
 
-	afcVerdictProcessor, err := afcverdictsprocessor.New(afcverdictsprocessor.NewOptions(
-		cfg.Services.AFCVerdictsProcessor.Brokers,
-		cfg.Services.AFCVerdictsProcessor.Consumers,
-		cfg.Services.AFCVerdictsProcessor.ConsumerGroup,
-		cfg.Services.AFCVerdictsProcessor.VerdictsTopic,
-		afcverdictsprocessor.NewKafkaReader,
-		afcverdictsprocessor.NewKafkaDLQWriter(
-			cfg.Services.AFCVerdictsProcessor.Brokers,
-			cfg.Services.AFCVerdictsProcessor.VerdictsDLQTopic,
-		),
-		db,
-		msgRepo,
-		outBox,
-		afcverdictsprocessor.WithVerdictsSignKey(cfg.Services.AFCVerdictsProcessor.VerdictsSigningPublicKey),
-	))
-	if err != nil {
-		return fmt.Errorf("create afc verdicts processor service: %v", err)
-	}
-
 	managerPool := inmemmanagerpool.New()
 	defer multierr.AppendInvoke(&errReturned, multierr.Close(managerPool))
 
@@ -183,44 +171,51 @@ func run() (errReturned error) {
 		return fmt.Errorf("create manager load service: %v", err)
 	}
 
-	eventStream := inmemeventstream.New()
-	defer eventStream.Close()
+	// Application Services.
+	afcVerdictsProcessor, err := afcverdictsprocessor.New(afcverdictsprocessor.NewOptions(
+		cfg.Services.AFCVerdictsProcessor.Brokers,
+		cfg.Services.AFCVerdictsProcessor.Consumers,
+		cfg.Services.AFCVerdictsProcessor.ConsumerGroup,
+		cfg.Services.AFCVerdictsProcessor.VerdictsTopic,
+		afcverdictsprocessor.NewKafkaReader,
+		afcverdictsprocessor.NewKafkaDLQWriter(
+			cfg.Services.AFCVerdictsProcessor.Brokers,
+			cfg.Services.AFCVerdictsProcessor.VerdictsDLQTopic,
+		),
+		db,
+		msgRepo,
+		outBox,
+		afcverdictsprocessor.WithProcessBatchSize(cfg.Services.AFCVerdictsProcessor.BatchSize),
+		afcverdictsprocessor.WithVerdictsSignKey(cfg.Services.AFCVerdictsProcessor.VerdictsSigningPublicKey),
+	))
+	if err != nil {
+		return fmt.Errorf("create afc verdicts processor: %v", err)
+	}
+
+	managerScheduler, err := managerscheduler.New(managerscheduler.NewOptions(
+		cfg.Services.ManagerScheduler.Period,
+		managerPool,
+		msgRepo,
+		problemsRepo,
+		outBox,
+		db,
+	))
+	if err != nil {
+		return fmt.Errorf("create manager scheduler: %v", err)
+	}
 
 	// Application Services. Jobs.
 	for _, j := range []outbox.Job{
-		sendclientmessagejob.Must(sendclientmessagejob.NewOptions(msgProducer, msgRepo, eventStream)),
-		clientmessagesentjob.Must(clientmessagesentjob.NewOptions(msgRepo, eventStream)),
-		clientmessageblockedjob.Must(clientmessageblockedjob.NewOptions(msgRepo, eventStream)),
+		clientmessageblockedjob.Must(clientmessageblockedjob.NewOptions(eventsStream, msgRepo)),
+		clientmessagesentjob.Must(clientmessagesentjob.NewOptions(eventsStream, msgRepo)),
+		sendclientmessagejob.Must(sendclientmessagejob.NewOptions(eventsStream, msgProducer, msgRepo)),
+		managerassignedtoproblemjob.Must(
+			managerassignedtoproblemjob.NewOptions(eventsStream, chatsRepo, problemsRepo, msgRepo, managerLoad),
+		),
+		sendmanagermessagejob.Must(sendmanagermessagejob.NewOptions(eventsStream, msgProducer, chatsRepo, msgRepo)),
+		closechatjob.Must(closechatjob.NewOptions(eventsStream, chatsRepo, problemsRepo, msgRepo, managerLoad)),
 	} {
 		outBox.MustRegisterJob(j)
-	}
-
-	shutdown := make(chan struct{})
-
-	// Websocket client stream.
-	wsClient, err := websocketstream.NewHTTPHandler(websocketstream.NewOptions(
-		zap.L().Named("websocket-client"),
-		eventStream,
-		clientevents.Adapter{},
-		websocketstream.JSONEventWriter{},
-		websocketstream.NewUpgrader(cfg.Servers.Client.AllowOrigins, cfg.Servers.Client.SecWSProtocol),
-		shutdown,
-	))
-	if err != nil {
-		return fmt.Errorf("websocket client stream: %v", err)
-	}
-
-	// Websocket manager stream.
-	wsManager, err := websocketstream.NewHTTPHandler(websocketstream.NewOptions(
-		zap.L().Named("websocket-manager"),
-		eventStream,
-		clientevents.Adapter{},
-		websocketstream.JSONEventWriter{},
-		websocketstream.NewUpgrader(cfg.Servers.Manager.AllowOrigins, cfg.Servers.Manager.SecWSProtocol),
-		shutdown,
-	))
-	if err != nil {
-		return fmt.Errorf("websocket manager stream: %v", err)
 	}
 
 	// Servers.
@@ -237,12 +232,13 @@ func run() (errReturned error) {
 		kc,
 		cfg.Servers.Client.RequiredAccess.Resource,
 		cfg.Servers.Client.RequiredAccess.Role,
+		cfg.Servers.Client.SecWsProtocol,
+		eventsStream,
 		outBox,
 		db,
 		chatsRepo,
 		msgRepo,
 		problemsRepo,
-		wsClient,
 	)
 	if err != nil {
 		return fmt.Errorf("init client server: %v", err)
@@ -261,24 +257,36 @@ func run() (errReturned error) {
 		kc,
 		cfg.Servers.Manager.RequiredAccess.Resource,
 		cfg.Servers.Manager.RequiredAccess.Role,
+		cfg.Servers.Manager.SecWsProtocol,
+		eventsStream,
 		managerLoad,
-		managerPool, // как sql-конфиг
-		wsManager,
+		managerPool,
+		chatsRepo,
+		msgRepo,
+		problemsRepo,
+		outBox,
+		db,
 	)
 	if err != nil {
 		return fmt.Errorf("init manager server: %v", err)
 	}
 
-	eventsSwagger, err := clientevents.GetSwagger()
+	clientEventsSwagger, err := clientevents.GetSwagger()
 	if err != nil {
-		return fmt.Errorf("get events swagger: %v", err)
+		return fmt.Errorf("get client events swagger: %v", err)
+	}
+
+	managerEventsSwagger, err := managerevents.GetSwagger()
+	if err != nil {
+		return fmt.Errorf("get manager events swagger: %v", err)
 	}
 
 	srvDebug, err := serverdebug.New(serverdebug.NewOptions(
 		cfg.Servers.Debug.Addr,
 		clientV1Swagger,
+		clientEventsSwagger,
 		managerV1Swagger,
-		eventsSwagger,
+		managerEventsSwagger,
 	))
 	if err != nil {
 		return fmt.Errorf("init debug server: %v", err)
@@ -293,15 +301,8 @@ func run() (errReturned error) {
 
 	// Run services.
 	eg.Go(func() error { return outBox.Run(ctx) })
-	eg.Go(func() error { return afcVerdictProcessor.Run(ctx) })
-
-	// Websocket shutdown.
-	eg.Go(func() error {
-		<-ctx.Done()
-
-		shutdown <- struct{}{}
-		return nil
-	})
+	eg.Go(func() error { return afcVerdictsProcessor.Run(ctx) })
+	eg.Go(func() error { return managerScheduler.Run(ctx) })
 
 	if err = eg.Wait(); err != nil && !errors.Is(err, context.Canceled) {
 		return fmt.Errorf("wait app stop: %v", err)

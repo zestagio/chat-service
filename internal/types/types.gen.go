@@ -8,60 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type ChatID uuid.UUID
-
-var ChatIDNil ChatID
-
-func NewChatID() ChatID {
-	return ChatID(uuid.New())
-}
-
-func (id ChatID) String() string {
-	return (uuid.UUID)(id).String()
-}
-
-func (id *ChatID) Scan(src interface{}) error {
-	return (*uuid.UUID)(id).Scan(src)
-}
-
-func (id ChatID) Value() (driver.Value, error) {
-	return (uuid.UUID)(id).Value()
-}
-
-func (id ChatID) MarshalText() ([]byte, error) {
-	return (uuid.UUID)(id).MarshalText()
-}
-
-func (id *ChatID) UnmarshalText(data []byte) error {
-	return (*uuid.UUID)(id).UnmarshalText(data)
-}
-
-func (id ChatID) IsZero() bool {
-	return id.String() == uuid.Nil.String()
-}
-
-func (id ChatID) Matches(x interface{}) bool {
-	switch x := x.(type) {
-	case ChatID:
-		return id.String() == x.String()
-	}
-	return false
-}
-
-func (id ChatID) Validate() error {
-	if id.IsZero() {
-		return errors.New("zero ChatID")
-	}
-	return nil
-}
-
-func (id ChatID) AsPointer() *ChatID {
-	if id.IsZero() {
-		return nil
-	}
-	return &id
-}
-
 type EventID uuid.UUID
 
 var EventIDNil EventID
@@ -110,6 +56,60 @@ func (id EventID) Validate() error {
 }
 
 func (id EventID) AsPointer() *EventID {
+	if id.IsZero() {
+		return nil
+	}
+	return &id
+}
+
+type ChatID uuid.UUID
+
+var ChatIDNil ChatID
+
+func NewChatID() ChatID {
+	return ChatID(uuid.New())
+}
+
+func (id ChatID) String() string {
+	return (uuid.UUID)(id).String()
+}
+
+func (id *ChatID) Scan(src interface{}) error {
+	return (*uuid.UUID)(id).Scan(src)
+}
+
+func (id ChatID) Value() (driver.Value, error) {
+	return (uuid.UUID)(id).Value()
+}
+
+func (id ChatID) MarshalText() ([]byte, error) {
+	return (uuid.UUID)(id).MarshalText()
+}
+
+func (id *ChatID) UnmarshalText(data []byte) error {
+	return (*uuid.UUID)(id).UnmarshalText(data)
+}
+
+func (id ChatID) IsZero() bool {
+	return id.String() == uuid.Nil.String()
+}
+
+func (id ChatID) Matches(x interface{}) bool {
+	switch x := x.(type) {
+	case ChatID:
+		return id.String() == x.String()
+	}
+	return false
+}
+
+func (id ChatID) Validate() error {
+	if id.IsZero() {
+		return errors.New("zero ChatID")
+	}
+	return nil
+}
+
+func (id ChatID) AsPointer() *ChatID {
 	if id.IsZero() {
 		return nil
 	}
@@ -441,7 +441,7 @@ func (id UserID) AsPointer() *UserID {
 }
 
 type TypeSet = interface {
-	ChatID | EventID | FailedJobID | JobID | MessageID | ProblemID | RequestID | UserID
+	EventID | ChatID | FailedJobID | JobID | MessageID | ProblemID | RequestID | UserID
 }
 
 func Parse[T TypeSet](s string) (T, error) {
