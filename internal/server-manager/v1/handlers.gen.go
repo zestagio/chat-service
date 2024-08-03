@@ -13,10 +13,10 @@ type OptOptionsSetter func(o *Options)
 func NewOptions(
 	canReceiveProblems canReceiveProblemsUseCase,
 	freeHandsSignal freeHandsSignalUseCase,
-	getChatsUseCase getChatsUseCase,
-	getChatHistoryUseCase getChatHistoryUseCase,
-	sendMessageUseCase sendMessageUseCase,
-	resolveProblemUseCase resolveProblemUseCase,
+	getChats getChatsUseCase,
+	getChatHistory getChatHistoryUseCase,
+	resolveProblem resolveProblemUseCase,
+	sendMessage sendMessageUseCase,
 	options ...OptOptionsSetter,
 ) Options {
 	o := Options{}
@@ -27,13 +27,13 @@ func NewOptions(
 
 	o.freeHandsSignal = freeHandsSignal
 
-	o.getChatsUseCase = getChatsUseCase
+	o.getChats = getChats
 
-	o.getChatHistoryUseCase = getChatHistoryUseCase
+	o.getChatHistory = getChatHistory
 
-	o.sendMessageUseCase = sendMessageUseCase
+	o.resolveProblem = resolveProblem
 
-	o.resolveProblemUseCase = resolveProblemUseCase
+	o.sendMessage = sendMessage
 
 	for _, opt := range options {
 		opt(&o)
@@ -45,10 +45,10 @@ func (o *Options) Validate() error {
 	errs := new(errors461e464ebed9.ValidationErrors)
 	errs.Add(errors461e464ebed9.NewValidationError("canReceiveProblems", _validate_Options_canReceiveProblems(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("freeHandsSignal", _validate_Options_freeHandsSignal(o)))
-	errs.Add(errors461e464ebed9.NewValidationError("getChatsUseCase", _validate_Options_getChatsUseCase(o)))
-	errs.Add(errors461e464ebed9.NewValidationError("getChatHistoryUseCase", _validate_Options_getChatHistoryUseCase(o)))
-	errs.Add(errors461e464ebed9.NewValidationError("sendMessageUseCase", _validate_Options_sendMessageUseCase(o)))
-	errs.Add(errors461e464ebed9.NewValidationError("resolveProblemUseCase", _validate_Options_resolveProblemUseCase(o)))
+	errs.Add(errors461e464ebed9.NewValidationError("getChats", _validate_Options_getChats(o)))
+	errs.Add(errors461e464ebed9.NewValidationError("getChatHistory", _validate_Options_getChatHistory(o)))
+	errs.Add(errors461e464ebed9.NewValidationError("resolveProblem", _validate_Options_resolveProblem(o)))
+	errs.Add(errors461e464ebed9.NewValidationError("sendMessage", _validate_Options_sendMessage(o)))
 	return errs.AsError()
 }
 
@@ -66,30 +66,30 @@ func _validate_Options_freeHandsSignal(o *Options) error {
 	return nil
 }
 
-func _validate_Options_getChatsUseCase(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.getChatsUseCase, "required"); err != nil {
-		return fmt461e464ebed9.Errorf("field `getChatsUseCase` did not pass the test: %w", err)
+func _validate_Options_getChats(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.getChats, "required"); err != nil {
+		return fmt461e464ebed9.Errorf("field `getChats` did not pass the test: %w", err)
 	}
 	return nil
 }
 
-func _validate_Options_getChatHistoryUseCase(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.getChatHistoryUseCase, "required"); err != nil {
-		return fmt461e464ebed9.Errorf("field `getChatHistoryUseCase` did not pass the test: %w", err)
+func _validate_Options_getChatHistory(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.getChatHistory, "required"); err != nil {
+		return fmt461e464ebed9.Errorf("field `getChatHistory` did not pass the test: %w", err)
 	}
 	return nil
 }
 
-func _validate_Options_sendMessageUseCase(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.sendMessageUseCase, "required"); err != nil {
-		return fmt461e464ebed9.Errorf("field `sendMessageUseCase` did not pass the test: %w", err)
+func _validate_Options_resolveProblem(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.resolveProblem, "required"); err != nil {
+		return fmt461e464ebed9.Errorf("field `resolveProblem` did not pass the test: %w", err)
 	}
 	return nil
 }
 
-func _validate_Options_resolveProblemUseCase(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.resolveProblemUseCase, "required"); err != nil {
-		return fmt461e464ebed9.Errorf("field `resolveProblemUseCase` did not pass the test: %w", err)
+func _validate_Options_sendMessage(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.sendMessage, "required"); err != nil {
+		return fmt461e464ebed9.Errorf("field `sendMessage` did not pass the test: %w", err)
 	}
 	return nil
 }

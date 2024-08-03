@@ -2,19 +2,35 @@ package problemsrepo
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/zestagio/chat-service/internal/store"
-	"github.com/zestagio/chat-service/internal/store/chat"
 	"github.com/zestagio/chat-service/internal/store/problem"
 	"github.com/zestagio/chat-service/internal/types"
 )
+
+var ErrAssignedProblemNotFound = errors.New("assigned problem not found")
+
+func (r *Repo) GetProblemByResolveRequestID(ctx context.Context, reqID types.RequestID) (*Problem, error) {
+	p, err := r.db.Problem(ctx).Query().
+		Unique(false).
+		Where(problem.ResolveRequestID(reqID)).
+		Only(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query problem by request id %v: %v", reqID, err)
+	}
+
+	pp := adaptStoreProblem(p)
+	return &pp, nil
+}
 
 func (r *Repo) CreateIfNotExists(ctx context.Context, chatID types.ChatID) (types.ProblemID, error) {
 	pID, err := r.db.Problem(ctx).Query().
 		Unique(false).
 		Where(
-			problem.HasChatWith(chat.ID(chatID)),
+			problem.ChatID(chatID),
 			problem.ResolvedAtIsNil(),
 		).
 		FirstID(ctx)
@@ -35,16 +51,6 @@ func (r *Repo) CreateIfNotExists(ctx context.Context, chatID types.ChatID) (type
 	return p.ID, nil
 }
 
-func (r *Repo) GetProblemByID(ctx context.Context, problemID types.ProblemID) (*Problem, error) {
-	p, err := r.db.Problem(ctx).Get(ctx, problemID)
-	if err != nil {
-		return nil, fmt.Errorf("query problem by id: %v", err)
-	}
-
-	pp := adaptStoreProblem(p)
-	return &pp, nil
-}
-
 func (r *Repo) GetManagerOpenProblemsCount(ctx context.Context, managerID types.UserID) (int, error) {
 	return r.db.Problem(ctx).Query().
 		Unique(false).
@@ -55,21 +61,32 @@ func (r *Repo) GetManagerOpenProblemsCount(ctx context.Context, managerID types.
 		Count(ctx)
 }
 
-func (r *Repo) GetAssignedProblemID(ctx context.Context, managerID types.UserID, chatID types.ChatID) (types.ProblemID, error) {
-	p, err := r.db.Problem(ctx).Query().
+func (r *Repo) GetAssignedProblemID(
+	ctx context.Context,
+	managerID types.UserID,
+	chatID types.ChatID,
+) (types.ProblemID, error) {
+	pID, err := r.db.Problem(ctx).Query().
 		Unique(false).
 		Where(
-			problem.HasChatWith(chat.ID(chatID)),
-			problem.ResolvedAtIsNil(),
 			problem.ManagerID(managerID),
+			problem.ChatID(chatID),
+			problem.ResolvedAtIsNil(),
 		).
-		First(ctx)
+		FirstID(ctx)
 	if err != nil {
 		if store.IsNotFound(err) {
-			return types.ProblemIDNil, fmt.Errorf("query assigned problem by id: %w", ErrProblemNotFound)
+			return types.ProblemIDNil, ErrAssignedProblemNotFound
 		}
-		return types.ProblemIDNil, fmt.Errorf("query assigned problem by id: %w", err)
+		return types.ProblemIDNil, fmt.Errorf("query assigned problem: %v", err)
 	}
 
-	return p.ID, nil
+	return pID, nil
+}
+
+func (r *Repo) ResolveProblem(ctx context.Context, requestID types.RequestID, problemID types.ProblemID) error {
+	return r.db.Problem(ctx).UpdateOneID(problemID).
+		SetResolveRequestID(requestID).
+		SetResolvedAt(time.Now()).
+		Exec(ctx)
 }

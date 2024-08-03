@@ -32,6 +32,15 @@ type Event struct {
 	union     json.RawMessage
 }
 
+// Message defines model for Message.
+type Message struct {
+	AuthorId  types.UserID    `json:"authorId"`
+	Body      string          `json:"body"`
+	ChatId    types.ChatID    `json:"chatId"`
+	CreatedAt time.Time       `json:"createdAt"`
+	MessageId types.MessageID `json:"messageId"`
+}
+
 // MessageId defines model for MessageId.
 type MessageId struct {
 	MessageId types.MessageID `json:"messageId"`
@@ -45,13 +54,7 @@ type NewChatEvent struct {
 }
 
 // NewMessageEvent defines model for NewMessageEvent.
-type NewMessageEvent struct {
-	AuthorId  types.UserID    `json:"authorId"`
-	Body      string          `json:"body"`
-	ChatId    types.ChatID    `json:"chatId"`
-	CreatedAt time.Time       `json:"createdAt"`
-	MessageId types.MessageID `json:"messageId"`
-}
+type NewMessageEvent = Message
 
 // AsNewChatEvent returns the union data inside the Event as a NewChatEvent
 func (t Event) AsNewChatEvent() (NewChatEvent, error) {

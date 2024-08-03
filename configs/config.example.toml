@@ -73,6 +73,6 @@ batch_size = 1
 encrypt_key = "87029346716384975967870919549578" # Leave it blank to disable encryption.
 
 [services.outbox]
-workers = 10
+workers = 2
 idle_time = "1s"
 reserve_for = "5m"

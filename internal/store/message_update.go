@@ -21,8 +21,9 @@ import (
 // MessageUpdate is the builder for updating Message entities.
 type MessageUpdate struct {
 	config
-	hooks    []Hook
-	mutation *MessageMutation
+	hooks     []Hook
+	mutation  *MessageMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // Where appends a list predicates to the MessageUpdate builder.
@@ -196,6 +197,12 @@ func (mu *MessageUpdate) check() error {
 	return nil
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (mu *MessageUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *MessageUpdate {
+	mu.modifiers = append(mu.modifiers, modifiers...)
+	return mu
+}
+
 func (mu *MessageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if err := mu.check(); err != nil {
 		return n, err
@@ -225,9 +232,6 @@ func (mu *MessageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := mu.mutation.IsBlocked(); ok {
 		_spec.SetField(message.FieldIsBlocked, field.TypeBool, value)
-	}
-	if mu.mutation.InitialRequestIDCleared() {
-		_spec.ClearField(message.FieldInitialRequestID, field.TypeUUID)
 	}
 	if mu.mutation.ChatCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -287,6 +291,7 @@ func (mu *MessageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(mu.modifiers...)
 	if n, err = sqlgraph.UpdateNodes(ctx, mu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{message.Label}
@@ -302,9 +307,10 @@ func (mu *MessageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // MessageUpdateOne is the builder for updating a single Message entity.
 type MessageUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *MessageMutation
+	fields    []string
+	hooks     []Hook
+	mutation  *MessageMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // SetChatID sets the "chat_id" field.
@@ -485,6 +491,12 @@ func (muo *MessageUpdateOne) check() error {
 	return nil
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (muo *MessageUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *MessageUpdateOne {
+	muo.modifiers = append(muo.modifiers, modifiers...)
+	return muo
+}
+
 func (muo *MessageUpdateOne) sqlSave(ctx context.Context) (_node *Message, err error) {
 	if err := muo.check(); err != nil {
 		return _node, err
@@ -531,9 +543,6 @@ func (muo *MessageUpdateOne) sqlSave(ctx context.Context) (_node *Message, err e
 	}
 	if value, ok := muo.mutation.IsBlocked(); ok {
 		_spec.SetField(message.FieldIsBlocked, field.TypeBool, value)
-	}
-	if muo.mutation.InitialRequestIDCleared() {
-		_spec.ClearField(message.FieldInitialRequestID, field.TypeUUID)
 	}
 	if muo.mutation.ChatCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -593,6 +602,7 @@ func (muo *MessageUpdateOne) sqlSave(ctx context.Context) (_node *Message, err e
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(muo.modifiers...)
 	_node = &Message{config: muo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

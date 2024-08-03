@@ -102,13 +102,22 @@ func TestChatServiceSchema(t *testing.T) {
 
 	// Querying.
 	var chatProblemIDs []types.ProblemID
-	client.Chat.QueryProblems(chat).Select(problem.FieldID).ScanX(ctx, &chatProblemIDs)
+	client.Chat.QueryProblems(chat).
+		Order(store.Asc(problem.FieldCreatedAt)).
+		Select(problem.FieldID).
+		ScanX(ctx, &chatProblemIDs)
 	assert.Equal(t, []types.ProblemID{problems[0].ID, problems[1].ID}, chatProblemIDs)
 
-	p1messages := client.Problem.QueryMessages(problems[0]).Select(message.FieldBody).StringsX(ctx)
+	p1messages := client.Problem.QueryMessages(problems[0]).
+		Order(store.Asc(message.FieldCreatedAt)).
+		Select(message.FieldBody).
+		StringsX(ctx)
 	assert.Equal(t, []string{"Hello, manager!", "Hello, client!"}, p1messages)
 
-	p2messages := client.Problem.QueryMessages(problems[1]).Select(message.FieldBody).StringsX(ctx)
+	p2messages := client.Problem.QueryMessages(problems[1]).
+		Order(store.Asc(message.FieldCreatedAt)).
+		Select(message.FieldBody).
+		StringsX(ctx)
 	assert.Equal(t, []string{"I lost my money.", "No money, no honey."}, p2messages)
 
 	t.Run("assert edges", func(t *testing.T) {

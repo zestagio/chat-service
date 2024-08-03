@@ -71,6 +71,11 @@ func ResolvedAt(v time.Time) predicate.Problem {
 	return predicate.Problem(sql.FieldEQ(FieldResolvedAt, v))
 }
 
+// ResolveRequestID applies equality check predicate on the "resolve_request_id" field. It's identical to ResolveRequestIDEQ.
+func ResolveRequestID(v types.RequestID) predicate.Problem {
+	return predicate.Problem(sql.FieldEQ(FieldResolveRequestID, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Problem {
 	return predicate.Problem(sql.FieldEQ(FieldCreatedAt, v))
@@ -194,6 +199,56 @@ func ResolvedAtIsNil() predicate.Problem {
 // ResolvedAtNotNil applies the NotNil predicate on the "resolved_at" field.
 func ResolvedAtNotNil() predicate.Problem {
 	return predicate.Problem(sql.FieldNotNull(FieldResolvedAt))
+}
+
+// ResolveRequestIDEQ applies the EQ predicate on the "resolve_request_id" field.
+func ResolveRequestIDEQ(v types.RequestID) predicate.Problem {
+	return predicate.Problem(sql.FieldEQ(FieldResolveRequestID, v))
+}
+
+// ResolveRequestIDNEQ applies the NEQ predicate on the "resolve_request_id" field.
+func ResolveRequestIDNEQ(v types.RequestID) predicate.Problem {
+	return predicate.Problem(sql.FieldNEQ(FieldResolveRequestID, v))
+}
+
+// ResolveRequestIDIn applies the In predicate on the "resolve_request_id" field.
+func ResolveRequestIDIn(vs ...types.RequestID) predicate.Problem {
+	return predicate.Problem(sql.FieldIn(FieldResolveRequestID, vs...))
+}
+
+// ResolveRequestIDNotIn applies the NotIn predicate on the "resolve_request_id" field.
+func ResolveRequestIDNotIn(vs ...types.RequestID) predicate.Problem {
+	return predicate.Problem(sql.FieldNotIn(FieldResolveRequestID, vs...))
+}
+
+// ResolveRequestIDGT applies the GT predicate on the "resolve_request_id" field.
+func ResolveRequestIDGT(v types.RequestID) predicate.Problem {
+	return predicate.Problem(sql.FieldGT(FieldResolveRequestID, v))
+}
+
+// ResolveRequestIDGTE applies the GTE predicate on the "resolve_request_id" field.
+func ResolveRequestIDGTE(v types.RequestID) predicate.Problem {
+	return predicate.Problem(sql.FieldGTE(FieldResolveRequestID, v))
+}
+
+// ResolveRequestIDLT applies the LT predicate on the "resolve_request_id" field.
+func ResolveRequestIDLT(v types.RequestID) predicate.Problem {
+	return predicate.Problem(sql.FieldLT(FieldResolveRequestID, v))
+}
+
+// ResolveRequestIDLTE applies the LTE predicate on the "resolve_request_id" field.
+func ResolveRequestIDLTE(v types.RequestID) predicate.Problem {
+	return predicate.Problem(sql.FieldLTE(FieldResolveRequestID, v))
+}
+
+// ResolveRequestIDIsNil applies the IsNil predicate on the "resolve_request_id" field.
+func ResolveRequestIDIsNil() predicate.Problem {
+	return predicate.Problem(sql.FieldIsNull(FieldResolveRequestID))
+}
+
+// ResolveRequestIDNotNil applies the NotNil predicate on the "resolve_request_id" field.
+func ResolveRequestIDNotNil() predicate.Problem {
+	return predicate.Problem(sql.FieldNotNull(FieldResolveRequestID))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

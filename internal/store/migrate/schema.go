@@ -50,13 +50,6 @@ var (
 		Name:       "jobs",
 		Columns:    JobsColumns,
 		PrimaryKey: []*schema.Column{JobsColumns[0]},
-		Indexes: []*schema.Index{
-			{
-				Name:    "job_available_at_reserved_until",
-				Unique:  false,
-				Columns: []*schema.Column{JobsColumns[4], JobsColumns[5]},
-			},
-		},
 	}
 	// MessagesColumns holds the columns for the "messages" table.
 	MessagesColumns = []*schema.Column{
@@ -68,7 +61,7 @@ var (
 		{Name: "checked_at", Type: field.TypeTime, Nullable: true},
 		{Name: "is_blocked", Type: field.TypeBool, Default: false},
 		{Name: "is_service", Type: field.TypeBool, Default: false},
-		{Name: "initial_request_id", Type: field.TypeUUID, Unique: true, Nullable: true},
+		{Name: "initial_request_id", Type: field.TypeUUID},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "chat_id", Type: field.TypeUUID},
 		{Name: "problem_id", Type: field.TypeUUID},
@@ -94,14 +87,31 @@ var (
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "message_created_at",
+				Name:    "message_chat_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{MessagesColumns[9]},
+				Columns: []*schema.Column{MessagesColumns[10], MessagesColumns[9]},
 				Annotation: &entsql.IndexAnnotation{
 					DescColumns: map[string]bool{
 						MessagesColumns[9].Name: true,
 					},
-					Type: "BTREE",
+				},
+			},
+			{
+				Name:    "message_problem_id_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{MessagesColumns[11], MessagesColumns[9]},
+				Annotation: &entsql.IndexAnnotation{
+					DescColumns: map[string]bool{
+						MessagesColumns[9].Name: true,
+					},
+				},
+			},
+			{
+				Name:    "message_initial_request_id",
+				Unique:  true,
+				Columns: []*schema.Column{MessagesColumns[8]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "not is_service",
 				},
 			},
 		},
@@ -111,6 +121,7 @@ var (
 		{Name: "id", Type: field.TypeUUID, Unique: true},
 		{Name: "manager_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "resolved_at", Type: field.TypeTime, Nullable: true},
+		{Name: "resolve_request_id", Type: field.TypeUUID, Unique: true, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "chat_id", Type: field.TypeUUID},
 	}
@@ -122,16 +133,21 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "problems_chats_problems",
-				Columns:    []*schema.Column{ProblemsColumns[4]},
+				Columns:    []*schema.Column{ProblemsColumns[5]},
 				RefColumns: []*schema.Column{ChatsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "problem_manager_id_resolved_at",
-				Unique:  true,
-				Columns: []*schema.Column{ProblemsColumns[1], ProblemsColumns[2]},
+				Name:    "problem_chat_id",
+				Unique:  false,
+				Columns: []*schema.Column{ProblemsColumns[5]},
+			},
+			{
+				Name:    "problem_manager_id",
+				Unique:  false,
+				Columns: []*schema.Column{ProblemsColumns[1]},
 			},
 		},
 	}

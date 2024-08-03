@@ -97,8 +97,8 @@ func (s *MsgRepoAPISuite) Test_GetMessageByRequestID() {
 			SetAuthorID(authorID).
 			SetProblemID(problemID).
 			SetBody(msgBody).
-			SetIsBlocked(true).
-			SetIsService(true).
+			SetIsBlocked(false).
+			SetIsService(false).
 			SetInitialRequestID(msgInitialRequestID).
 			Save(s.Ctx)
 		s.Require().NoError(err)
@@ -121,6 +121,57 @@ func (s *MsgRepoAPISuite) Test_GetMessageByRequestID() {
 
 	s.Run("message does not exist", func() {
 		msg, err := s.repo.GetMessageByRequestID(s.Ctx, types.NewRequestID())
+		s.Require().ErrorIs(err, messagesrepo.ErrMsgNotFound)
+		s.Require().Nil(msg)
+	})
+}
+
+func (s *MsgRepoAPISuite) Test_GetServiceMessageByRequestID() {
+	s.Run("service message exists", func() {
+		authorID := types.NewUserID()
+
+		// Create chat and problem.
+		problemID, chatID := s.createProblemAndChat(authorID)
+
+		msgID := types.NewMessageID()
+		msgInitialRequestID := types.NewRequestID()
+
+		// Create message.
+		expectedMsg, err := s.Database.Message(s.Ctx).Create().
+			SetID(msgID).
+			SetChatID(chatID).
+			SetAuthorID(authorID).
+			SetProblemID(problemID).
+			SetBody(msgBody).
+			SetIsBlocked(false).
+			SetIsService(true).
+			SetInitialRequestID(msgInitialRequestID).
+			Save(s.Ctx)
+		s.Require().NoError(err)
+
+		// Not under GetMessageByRequestID.
+		msg, err := s.repo.GetMessageByRequestID(s.Ctx, msgInitialRequestID)
+		s.Require().ErrorIs(err, messagesrepo.ErrMsgNotFound)
+		s.Require().Nil(msg)
+
+		// Get it.
+		actualMsg, err := s.repo.GetServiceMessageByRequestID(s.Ctx, msgInitialRequestID)
+		s.Require().NoError(err)
+		s.Require().NotNil(actualMsg)
+		s.Equal(expectedMsg.ID, actualMsg.ID)
+		s.Equal(expectedMsg.ChatID, actualMsg.ChatID)
+		s.Equal(expectedMsg.AuthorID, actualMsg.AuthorID)
+		s.Equal(expectedMsg.Body, actualMsg.Body)
+		s.Equal(expectedMsg.CreatedAt.Unix(), actualMsg.CreatedAt.Unix())
+		s.Equal(expectedMsg.IsVisibleForClient, actualMsg.IsVisibleForClient)
+		s.Equal(expectedMsg.IsVisibleForManager, actualMsg.IsVisibleForManager)
+		s.Equal(expectedMsg.IsBlocked, actualMsg.IsBlocked)
+		s.Equal(expectedMsg.IsService, actualMsg.IsService)
+		s.Equal(expectedMsg.InitialRequestID, actualMsg.InitialRequestID)
+	})
+
+	s.Run("service message does not exist", func() {
+		msg, err := s.repo.GetServiceMessageByRequestID(s.Ctx, types.NewRequestID())
 		s.Require().ErrorIs(err, messagesrepo.ErrMsgNotFound)
 		s.Require().Nil(msg)
 	})
@@ -159,38 +210,6 @@ func (s *MsgRepoAPISuite) Test_CreateClientVisible() {
 
 		s.Run("initial_request_id is set correctly", func() {
 			s.Equal(initialRequestID, dbMsg.InitialRequestID)
-		})
-	}
-}
-
-func (s *MsgRepoAPISuite) Test_CreateClientService() {
-	authorID := types.NewUserID()
-
-	// Create chat and problem.
-	problemID, chatID := s.createProblemAndChat(authorID)
-
-	// Check message was created.
-	msg, err := s.repo.CreateClientService(s.Ctx, problemID, chatID, msgBody)
-	s.Require().NoError(err)
-	s.Require().NotNil(msg)
-	s.NotEmpty(msg.ID)
-	s.Equal(chatID, msg.ChatID)
-	s.Empty(msg.AuthorID)
-	s.Equal(msgBody, msg.Body)
-	s.False(msg.CreatedAt.IsZero())
-	s.True(msg.IsVisibleForClient)
-	s.False(msg.IsVisibleForManager)
-	s.False(msg.IsBlocked)
-	s.True(msg.IsService)
-
-	{
-		dbMsg, err := s.Database.Message(s.Ctx).Get(s.Ctx, msg.ID)
-		s.Require().NoError(err)
-		s.Require().NotNil(dbMsg)
-
-		s.Run("message is visible for client and invisible for manager", func() {
-			s.True(dbMsg.IsVisibleForClient)
-			s.False(dbMsg.IsVisibleForManager)
 		})
 	}
 }
@@ -245,6 +264,29 @@ func (s *MsgRepoAPISuite) Test_CreateFullVisible() {
 		s.Run("initial_request_id is set correctly", func() {
 			s.Equal(initialRequestID, dbMsg.InitialRequestID)
 		})
+	}
+}
+
+func (s *MsgRepoAPISuite) Test_CreateServiceMessageForClient() {
+	requestID := types.NewRequestID()
+	problemID, chatID := s.createProblemAndChat(types.NewUserID())
+	const msgBody = "Manager Igor will answer you."
+
+	msgID, err := s.repo.CreateServiceMessageForClient(s.Ctx, requestID, problemID, chatID, msgBody)
+	s.Require().NoError(err)
+	s.Require().False(msgID.IsZero())
+
+	{
+		dbMsg, err := s.Database.Message(s.Ctx).Get(s.Ctx, msgID)
+		s.Require().NoError(err)
+		s.Require().NotNil(dbMsg)
+		s.True(dbMsg.AuthorID.IsZero())
+		s.True(dbMsg.IsVisibleForClient)
+		s.False(dbMsg.IsVisibleForManager)
+		s.False(dbMsg.IsBlocked)
+		s.True(dbMsg.IsService)
+		s.Equal(requestID, dbMsg.InitialRequestID)
+		s.True(dbMsg.CheckedAt.IsZero())
 	}
 }
 

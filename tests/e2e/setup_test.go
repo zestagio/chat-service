@@ -27,6 +27,8 @@ import (
 	wsstream "github.com/zestagio/chat-service/tests/e2e/ws-stream"
 )
 
+const userAgent = "chat-service-e2e-tests"
+
 func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "E2E Suite")
@@ -42,8 +44,6 @@ var (
 	wsClientEndpoint    string
 	wsClientOrigin      string
 	wsClientSecProtocol string
-
-	userAgent string
 
 	apiManagerV1Endpoint string
 	wsManagerEndpoint    string
@@ -67,8 +67,6 @@ var _ = BeforeSuite(func() {
 	wsManagerEndpoint = expectEnv("E2E_MANAGER_WS_ENDPOINT")
 	wsManagerSecProtocol = expectEnv("E2E_MANAGER_WS_SEC_PROTOCOL")
 	wsManagerOrigin = expectEnv("E2E_MANAGER_WS_ORIGIN")
-
-	userAgent = expectEnv("E2E_USER_AGENT")
 
 	kcBasePath := expectEnv("E2E_KEYCLOAK_BASE_PATH")
 	kcRealm := expectEnv("E2E_KEYCLOAK_REALM")

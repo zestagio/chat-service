@@ -74,10 +74,6 @@ components:
         - $ref: "#/components/schemas/MessageBlockedEvent"
       discriminator:
         propertyName: eventType
-        mapping:
-          NewMessageEvent: "#/components/schemas/NewMessageEvent"
-          MessageSentEvent: "#/components/schemas/MessageSentEvent"
-          MessageBlockedEvent: "#/components/schemas/MessageBlockedEvent"
 
     NewMessageEvent:
       $ref: "#/components/schemas/Message"

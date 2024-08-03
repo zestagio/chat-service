@@ -47,12 +47,12 @@ func initServerManager(
 	eventStream eventstream.EventStream,
 	mLoadSvc *managerload.Service,
 	mPool managerpool.Pool,
+	outBox *outbox.Service,
 
+	db *store.Database,
 	chatsRepo *chatsrepo.Repo,
 	msgRepo *messagesrepo.Repo,
 	problemsRepo *problemsrepo.Repo,
-	outboxSvc *outbox.Service,
-	db *store.Database,
 ) (*server.Server, error) {
 	canReceiveProblemsUseCase, err := canreceiveproblems.New(canreceiveproblems.NewOptions(mLoadSvc, mPool))
 	if err != nil {
@@ -74,14 +74,14 @@ func initServerManager(
 		return nil, fmt.Errorf("create getchathistory usecase: %v", err)
 	}
 
-	sendMessageUseCase, err := sendmessage.New(sendmessage.NewOptions(msgRepo, problemsRepo, outboxSvc, db))
-	if err != nil {
-		return nil, fmt.Errorf("create sendmessage usecase: %v", err)
-	}
-
-	resolveProblemUseCase, err := resolveproblem.New(resolveproblem.NewOptions(msgRepo, problemsRepo, outboxSvc, db))
+	resolveProblemUseCase, err := resolveproblem.New(resolveproblem.NewOptions(msgRepo, outBox, problemsRepo, db))
 	if err != nil {
 		return nil, fmt.Errorf("create resolveproblem usecase: %v", err)
+	}
+
+	sendMessageUseCase, err := sendmessage.New(sendmessage.NewOptions(msgRepo, outBox, problemsRepo, db))
+	if err != nil {
+		return nil, fmt.Errorf("create sendmessage usecase: %v", err)
 	}
 
 	v1Handlers, err := managerv1.NewHandlers(managerv1.NewOptions(
@@ -89,8 +89,8 @@ func initServerManager(
 		freeHandsSignalUseCase,
 		getChatsUseCase,
 		getChatHistoryUseCase,
-		sendMessageUseCase,
 		resolveProblemUseCase,
+		sendMessageUseCase,
 	))
 	if err != nil {
 		return nil, fmt.Errorf("create v1 handlers: %v", err)

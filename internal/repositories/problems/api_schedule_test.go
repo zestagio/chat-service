@@ -4,16 +4,13 @@ package problemsrepo_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/suite"
 
 	problemsrepo "github.com/zestagio/chat-service/internal/repositories/problems"
 	"github.com/zestagio/chat-service/internal/testingh"
 	"github.com/zestagio/chat-service/internal/types"
-)
-
-const (
-	msgBody = "whatever"
 )
 
 type ProblemsRepoScheduleAPISuite struct {
@@ -23,7 +20,7 @@ type ProblemsRepoScheduleAPISuite struct {
 
 func TestProblemsRepoScheduleAPISuite(t *testing.T) {
 	t.Parallel()
-	suite.Run(t, &ProblemsRepoScheduleAPISuite{DBSuite: testingh.NewDBSuite("TestProblemsRepoScheduleAPISuite")})
+	suite.Run(t, &ProblemsRepoScheduleAPISuite{DBSuite: testingh.NewDBSuite("ProblemsRepoScheduleAPISuite")})
 }
 
 func (s *ProblemsRepoScheduleAPISuite) SetupSuite() {
@@ -35,259 +32,229 @@ func (s *ProblemsRepoScheduleAPISuite) SetupSuite() {
 	s.Require().NoError(err)
 }
 
-func (s *ProblemsRepoScheduleAPISuite) SetupSubTest() {
-	s.DBSuite.SetupTest()
-
-	s.Database.Message(s.Ctx).Delete().ExecX(s.Ctx)
-	s.Database.Problem(s.Ctx).Delete().ExecX(s.Ctx)
-	s.Database.Chat(s.Ctx).Delete().ExecX(s.Ctx)
-}
-
-func (s *ProblemsRepoScheduleAPISuite) Test_GetAvailableProblems() {
-	s.Run("two problems with visible messages", func() {
-		s.createMessage(true)
-		s.createMessage(true)
-
-		{
-			problems, err := s.repo.GetAvailableProblems(s.Ctx)
-
-			s.Require().NoError(err)
-			s.Require().Len(problems, 2)
+func (s *ProblemsRepoScheduleAPISuite) Test_GetProblemsWithoutManager() {
+	s.Run("invalid limit", func() {
+		for _, l := range []int{-1, 0} {
+			problems, err := s.repo.GetProblemsWithoutManager(s.Ctx, l)
+			s.Require().Error(err)
+			s.Empty(problems)
 		}
 	})
 
-	s.Run("no messages visible for manager", func() {
-		s.createMessage(false)
+	s.Run("no open problems without manager", func() {
+		clientID := types.NewUserID()
+		managerID := types.NewUserID()
 
-		{
-			problems, err := s.repo.GetAvailableProblems(s.Ctx)
+		// Create chat.
+		chat, err := s.Database.Chat(s.Ctx).Create().SetClientID(clientID).Save(s.Ctx)
+		s.Require().NoError(err)
 
-			s.Require().NoError(err)
-			s.Require().Empty(problems)
-		}
+		// Assign open problem with manager to chat.
+		_, err = s.Database.Problem(s.Ctx).Create().SetChatID(chat.ID).SetManagerID(managerID).Save(s.Ctx)
+		s.Require().NoError(err)
+
+		problems, err := s.repo.GetProblemsWithoutManager(s.Ctx, 3)
+		s.Require().NoError(err)
+		s.Empty(problems)
 	})
 
-	s.Run("get first problem when second with manager", func() {
-		s.createMessage(true)
+	s.Run("no open problems with messages visible for manager", func() {
+		clientID := types.NewUserID()
+		managerID := types.NewUserID()
+
+		// Create chat.
+		chat, err := s.Database.Chat(s.Ctx).Create().SetClientID(clientID).Save(s.Ctx)
+		s.Require().NoError(err)
+
+		// Problem without manager.
+		_, err = s.Database.Problem(s.Ctx).Create().SetChatID(chat.ID).Save(s.Ctx)
+		s.Require().NoError(err)
+
+		// Problem without manager-visible messages.
+		p, err := s.Database.Problem(s.Ctx).Create().SetChatID(chat.ID).SetManagerID(managerID).Save(s.Ctx)
+		s.Require().NoError(err)
+
+		for i := 0; i < 3; i++ {
+			_, err = s.Database.Message(s.Ctx).Create().
+				SetID(types.NewMessageID()).
+				SetChatID(chat.ID).
+				SetAuthorID(clientID).
+				SetProblemID(p.ID).
+				SetBody("SMS code is 4321").
+				SetIsVisibleForClient(true).
+				SetIsVisibleForManager(false).
+				SetIsBlocked(true).
+				SetIsService(false).
+				SetInitialRequestID(types.NewRequestID()).
+				Save(s.Ctx)
+			s.Require().NoError(err)
+		}
+
+		problems, err := s.repo.GetProblemsWithoutManager(s.Ctx, 3)
+		s.Require().NoError(err)
+		s.Empty(problems)
+	})
+
+	s.Run("open problems without manager exist", func() {
+		const (
+			problemsCount = 10
+		)
 
 		clientID := types.NewUserID()
-		problemID, chatID := s.createProblemAndChatWithManager(clientID)
-		_ = s.Database.Message(s.Ctx).Create().
-			SetID(types.NewMessageID()).
-			SetChatID(chatID).
-			SetAuthorID(clientID).
-			SetProblemID(problemID).
-			SetBody(msgBody).
-			SetIsBlocked(false).
-			SetIsVisibleForClient(true).
-			SetIsVisibleForManager(true).
-			SetInitialRequestID(types.NewRequestID()).
-			SaveX(s.Ctx)
 
-		{
-			problems, err := s.repo.GetAvailableProblems(s.Ctx)
+		// Create chat.
+		chat, err := s.Database.Chat(s.Ctx).Create().SetClientID(clientID).Save(s.Ctx)
+		s.Require().NoError(err)
 
+		for i := 0; i < problemsCount*2; i++ {
+			// Assign open problem without manager to chat.
+			p, err := s.Database.Problem(s.Ctx).Create().SetChatID(chat.ID).Save(s.Ctx)
 			s.Require().NoError(err)
-			s.Require().Len(problems, 1)
+
+			_, err = s.Database.Message(s.Ctx).Create().
+				SetID(types.NewMessageID()).
+				SetChatID(chat.ID).
+				SetAuthorID(clientID).
+				SetProblemID(p.ID).
+				SetBody("Hello!").
+				SetIsVisibleForClient(true).
+				SetIsVisibleForManager(true).
+				SetIsBlocked(false).
+				SetIsService(false).
+				SetInitialRequestID(types.NewRequestID()).
+				Save(s.Ctx)
+			s.Require().NoError(err)
+		}
+
+		problems, err := s.repo.GetProblemsWithoutManager(s.Ctx, problemsCount)
+		s.Require().NoError(err)
+
+		s.Len(problems, problemsCount)
+		for _, p := range problems {
+			s.Equal(chat.ID, p.ChatID)
 		}
 	})
 }
 
 func (s *ProblemsRepoScheduleAPISuite) Test_SetManagerForProblem() {
-	s.Run("set manager for problem", func() {
-		authorID := types.NewUserID()
-		managerID := types.NewUserID()
-
-		problemID, chatID := s.createProblemAndChat(authorID)
-		_ = s.Database.Message(s.Ctx).Create().
-			SetID(types.NewMessageID()).
-			SetChatID(chatID).
-			SetAuthorID(authorID).
-			SetProblemID(problemID).
-			SetBody(msgBody).
-			SetIsBlocked(false).
-			SetIsVisibleForClient(true).
-			SetIsVisibleForManager(true).
-			SetIsService(false).
-			SetInitialRequestID(types.NewRequestID()).
-			SaveX(s.Ctx)
-
-		err := s.repo.SetManagerForProblem(s.Ctx, problemID, managerID)
-
-		{
-			s.Require().NoError(err)
-			problem, err := s.Database.Problem(s.Ctx).Get(s.Ctx, problemID)
-
-			s.Require().NoError(err)
-			s.Equal(managerID, problem.ManagerID)
-		}
-	})
-
-	s.Run("no found available problems", func() {
-		s.Database.Problem(s.Ctx).Delete().ExecX(s.Ctx)
-
-		managerID := types.NewUserID()
-		authorID := types.NewUserID()
-
-		problemID, chatID := s.createProblemAndChatWithManager(managerID)
-
-		_ = s.Database.Message(s.Ctx).Create().
-			SetID(types.NewMessageID()).
-			SetChatID(chatID).
-			SetAuthorID(authorID).
-			SetProblemID(problemID).
-			SetBody(msgBody).
-			SetIsBlocked(false).
-			SetIsVisibleForClient(true).
-			SetIsVisibleForManager(true).
-			SetIsService(false).
-			SetInitialRequestID(types.NewRequestID()).
-			SaveX(s.Ctx)
-
-		err := s.repo.SetManagerForProblem(s.Ctx, problemID, managerID)
-
-		s.Require().ErrorIs(err, problemsrepo.ErrProblemNotFound)
-	})
-}
-
-func (s *ProblemsRepoScheduleAPISuite) Test_GetProblemReqID() {
-	s.Run("request id from first message in problem", func() {
-		authorID := types.NewUserID()
-		requestID := types.NewRequestID()
-
-		problemID, chatID := s.createProblemAndChat(authorID)
-		firstMsg := s.Database.Message(s.Ctx).Create().
-			SetID(types.NewMessageID()).
-			SetChatID(chatID).
-			SetAuthorID(authorID).
-			SetProblemID(problemID).
-			SetBody(msgBody).
-			SetIsBlocked(false).
-			SetIsVisibleForClient(true).
-			SetIsVisibleForManager(true).
-			SetIsService(false).
-			SetInitialRequestID(requestID).
-			SaveX(s.Ctx)
-
-		_ = s.Database.Message(s.Ctx).Create().
-			SetID(types.NewMessageID()).
-			SetChatID(chatID).
-			SetAuthorID(authorID).
-			SetProblemID(problemID).
-			SetBody(msgBody).
-			SetIsBlocked(false).
-			SetIsVisibleForClient(true).
-			SetIsVisibleForManager(true).
-			SetIsService(false).
-			SetInitialRequestID(types.NewRequestID()).
-			SaveX(s.Ctx)
-
-		expReqID, err := s.repo.GetProblemRequestID(s.Ctx, problemID)
-
-		{
-			s.Require().NoError(err)
-			s.Require().Equal(expReqID, firstMsg.InitialRequestID)
-		}
-	})
-
-	s.Run("no found request id when no available problems", func() {
-		authorID := types.NewUserID()
-
-		problemID, _ := s.createProblemAndChatWithManager(authorID)
-
-		_, err := s.repo.GetProblemRequestID(s.Ctx, problemID)
-
-		{
-			s.Require().ErrorIs(err, problemsrepo.ErrReqIDNotFount)
-		}
-	})
-
-	s.Run("no found request id when no visible message", func() {
-		authorID := types.NewUserID()
-		requestID := types.NewRequestID()
-
-		problemID, chatID := s.createProblemAndChat(authorID)
-		firstMsg := s.Database.Message(s.Ctx).Create().
-			SetID(types.NewMessageID()).
-			SetChatID(chatID).
-			SetAuthorID(authorID).
-			SetProblemID(problemID).
-			SetBody(msgBody).
-			SetIsBlocked(false).
-			SetIsVisibleForClient(true).
-			SetIsVisibleForManager(false).
-			SetIsService(false).
-			SetInitialRequestID(requestID).
-			SaveX(s.Ctx)
-
-		expReqID, err := s.repo.GetProblemRequestID(s.Ctx, problemID)
-
-		{
-			s.Require().ErrorIs(err, problemsrepo.ErrReqIDNotFount)
-			s.NotEqual(expReqID, firstMsg.InitialRequestID)
-		}
-	})
-
-	s.Run("no found request id when no messages", func() {
-		authorID := types.NewUserID()
-		problemID, _ := s.createProblemAndChat(authorID)
-
-		expReqID, err := s.repo.GetProblemRequestID(s.Ctx, problemID)
-
-		{
-			s.Require().ErrorIs(err, problemsrepo.ErrReqIDNotFount)
-			s.Equal(expReqID, types.RequestIDNil)
-		}
-	})
-}
-
-func (s *ProblemsRepoScheduleAPISuite) createMessage(isVisibleForManager bool) {
-	s.T().Helper()
-
-	authorID := types.NewUserID()
-	problemID, chatID := s.createProblemAndChat(authorID)
-	msgID := types.NewMessageID()
-
-	_, err := s.Database.Message(s.Ctx).Create().
-		SetID(msgID).
-		SetChatID(chatID).
-		SetAuthorID(authorID).
-		SetProblemID(problemID).
-		SetBody(msgBody).
-		SetIsBlocked(false).
-		SetIsVisibleForClient(true).
-		SetIsVisibleForManager(isVisibleForManager).
-		SetIsService(false).
-		SetInitialRequestID(types.NewRequestID()).
-		Save(s.Ctx)
-	s.Require().NoError(err)
-}
-
-func (s *ProblemsRepoScheduleAPISuite) createProblemAndChat(clientID types.UserID) (types.ProblemID, types.ChatID) {
-	s.T().Helper()
-
-	chat, err := s.Database.Chat(s.Ctx).Create().SetClientID(clientID).Save(s.Ctx)
+	chat, err := s.Database.Chat(s.Ctx).Create().SetClientID(types.NewUserID()).Save(s.Ctx)
 	s.Require().NoError(err)
 
-	problem, err := s.Database.Problem(s.Ctx).Create().SetChatID(chat.ID).Save(s.Ctx)
+	p, err := s.Database.Problem(s.Ctx).Create().SetChatID(chat.ID).Save(s.Ctx)
 	s.Require().NoError(err)
-
-	return problem.ID, chat.ID
-}
-
-func (s *ProblemsRepoScheduleAPISuite) createProblemAndChatWithManager(clientID types.UserID) (types.ProblemID, types.ChatID) {
-	s.T().Helper()
 
 	managerID := types.NewUserID()
-
-	chat, err := s.Database.Chat(s.Ctx).Create().SetClientID(clientID).Save(s.Ctx)
+	err = s.repo.SetManagerForProblem(s.Ctx, p.ID, managerID)
 	s.Require().NoError(err)
 
-	problem, err := s.Database.Problem(s.Ctx).Create().
-		SetChatID(chat.ID).
-		SetManagerID(managerID).
-		Save(s.Ctx)
+	p, err = s.Database.Problem(s.Ctx).Get(s.Ctx, p.ID)
 	s.Require().NoError(err)
+	s.Equal(managerID, p.ManagerID)
+}
 
-	return problem.ID, chat.ID
+func (s *ProblemsRepoScheduleAPISuite) Test_GetProblemInitialRequestID() {
+	s.Run("no problem messages", func() {
+		// Create chat.
+		chat, err := s.Database.Chat(s.Ctx).Create().SetClientID(types.NewUserID()).Save(s.Ctx)
+		s.Require().NoError(err)
+
+		// Assign open problem with manager to chat.
+		p, err := s.Database.Problem(s.Ctx).Create().SetChatID(chat.ID).SetManagerID(types.NewUserID()).Save(s.Ctx)
+		s.Require().NoError(err)
+
+		reqID, err := s.repo.GetProblemInitialRequestID(s.Ctx, p.ID)
+		s.Require().Error(err)
+		s.Empty(reqID)
+	})
+
+	s.Run("no manager-visible problem messages", func() {
+		clientID := types.NewUserID()
+
+		// Create chat.
+		chat, err := s.Database.Chat(s.Ctx).Create().SetClientID(clientID).Save(s.Ctx)
+		s.Require().NoError(err)
+
+		// Assign open problem with manager to chat.
+		p, err := s.Database.Problem(s.Ctx).Create().SetChatID(chat.ID).SetManagerID(types.NewUserID()).Save(s.Ctx)
+		s.Require().NoError(err)
+
+		_, err = s.Database.Message(s.Ctx).Create().
+			SetID(types.NewMessageID()).
+			SetChatID(chat.ID).
+			SetAuthorID(clientID).
+			SetProblemID(p.ID).
+			SetBody("SMS code is 5566").
+			SetIsVisibleForClient(true).
+			SetIsVisibleForManager(false).
+			SetIsBlocked(true).
+			SetIsService(false).
+			SetInitialRequestID(types.NewRequestID()).
+			Save(s.Ctx)
+		s.Require().NoError(err)
+
+		reqID, err := s.repo.GetProblemInitialRequestID(s.Ctx, p.ID)
+		s.Require().Error(err)
+		s.Empty(reqID)
+	})
+
+	s.Run("manager-visible problem messages exist", func() {
+		clientID := types.NewUserID()
+		expReqID := types.NewRequestID()
+
+		// Create chat.
+		chat, err := s.Database.Chat(s.Ctx).Create().SetClientID(clientID).Save(s.Ctx)
+		s.Require().NoError(err)
+
+		// Assign open problem with manager to chat.
+		p, err := s.Database.Problem(s.Ctx).Create().SetChatID(chat.ID).SetManagerID(types.NewUserID()).Save(s.Ctx)
+		s.Require().NoError(err)
+
+		_, err = s.Database.Message(s.Ctx).Create().
+			SetID(types.NewMessageID()).
+			SetChatID(chat.ID).
+			SetAuthorID(clientID).
+			SetProblemID(p.ID).
+			SetBody("SMS code is 5566").
+			SetIsVisibleForClient(true).
+			SetIsVisibleForManager(false).
+			SetIsBlocked(true).
+			SetIsService(false).
+			SetInitialRequestID(types.NewRequestID()).
+			Save(s.Ctx)
+		s.Require().NoError(err)
+
+		time.Sleep(10 * time.Millisecond)
+		_, err = s.Database.Message(s.Ctx).Create().
+			SetID(types.NewMessageID()).
+			SetChatID(chat.ID).
+			SetAuthorID(clientID).
+			SetProblemID(p.ID).
+			SetBody("I need help").
+			SetIsVisibleForClient(true).
+			SetIsVisibleForManager(true).
+			SetIsBlocked(true).
+			SetIsService(false).
+			SetInitialRequestID(expReqID).
+			Save(s.Ctx)
+		s.Require().NoError(err)
+
+		time.Sleep(10 * time.Millisecond)
+		_, err = s.Database.Message(s.Ctx).Create().
+			SetID(types.NewMessageID()).
+			SetChatID(chat.ID).
+			SetAuthorID(clientID).
+			SetProblemID(p.ID).
+			SetBody("please").
+			SetIsVisibleForClient(true).
+			SetIsVisibleForManager(true).
+			SetIsBlocked(true).
+			SetIsService(false).
+			SetInitialRequestID(types.NewRequestID()).
+			Save(s.Ctx)
+		s.Require().NoError(err)
+
+		reqID, err := s.repo.GetProblemInitialRequestID(s.Ctx, p.ID)
+		s.Require().NoError(err)
+		s.Equal(expReqID, reqID)
+	})
 }

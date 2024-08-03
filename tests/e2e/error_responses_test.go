@@ -80,22 +80,23 @@ var _ = Describe("Error Responses", Ordered, func() {
 			&apiclientv1.PostSendMessageParams{XRequestID: types.NewRequestID()},
 			apiclientv1.PostSendMessageJSONRequestBody{MessageBody: ""},
 		)
+		Expect(err).ShouldNot(HaveOccurred())
 
 		// Assert.
 		Expect(err).ShouldNot(HaveOccurred())
 		expectSendClientMsgRespCode(resp, http.StatusBadRequest)
 	})
 
-	It("5001 code when try close chat without open problem", func() {
-		resp, err := apiManagerV1.PostCloseChatWithResponse(
-			ctx,
+	It("custom code, assigned problem in chat for manager was not found", func() {
+		// Action.
+		resp, err := apiManagerV1.PostCloseChatWithResponse(ctx,
 			&apimanagerv1.PostCloseChatParams{XRequestID: types.NewRequestID()},
 			apimanagerv1.PostCloseChatJSONRequestBody{ChatId: types.NewChatID()},
 		)
 
 		// Assert.
 		Expect(err).ShouldNot(HaveOccurred())
-		expectCloseChatRespCode(resp, apimanagerv1.ErrorCodeNoFoundProblem)
+		expectCloseChatRespCode(resp, apimanagerv1.ErrorCodeAssignedProblemNotFound)
 	})
 })
 

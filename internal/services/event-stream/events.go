@@ -54,27 +54,25 @@ type MessageBlockedEvent struct {
 
 func (e MessageBlockedEvent) Validate() error { return validator.Validator.Struct(e) }
 
-// NewChatEvent is a signal about the appearance of a new chat.
+// NewChatEvent indicates that a new client issue has been assigned to the manager.
 type NewChatEvent struct {
-	event              `gonstructor:"-"`
-	EventID            types.EventID   `validate:"required"`
-	RequestID          types.RequestID `validate:"required"`
-	ChatID             types.ChatID    `validate:"required"`
-	ClientID           types.UserID    `validate:"required"`
-	CanTakeMoreProblem bool
+	event               `gonstructor:"-"`
+	EventID             types.EventID   `validate:"required"`
+	RequestID           types.RequestID `validate:"required"`
+	ChatID              types.ChatID    `validate:"required"`
+	ClientID            types.UserID    `validate:"required"`
+	CanTakeMoreProblems bool
 }
 
 func (e NewChatEvent) Validate() error { return validator.Validator.Struct(e) }
 
-// ChatClosedEvent is a signal about the problem is resolved.
+// ChatClosedEvent indicates that another issue is closed.
 type ChatClosedEvent struct {
-	event              `gonstructor:"-"`
-	EventID            types.EventID   `validate:"required"`
-	RequestID          types.RequestID `validate:"required"`
-	ChatID             types.ChatID    `validate:"required"`
-	CanTakeMoreProblem bool
+	event               `gonstructor:"-"`
+	EventID             types.EventID   `validate:"required"`
+	RequestID           types.RequestID `validate:"required"`
+	ChatID              types.ChatID    `validate:"required"`
+	CanTakeMoreProblems bool
 }
 
-func (e ChatClosedEvent) Validate() error {
-	return validator.Validator.Struct(e)
-}
+func (e ChatClosedEvent) Validate() error { return validator.Validator.Struct(e) }

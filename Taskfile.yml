@@ -50,6 +50,7 @@ vars:
   ENT_TEMPLATES: ./internal/store/templates
   ENT_FEATURES: |
     sql/execquery
+    sql/modifier
     sql/upsert
 
   KEYCLOAK_REALM_PATH: ./deploy/local/bank-realm.json
@@ -176,6 +177,11 @@ tasks:
   deps:stop:
     cmds:
       - "{{.DOCKER_COMPOSE_CMD}} stop"
+
+  deps:restart:
+    cmds:
+      - task: deps:stop
+      - task: deps
 
   deps:reset-psql:
     cmds:

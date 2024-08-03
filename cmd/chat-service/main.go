@@ -34,8 +34,8 @@ import (
 	"github.com/zestagio/chat-service/internal/services/outbox"
 	clientmessageblockedjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/client-message-blocked"
 	clientmessagesentjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/client-message-sent"
-	closechatjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/close-chat"
 	managerassignedtoproblemjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/manager-assigned-to-problem"
+	problemresolvedjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/problem-resolved"
 	sendclientmessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-client-message"
 	sendmanagermessagejob "github.com/zestagio/chat-service/internal/services/outbox/jobs/send-manager-message"
 	"github.com/zestagio/chat-service/internal/store"
@@ -49,7 +49,7 @@ func main() {
 	}
 }
 
-func run() (errReturned error) {
+func run() (errReturned error) { 
 	flag.Parse()
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -192,12 +192,12 @@ func run() (errReturned error) {
 		return fmt.Errorf("create afc verdicts processor: %v", err)
 	}
 
-	managerScheduler, err := managerscheduler.New(managerscheduler.NewOptions(
+	mngrScheduler, err := managerscheduler.New(managerscheduler.NewOptions(
 		cfg.Services.ManagerScheduler.Period,
 		managerPool,
 		msgRepo,
-		problemsRepo,
 		outBox,
+		problemsRepo,
 		db,
 	))
 	if err != nil {
@@ -207,13 +207,11 @@ func run() (errReturned error) {
 	// Application Services. Jobs.
 	for _, j := range []outbox.Job{
 		clientmessageblockedjob.Must(clientmessageblockedjob.NewOptions(eventsStream, msgRepo)),
-		clientmessagesentjob.Must(clientmessagesentjob.NewOptions(eventsStream, msgRepo)),
+		clientmessagesentjob.Must(clientmessagesentjob.NewOptions(chatsRepo, eventsStream, msgRepo)),
+		managerassignedtoproblemjob.Must(managerassignedtoproblemjob.NewOptions(chatsRepo, eventsStream, msgRepo, managerLoad)),
+		problemresolvedjob.Must(problemresolvedjob.NewOptions(chatsRepo, eventsStream, managerLoad, msgRepo, problemsRepo)),
 		sendclientmessagejob.Must(sendclientmessagejob.NewOptions(eventsStream, msgProducer, msgRepo)),
-		managerassignedtoproblemjob.Must(
-			managerassignedtoproblemjob.NewOptions(eventsStream, chatsRepo, problemsRepo, msgRepo, managerLoad),
-		),
-		sendmanagermessagejob.Must(sendmanagermessagejob.NewOptions(eventsStream, msgProducer, chatsRepo, msgRepo)),
-		closechatjob.Must(closechatjob.NewOptions(eventsStream, chatsRepo, problemsRepo, msgRepo, managerLoad)),
+		sendmanagermessagejob.Must(sendmanagermessagejob.NewOptions(chatsRepo, eventsStream, msgProducer, msgRepo)),
 	} {
 		outBox.MustRegisterJob(j)
 	}
@@ -261,11 +259,11 @@ func run() (errReturned error) {
 		eventsStream,
 		managerLoad,
 		managerPool,
+		outBox,
+		db,
 		chatsRepo,
 		msgRepo,
 		problemsRepo,
-		outBox,
-		db,
 	)
 	if err != nil {
 		return fmt.Errorf("init manager server: %v", err)
@@ -301,8 +299,8 @@ func run() (errReturned error) {
 
 	// Run services.
 	eg.Go(func() error { return outBox.Run(ctx) })
+	eg.Go(func() error { return mngrScheduler.Run(ctx) })
 	eg.Go(func() error { return afcVerdictsProcessor.Run(ctx) })
-	eg.Go(func() error { return managerScheduler.Run(ctx) })
 
 	if err = eg.Wait(); err != nil && !errors.Is(err, context.Canceled) {
 		return fmt.Errorf("wait app stop: %v", err)

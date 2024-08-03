@@ -1,9 +1,9 @@
 package managerv1_test
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	internalerrors "github.com/zestagio/chat-service/internal/errors"
@@ -15,7 +15,7 @@ import (
 func (s *HandlersSuite) TestSendMessage_BindRequestError() {
 	// Arrange.
 	reqID := types.NewRequestID()
-	resp, eCtx := s.newEchoCtx(reqID, "/v1/sendMessage", `{"messageBody": "Hel`)
+	resp, eCtx := s.newEchoCtx(reqID, "/v1/sendMessage", `{"messageBody": "Can`)
 
 	// Action.
 	err := s.handlers.PostSendMessage(eCtx, managerv1.PostSendMessageParams{XRequestID: reqID})
@@ -26,26 +26,26 @@ func (s *HandlersSuite) TestSendMessage_BindRequestError() {
 	s.Empty(resp.Body)
 }
 
-func (s *HandlersSuite) TestSendMessage_Usecase_InvalidRequest() {
+func (s *HandlersSuite) TestSendMessage_Usecase_UnknownError() {
 	// Arrange.
 	reqID := types.NewRequestID()
 	chatID := types.NewChatID()
-	msgBody := strings.Repeat("!", 3001)
 
-	resp, eCtx := s.newEchoCtx(reqID, "/v1/sendMessage", fmt.Sprintf(`{"messageBody": "%s", "chatId": %q}`, msgBody, chatID))
+	resp, eCtx := s.newEchoCtx(reqID, "/v1/sendMessage",
+		fmt.Sprintf(`{"messageBody": "Can I help you?", "chatId": %q}`, chatID))
+
 	s.sendMessageUseCase.EXPECT().Handle(eCtx.Request().Context(), sendmessage.Request{
 		ID:          reqID,
 		ManagerID:   s.managerID,
 		ChatID:      chatID,
-		MessageBody: msgBody,
-	}).Return(sendmessage.Response{}, sendmessage.ErrInvalidRequest)
+		MessageBody: "Can I help you?",
+	}).Return(sendmessage.Response{}, errors.New("something went wrong"))
 
 	// Action.
 	err := s.handlers.PostSendMessage(eCtx, managerv1.PostSendMessageParams{XRequestID: reqID})
 
 	// Assert.
 	s.Require().Error(err)
-	s.Equal(http.StatusBadRequest, internalerrors.GetServerErrorCode(err))
 	s.Empty(resp.Body)
 }
 
@@ -54,13 +54,15 @@ func (s *HandlersSuite) TestSendMessage_Usecase_Success() {
 	reqID := types.NewRequestID()
 	chatID := types.NewChatID()
 
-	resp, eCtx := s.newEchoCtx(reqID, "/v1/sendMessage", fmt.Sprintf(`{"messageBody": "Hello!", "chatId": %q}`, chatID))
+	resp, eCtx := s.newEchoCtx(reqID, "/v1/sendMessage",
+		fmt.Sprintf(`{"messageBody": "Can I help you?", "chatId": %q}`, chatID))
+
 	msgID := types.NewMessageID()
 	s.sendMessageUseCase.EXPECT().Handle(eCtx.Request().Context(), sendmessage.Request{
 		ID:          reqID,
 		ManagerID:   s.managerID,
 		ChatID:      chatID,
-		MessageBody: "Hello!",
+		MessageBody: "Can I help you?",
 	}).Return(sendmessage.Response{
 		MessageID: msgID,
 		CreatedAt: time.Unix(1, 1).UTC(),

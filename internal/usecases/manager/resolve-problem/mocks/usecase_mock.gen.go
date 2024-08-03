@@ -10,9 +10,46 @@ import (
 	time "time"
 
 	gomock "github.com/golang/mock/gomock"
-	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
 	types "github.com/zestagio/chat-service/internal/types"
 )
+
+// MockmessagesRepository is a mock of messagesRepository interface.
+type MockmessagesRepository struct {
+	ctrl     *gomock.Controller
+	recorder *MockmessagesRepositoryMockRecorder
+}
+
+// MockmessagesRepositoryMockRecorder is the mock recorder for MockmessagesRepository.
+type MockmessagesRepositoryMockRecorder struct {
+	mock *MockmessagesRepository
+}
+
+// NewMockmessagesRepository creates a new mock instance.
+func NewMockmessagesRepository(ctrl *gomock.Controller) *MockmessagesRepository {
+	mock := &MockmessagesRepository{ctrl: ctrl}
+	mock.recorder = &MockmessagesRepositoryMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockmessagesRepository) EXPECT() *MockmessagesRepositoryMockRecorder {
+	return m.recorder
+}
+
+// CreateServiceMessageForClient mocks base method.
+func (m *MockmessagesRepository) CreateServiceMessageForClient(ctx context.Context, reqID types.RequestID, problemID types.ProblemID, chatID types.ChatID, msgBody string) (types.MessageID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateServiceMessageForClient", ctx, reqID, problemID, chatID, msgBody)
+	ret0, _ := ret[0].(types.MessageID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateServiceMessageForClient indicates an expected call of CreateServiceMessageForClient.
+func (mr *MockmessagesRepositoryMockRecorder) CreateServiceMessageForClient(ctx, reqID, problemID, chatID, msgBody interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateServiceMessageForClient", reflect.TypeOf((*MockmessagesRepository)(nil).CreateServiceMessageForClient), ctx, reqID, problemID, chatID, msgBody)
+}
 
 // MockoutboxService is a mock of outboxService interface.
 type MockoutboxService struct {
@@ -50,44 +87,6 @@ func (m *MockoutboxService) Put(ctx context.Context, name, payload string, avail
 func (mr *MockoutboxServiceMockRecorder) Put(ctx, name, payload, availableAt interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockoutboxService)(nil).Put), ctx, name, payload, availableAt)
-}
-
-// MockmessageRepository is a mock of messageRepository interface.
-type MockmessageRepository struct {
-	ctrl     *gomock.Controller
-	recorder *MockmessageRepositoryMockRecorder
-}
-
-// MockmessageRepositoryMockRecorder is the mock recorder for MockmessageRepository.
-type MockmessageRepositoryMockRecorder struct {
-	mock *MockmessageRepository
-}
-
-// NewMockmessageRepository creates a new mock instance.
-func NewMockmessageRepository(ctrl *gomock.Controller) *MockmessageRepository {
-	mock := &MockmessageRepository{ctrl: ctrl}
-	mock.recorder = &MockmessageRepositoryMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockmessageRepository) EXPECT() *MockmessageRepositoryMockRecorder {
-	return m.recorder
-}
-
-// CreateClientService mocks base method.
-func (m *MockmessageRepository) CreateClientService(ctx context.Context, problemID types.ProblemID, chatID types.ChatID, msgBody string) (*messagesrepo.Message, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateClientService", ctx, problemID, chatID, msgBody)
-	ret0, _ := ret[0].(*messagesrepo.Message)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CreateClientService indicates an expected call of CreateClientService.
-func (mr *MockmessageRepositoryMockRecorder) CreateClientService(ctx, problemID, chatID, msgBody interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateClientService", reflect.TypeOf((*MockmessageRepository)(nil).CreateClientService), ctx, problemID, chatID, msgBody)
 }
 
 // MockproblemsRepository is a mock of problemsRepository interface.
@@ -128,18 +127,18 @@ func (mr *MockproblemsRepositoryMockRecorder) GetAssignedProblemID(ctx, managerI
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAssignedProblemID", reflect.TypeOf((*MockproblemsRepository)(nil).GetAssignedProblemID), ctx, managerID, chatID)
 }
 
-// Resolve mocks base method.
-func (m *MockproblemsRepository) Resolve(ctx context.Context, problemID types.ProblemID) error {
+// ResolveProblem mocks base method.
+func (m *MockproblemsRepository) ResolveProblem(ctx context.Context, requestID types.RequestID, problemID types.ProblemID) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Resolve", ctx, problemID)
+	ret := m.ctrl.Call(m, "ResolveProblem", ctx, requestID, problemID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Resolve indicates an expected call of Resolve.
-func (mr *MockproblemsRepositoryMockRecorder) Resolve(ctx, problemID interface{}) *gomock.Call {
+// ResolveProblem indicates an expected call of ResolveProblem.
+func (mr *MockproblemsRepositoryMockRecorder) ResolveProblem(ctx, requestID, problemID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Resolve", reflect.TypeOf((*MockproblemsRepository)(nil).Resolve), ctx, problemID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveProblem", reflect.TypeOf((*MockproblemsRepository)(nil).ResolveProblem), ctx, requestID, problemID)
 }
 
 // Mocktransactor is a mock of transactor interface.

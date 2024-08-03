@@ -52,21 +52,6 @@ func (mr *MockmessagesRepositoryMockRecorder) CreateFullVisible(ctx, reqID, prob
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateFullVisible", reflect.TypeOf((*MockmessagesRepository)(nil).CreateFullVisible), ctx, reqID, problemID, chatID, authorID, msgBody)
 }
 
-// GetMessageByRequestID mocks base method.
-func (m *MockmessagesRepository) GetMessageByRequestID(ctx context.Context, reqID types.RequestID) (*messagesrepo.Message, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMessageByRequestID", ctx, reqID)
-	ret0, _ := ret[0].(*messagesrepo.Message)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetMessageByRequestID indicates an expected call of GetMessageByRequestID.
-func (mr *MockmessagesRepositoryMockRecorder) GetMessageByRequestID(ctx, reqID interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMessageByRequestID", reflect.TypeOf((*MockmessagesRepository)(nil).GetMessageByRequestID), ctx, reqID)
-}
-
 // MockoutboxService is a mock of outboxService interface.
 type MockoutboxService struct {
 	ctrl     *gomock.Controller

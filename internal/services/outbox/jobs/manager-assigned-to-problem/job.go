@@ -5,10 +5,9 @@ import (
 	"fmt"
 
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 
-	chatsrepo "github.com/zestagio/chat-service/internal/repositories/chats"
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
-	problemsrepo "github.com/zestagio/chat-service/internal/repositories/problems"
 	eventstream "github.com/zestagio/chat-service/internal/services/event-stream"
 	"github.com/zestagio/chat-service/internal/services/outbox"
 	"github.com/zestagio/chat-service/internal/services/outbox/jobs/payload/simpleid"
@@ -17,34 +16,29 @@ import (
 
 const Name = "manager-assigned-to-problem"
 
+type chatsRepository interface {
+	GetChatClient(ctx context.Context, chatID types.ChatID) (types.UserID, error)
+	GetChatManager(ctx context.Context, chatID types.ChatID) (types.UserID, error)
+}
+
 type eventStream interface {
 	Publish(ctx context.Context, userID types.UserID, event eventstream.Event) error
-}
-
-type chatRepository interface {
-	GetChatByID(ctx context.Context, chatID types.ChatID) (*chatsrepo.Chat, error)
-}
-
-type problemRepository interface {
-	GetProblemByID(ctx context.Context, problemID types.ProblemID) (*problemsrepo.Problem, error)
-	GetProblemRequestID(ctx context.Context, problemID types.ProblemID) (types.RequestID, error)
-}
-
-type messageRepository interface {
-	GetMessageByID(ctx context.Context, msgID types.MessageID) (*messagesrepo.Message, error)
 }
 
 type managerLoadService interface {
 	CanManagerTakeProblem(ctx context.Context, managerID types.UserID) (bool, error)
 }
 
+type messageRepository interface {
+	GetMessageByID(ctx context.Context, msgID types.MessageID) (*messagesrepo.Message, error)
+}
+
 //go:generate options-gen -out-filename=job_options.gen.go -from-struct=Options
 type Options struct {
+	chatsRepo   chatsRepository    `option:"mandatory" validate:"required"`
 	eventStream eventStream        `option:"mandatory" validate:"required"`
-	chatRepo    chatRepository     `option:"mandatory" validate:"required"`
-	problemRepo problemRepository  `option:"mandatory" validate:"required"`
 	msgRepo     messageRepository  `option:"mandatory" validate:"required"`
-	managerLoad managerLoadService `option:"mandatory" validate:"required"`
+	mLoadSvc    managerLoadService `option:"mandatory" validate:"required"`
 }
 
 type Job struct {
@@ -67,7 +61,7 @@ func New(opts Options) (*Job, error) {
 	}
 	return &Job{
 		Options: opts,
-		logger:  zap.L().Named(Name),
+		logger:  zap.L().Named("job." + Name),
 	}, nil
 }
 
@@ -78,58 +72,67 @@ func (j *Job) Name() string {
 func (j *Job) Handle(ctx context.Context, payload string) error {
 	j.logger.Info("start processing", zap.String("payload", payload))
 
-	msgID, err := simpleid.Unmarshal[types.MessageID](payload)
+	serviceMsgID, err := simpleid.Unmarshal[types.MessageID](payload)
 	if err != nil {
 		return fmt.Errorf("unmarshal payload: %v", err)
 	}
 
-	msg, err := j.msgRepo.GetMessageByID(ctx, msgID)
+	serviceMsg, err := j.msgRepo.GetMessageByID(ctx, serviceMsgID)
 	if err != nil {
 		return fmt.Errorf("get message: %v", err)
 	}
 
-	chat, err := j.chatRepo.GetChatByID(ctx, msg.ChatID)
+	clientID, err := j.chatsRepo.GetChatClient(ctx, serviceMsg.ChatID)
 	if err != nil {
-		return fmt.Errorf("get chat: %v", err)
+		return fmt.Errorf("get client: %v", err)
 	}
 
-	problem, err := j.problemRepo.GetProblemByID(ctx, msg.ProblemID)
+	managerID, err := j.chatsRepo.GetChatManager(ctx, serviceMsg.ChatID)
 	if err != nil {
-		return fmt.Errorf("get problem: %v", err)
+		return fmt.Errorf("get manager: %v", err)
 	}
 
-	initReqID, err := j.problemRepo.GetProblemRequestID(ctx, problem.ID)
+	canTakeMore, err := j.mLoadSvc.CanManagerTakeProblem(ctx, managerID)
 	if err != nil {
-		return fmt.Errorf("get problem request id: %v", err)
+		return fmt.Errorf("manager load service call: %v", err)
 	}
 
-	if err := j.eventStream.Publish(ctx, chat.ClientID, eventstream.NewNewMessageEvent(
-		types.NewEventID(),
-		initReqID,
-		msg.ChatID,
-		msg.ID,
-		types.UserIDNil,
-		msg.CreatedAt,
-		msg.Body,
-		msg.IsService,
-	)); err != nil {
-		return fmt.Errorf("produce message to queue: %v", err)
-	}
+	wg, ctx := errgroup.WithContext(ctx)
 
-	canTakeMoreProblems, err := j.managerLoad.CanManagerTakeProblem(ctx, problem.ManagerID)
-	if err != nil {
-		return fmt.Errorf("can manager take problem: %v", err)
-	}
+	// Send update to client.
+	wg.Go(func() error {
+		if err := j.eventStream.Publish(ctx, clientID,
+			eventstream.NewNewMessageEvent(
+				types.NewEventID(),
+				serviceMsg.InitialRequestID,
+				serviceMsg.ChatID,
+				serviceMsg.ID,
+				types.UserIDNil,
+				serviceMsg.CreatedAt,
+				serviceMsg.Body,
+				true,
+			),
+		); err != nil {
+			return fmt.Errorf("publish service NewMessageEvent: %v", err)
+		}
+		return nil
+	})
 
-	if err := j.eventStream.Publish(ctx, problem.ManagerID, eventstream.NewNewChatEvent(
-		types.NewEventID(),
-		initReqID,
-		chat.ID,
-		chat.ClientID,
-		canTakeMoreProblems,
-	)); err != nil {
-		return fmt.Errorf("produce message to queue: %v", err)
-	}
+	// Send update to manager.
+	wg.Go(func() error {
+		if err := j.eventStream.Publish(ctx, managerID,
+			eventstream.NewNewChatEvent(
+				types.NewEventID(),
+				serviceMsg.InitialRequestID,
+				serviceMsg.ChatID,
+				clientID,
+				canTakeMore,
+			),
+		); err != nil {
+			return fmt.Errorf("publish NewChatEvent: %v", err)
+		}
+		return nil
+	})
 
-	return nil
+	return wg.Wait()
 }

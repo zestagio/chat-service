@@ -11,9 +11,9 @@ import (
 type OptOptionsSetter func(o *Options)
 
 func NewOptions(
-	msgRepo messageRepository,
+	msgRepo messagesRepository,
+	outBox outboxService,
 	problemsRepo problemsRepository,
-	outbox outboxService,
 	txtor transactor,
 	options ...OptOptionsSetter,
 ) Options {
@@ -23,9 +23,9 @@ func NewOptions(
 
 	o.msgRepo = msgRepo
 
-	o.problemsRepo = problemsRepo
+	o.outBox = outBox
 
-	o.outbox = outbox
+	o.problemsRepo = problemsRepo
 
 	o.txtor = txtor
 
@@ -38,8 +38,8 @@ func NewOptions(
 func (o *Options) Validate() error {
 	errs := new(errors461e464ebed9.ValidationErrors)
 	errs.Add(errors461e464ebed9.NewValidationError("msgRepo", _validate_Options_msgRepo(o)))
+	errs.Add(errors461e464ebed9.NewValidationError("outBox", _validate_Options_outBox(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("problemsRepo", _validate_Options_problemsRepo(o)))
-	errs.Add(errors461e464ebed9.NewValidationError("outbox", _validate_Options_outbox(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("txtor", _validate_Options_txtor(o)))
 	return errs.AsError()
 }
@@ -51,16 +51,16 @@ func _validate_Options_msgRepo(o *Options) error {
 	return nil
 }
 
-func _validate_Options_problemsRepo(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.problemsRepo, "required"); err != nil {
-		return fmt461e464ebed9.Errorf("field `problemsRepo` did not pass the test: %w", err)
+func _validate_Options_outBox(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.outBox, "required"); err != nil {
+		return fmt461e464ebed9.Errorf("field `outBox` did not pass the test: %w", err)
 	}
 	return nil
 }
 
-func _validate_Options_outbox(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.outbox, "required"); err != nil {
-		return fmt461e464ebed9.Errorf("field `outbox` did not pass the test: %w", err)
+func _validate_Options_problemsRepo(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.problemsRepo, "required"); err != nil {
+		return fmt461e464ebed9.Errorf("field `problemsRepo` did not pass the test: %w", err)
 	}
 	return nil
 }

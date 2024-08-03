@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	problemsrepo "github.com/zestagio/chat-service/internal/repositories/problems"
+	"github.com/zestagio/chat-service/internal/store"
 	storeproblem "github.com/zestagio/chat-service/internal/store/problem"
 	"github.com/zestagio/chat-service/internal/testingh"
 	"github.com/zestagio/chat-service/internal/types"
@@ -31,6 +32,30 @@ func (s *ProblemsRepoSuite) SetupSuite() {
 
 	s.repo, err = problemsrepo.New(problemsrepo.NewOptions(s.Database))
 	s.Require().NoError(err)
+}
+
+func (s *ProblemsRepoSuite) Test_GetProblemByResolveRequestID() {
+	s.Run("problem exists", func() {
+		managerID := types.NewUserID()
+		chatID, problemID := s.createChatWithProblemAssignedTo(managerID)
+
+		resolveRequestID := types.NewRequestID()
+		err := s.repo.ResolveProblem(s.Ctx, resolveRequestID, problemID)
+		s.Require().NoError(err)
+
+		problem, err := s.repo.GetProblemByResolveRequestID(s.Ctx, resolveRequestID)
+		s.Require().NoError(err)
+		s.Require().NotNil(problem)
+		s.Equal(problemID, problem.ID)
+		s.Equal(chatID, problem.ChatID)
+		s.Equal(managerID, problem.ManagerID)
+	})
+
+	s.Run("problem does not exist", func() {
+		problem, err := s.repo.GetProblemByResolveRequestID(s.Ctx, types.NewRequestID())
+		s.Require().Error(err)
+		s.Require().Nil(problem)
+	})
 }
 
 func (s *ProblemsRepoSuite) Test_CreateIfNotExists() {
@@ -138,82 +163,64 @@ func (s *ProblemsRepoSuite) Test_GetManagerOpenProblemsCount() {
 	})
 }
 
-func (s *ProblemsRepoSuite) TestGetOpenProblemByChatID() {
-	s.Run("manager can get only open problem", func() {
+func (s *ProblemsRepoSuite) Test_GetAssignedProblemID() {
+	s.Run("manager has no assigned problem in chat", func() {
+		clientID := types.NewUserID()
 		managerID := types.NewUserID()
-		chat, err := s.Database.Chat(s.Ctx).Create().SetClientID(types.NewUserID()).Save(s.Ctx)
-		s.Require().NoError(err)
 
-		_, err = s.Database.Problem(s.Ctx).Create().
-			SetChatID(chat.ID).
-			SetManagerID(managerID).
-			SetResolvedAt(time.Now()).
-			Save(s.Ctx)
+		// Create chat.
+		chat, err := s.Database.Chat(s.Ctx).Create().SetClientID(clientID).Save(s.Ctx)
 		s.Require().NoError(err)
 
 		problemID, err := s.repo.GetAssignedProblemID(s.Ctx, managerID, chat.ID)
-
-		s.Require().ErrorIs(err, problemsrepo.ErrProblemNotFound)
+		s.Require().ErrorIs(err, problemsrepo.ErrAssignedProblemNotFound)
 		s.Empty(problemID)
 	})
 
-	s.Run("error if chat has no problem", func() {
+	s.Run("problem assigned to other manager", func() {
 		managerID := types.NewUserID()
-		chat, err := s.Database.Chat(s.Ctx).Create().SetClientID(types.NewUserID()).Save(s.Ctx)
-		s.Require().NoError(err)
+		chatID, _ := s.createChatWithProblemAssignedTo(types.NewUserID())
 
-		chat2, err := s.Database.Chat(s.Ctx).Create().SetClientID(types.NewUserID()).Save(s.Ctx)
-		s.Require().NoError(err)
-
-		_, err = s.Database.Problem(s.Ctx).Create().
-			SetChatID(chat2.ID). // other chat
-			SetManagerID(managerID).
-			Save(s.Ctx)
-		s.Require().NoError(err)
-
-		problemID, err := s.repo.GetAssignedProblemID(s.Ctx, managerID, chat.ID)
-
-		s.Require().ErrorIs(err, problemsrepo.ErrProblemNotFound)
+		problemID, err := s.repo.GetAssignedProblemID(s.Ctx, managerID, chatID)
+		s.Require().ErrorIs(err, problemsrepo.ErrAssignedProblemNotFound)
 		s.Empty(problemID)
 	})
 
-	s.Run("no problem if other manager", func() {
+	s.Run("manager has one assigned problem in chat", func() {
 		managerID := types.NewUserID()
-		chat, err := s.Database.Chat(s.Ctx).Create().SetClientID(types.NewUserID()).Save(s.Ctx)
+		chatID, assignedProblemID := s.createChatWithProblemAssignedTo(managerID)
+
+		problemID, err := s.repo.GetAssignedProblemID(s.Ctx, managerID, chatID)
 		s.Require().NoError(err)
-
-		_, err = s.Database.Problem(s.Ctx).Create().
-			SetChatID(chat.ID). // other chat
-			SetManagerID(managerID).
-			Save(s.Ctx)
-		s.Require().NoError(err)
-
-		problemID, err := s.repo.GetAssignedProblemID(s.Ctx, types.NewUserID(), chat.ID)
-
-		s.Require().ErrorIs(err, problemsrepo.ErrProblemNotFound)
-		s.Empty(problemID)
-	})
-
-	s.Run("success to get open problem", func() {
-		managerID := types.NewUserID()
-		chat, err := s.Database.Chat(s.Ctx).Create().SetClientID(types.NewUserID()).Save(s.Ctx)
-		s.Require().NoError(err)
-
-		problem, err := s.Database.Problem(s.Ctx).Create().
-			SetChatID(chat.ID).
-			SetManagerID(managerID).
-			Save(s.Ctx)
-		s.Require().NoError(err)
-
-		problemID, err := s.repo.GetAssignedProblemID(s.Ctx, managerID, chat.ID)
-
-		s.Require().NoError(err)
-		s.NotEmpty(problem)
-		s.Equal(problem.ID, problemID)
+		s.NotEmpty(problemID)
+		s.Equal(assignedProblemID, problemID)
 	})
 }
 
-//nolint:unparam // first param will be used later
+func (s *ProblemsRepoSuite) Test_ResolveProblem() {
+	s.Run("resolve problem", func() {
+		managerID := types.NewUserID()
+		_, problemID := s.createChatWithProblemAssignedTo(managerID)
+
+		// Resolve problem.
+		requestID := types.NewRequestID()
+		err := s.repo.ResolveProblem(s.Ctx, requestID, problemID)
+		s.Require().NoError(err)
+
+		// Checking if problem was resolved.
+		problem, err := s.Database.Problem(s.Ctx).Get(s.Ctx, problemID)
+		s.Require().NoError(err)
+		s.NotEmpty(problem.ResolvedAt)
+		s.Equal(requestID, problem.ResolveRequestID)
+	})
+
+	s.Run("resolve non-existent problem", func() {
+		err := s.repo.ResolveProblem(s.Ctx, types.NewRequestID(), types.NewProblemID())
+		s.Require().Error(err)
+		s.True(store.IsNotFound(err))
+	})
+}
+
 func (s *ProblemsRepoSuite) createChatWithProblemAssignedTo(managerID types.UserID) (types.ChatID, types.ProblemID) {
 	s.T().Helper()
 

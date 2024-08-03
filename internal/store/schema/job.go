@@ -5,7 +5,6 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/schema/field"
-	"entgo.io/ent/schema/index"
 
 	"github.com/zestagio/chat-service/internal/types"
 )
@@ -45,13 +44,6 @@ Until that time the task is considered "reserved", other goroutines will skip it
 			Default(time.Now),
 
 		field.Time("created_at").Default(time.Now).Immutable(),
-	}
-}
-
-func (Job) Indexes() []ent.Index {
-	return []ent.Index{
-		// Getting job to execute is based on available_at and reserved_until fields.
-		index.Fields("available_at", "reserved_until"),
 	}
 }
 

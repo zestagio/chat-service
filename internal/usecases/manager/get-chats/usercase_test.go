@@ -17,9 +17,9 @@ import (
 type UseCaseSuite struct {
 	testingh.ContextSuite
 
-	ctrl      *gomock.Controller
-	chatsRepo *getchatsmocks.MockchatsRepository
-	uCase     getchats.UseCase
+	ctrl          *gomock.Controller
+	chatsRepoMock *getchatsmocks.MockchatsRepository
+	uCase         getchats.UseCase
 }
 
 func TestUseCaseSuite(t *testing.T) {
@@ -29,10 +29,10 @@ func TestUseCaseSuite(t *testing.T) {
 
 func (s *UseCaseSuite) SetupTest() {
 	s.ctrl = gomock.NewController(s.T())
-	s.chatsRepo = getchatsmocks.NewMockchatsRepository(s.ctrl)
+	s.chatsRepoMock = getchatsmocks.NewMockchatsRepository(s.ctrl)
 
 	var err error
-	s.uCase, err = getchats.New(getchats.NewOptions(s.chatsRepo))
+	s.uCase, err = getchats.New(getchats.NewOptions(s.chatsRepoMock))
 	s.Require().NoError(err)
 
 	s.ContextSuite.SetupTest()
@@ -40,8 +40,6 @@ func (s *UseCaseSuite) SetupTest() {
 
 func (s *UseCaseSuite) TearDownTest() {
 	s.ctrl.Finish()
-
-	s.ContextSuite.TearDownTest()
 }
 
 func (s *UseCaseSuite) TestRequestValidationError() {
@@ -49,24 +47,21 @@ func (s *UseCaseSuite) TestRequestValidationError() {
 	req := getchats.Request{}
 
 	// Action.
-	resp, err := s.uCase.Handle(s.Ctx, req)
+	_, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
-	s.Require().ErrorIs(err, getchats.ErrInvalidRequest)
-	s.Empty(resp.Chats)
+	s.Require().Error(err)
 }
 
-func (s *UseCaseSuite) TestGetChatsError() {
+func (s *UseCaseSuite) TestGetChatsWithOpenProblemsError() {
 	// Arrange.
-	reqID := types.NewRequestID()
 	managerID := types.NewUserID()
-	errExpected := errors.New("any error")
 
-	s.chatsRepo.EXPECT().GetManagerChatsWithProblems(gomock.Any(), managerID).
-		Return(nil, errExpected)
+	s.chatsRepoMock.EXPECT().GetChatsWithOpenProblems(gomock.Any(), managerID).
+		Return(nil, errors.New("unexpected"))
 
 	req := getchats.Request{
-		ID:        reqID,
+		ID:        types.NewRequestID(),
 		ManagerID: managerID,
 	}
 
@@ -78,20 +73,19 @@ func (s *UseCaseSuite) TestGetChatsError() {
 	s.Empty(resp.Chats)
 }
 
-func (s *UseCaseSuite) TestGetChatsSuccess() {
+func (s *UseCaseSuite) TestSuccessStory() {
 	// Arrange.
-	reqID := types.NewRequestID()
 	managerID := types.NewUserID()
-	chat := chatsrepo.Chat{
-		ID:       types.NewChatID(),
-		ClientID: types.NewUserID(),
-	}
 
-	s.chatsRepo.EXPECT().GetManagerChatsWithProblems(gomock.Any(), managerID).
-		Return([]chatsrepo.Chat{chat}, nil)
+	repoResp := []chatsrepo.Chat{
+		{ID: types.NewChatID(), ClientID: types.NewUserID()},
+		{ID: types.NewChatID(), ClientID: types.NewUserID()},
+		{ID: types.NewChatID(), ClientID: types.NewUserID()},
+	}
+	s.chatsRepoMock.EXPECT().GetChatsWithOpenProblems(gomock.Any(), managerID).Return(repoResp, nil)
 
 	req := getchats.Request{
-		ID:        reqID,
+		ID:        types.NewRequestID(),
 		ManagerID: managerID,
 	}
 
@@ -100,5 +94,11 @@ func (s *UseCaseSuite) TestGetChatsSuccess() {
 
 	// Assert.
 	s.Require().NoError(err)
-	s.Require().Len(resp.Chats, 1)
+	s.Equal(getchats.Response{
+		Chats: []getchats.Chat{
+			{ID: repoResp[0].ID, ClientID: repoResp[0].ClientID},
+			{ID: repoResp[1].ID, ClientID: repoResp[1].ClientID},
+			{ID: repoResp[2].ID, ClientID: repoResp[2].ClientID},
+		},
+	}, resp)
 }

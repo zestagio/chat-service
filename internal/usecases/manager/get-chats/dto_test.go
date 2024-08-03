@@ -15,7 +15,7 @@ func TestRequest_Validate(t *testing.T) {
 		request getchats.Request
 		wantErr bool
 	}{
-		// Positive
+		// Positive.
 		{
 			name: "valid request",
 			request: getchats.Request{
@@ -25,7 +25,7 @@ func TestRequest_Validate(t *testing.T) {
 			wantErr: false,
 		},
 
-		// Negative
+		// Negative.
 		{
 			name: "require request id",
 			request: getchats.Request{

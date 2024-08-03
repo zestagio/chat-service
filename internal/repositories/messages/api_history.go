@@ -9,7 +9,6 @@ import (
 	"github.com/zestagio/chat-service/internal/store"
 	"github.com/zestagio/chat-service/internal/store/chat"
 	"github.com/zestagio/chat-service/internal/store/message"
-	"github.com/zestagio/chat-service/internal/store/problem"
 	"github.com/zestagio/chat-service/internal/types"
 )
 
@@ -51,9 +50,10 @@ func (r *Repo) GetClientChatMessages(
 ) ([]Message, *Cursor, error) {
 	query := r.db.Message(ctx).Query().
 		Unique(false).
-		Where(message.IsVisibleForClient(true)).
-		Where(message.HasChatWith(chat.ClientID(clientID)))
-
+		Where(
+			message.IsVisibleForClient(true),
+			message.HasChatWith(chat.ClientID(clientID)),
+		)
 	return r.getChatMessages(ctx, query, pageSize, cursor)
 }
 
@@ -66,12 +66,10 @@ func (r *Repo) GetProblemMessages(
 ) ([]Message, *Cursor, error) {
 	query := r.db.Message(ctx).Query().
 		Unique(false).
-		Where(message.IsVisibleForManager(true)).
-		Where(message.HasProblemWith(
-			problem.ID(problemID),
-			problem.ResolvedAtIsNil(),
-		))
-
+		Where(
+			message.IsVisibleForManager(true),
+			message.ProblemID(problemID),
+		)
 	return r.getChatMessages(ctx, query, pageSize, cursor)
 }
 

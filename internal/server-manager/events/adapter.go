@@ -11,11 +11,11 @@ var _ websocketstream.EventAdapter = Adapter{}
 
 type Adapter struct{}
 
-func (Adapter) Adapt(ev eventstream.Event) (any, error) {
+func (Adapter) Adapt(sEvent eventstream.Event) (any, error) {
 	var event Event
 	var err error
 
-	switch v := ev.(type) {
+	switch v := sEvent.(type) {
 	case *eventstream.NewChatEvent:
 		event.EventId = v.EventID
 		event.RequestId = v.RequestID
@@ -23,8 +23,9 @@ func (Adapter) Adapt(ev eventstream.Event) (any, error) {
 		err = event.FromNewChatEvent(NewChatEvent{
 			ChatId:              v.ChatID,
 			ClientId:            v.ClientID,
-			CanTakeMoreProblems: v.CanTakeMoreProblem,
+			CanTakeMoreProblems: v.CanTakeMoreProblems,
 		})
+
 	case *eventstream.NewMessageEvent:
 		event.EventId = v.EventID
 		event.RequestId = v.RequestID
@@ -36,14 +37,16 @@ func (Adapter) Adapt(ev eventstream.Event) (any, error) {
 			CreatedAt: v.CreatedAt,
 			MessageId: v.MessageID,
 		})
+
 	case *eventstream.ChatClosedEvent:
 		event.EventId = v.EventID
 		event.RequestId = v.RequestID
 
 		err = event.FromChatClosedEvent(ChatClosedEvent{
+			CanTakeMoreProblems: v.CanTakeMoreProblems,
 			ChatId:              v.ChatID,
-			CanTakeMoreProblems: v.CanTakeMoreProblem,
 		})
+
 	default:
 		return nil, fmt.Errorf("unknown manager event: %v (%T)", v, v)
 	}

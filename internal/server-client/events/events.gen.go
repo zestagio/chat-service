@@ -236,17 +236,17 @@ func (t *Event) UnmarshalJSON(b []byte) error {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+xWT2vbThD9KmJ+P+hFttz2EnRrklJMaQJ1ewo5rKWxtIm0u90Z2U2NvnuZtWxLTgjG",
-	"NBRCTx5m58+b98arXUNma2cNGiZI10BZibUK5sclGhYj15R5XWuj2Hpx1Mo5bQoxvyCRKvC8stk95l0K",
-	"/JfsqyZdyeSp0HhbYIaGj8nex8VwhavO+2zmYVgbg/PWoeeHK1UjpIDi//bgUM6swesFpDdr+N/j4vii",
-	"z8c/gn9kwoCt9nYHXWPQKCCf5mIurK+VkNA0OocYWOZJgdiLVDH8HBV21Dnlh8ah6PSyfzbStbM+qO4U",
-	"l5BCobls5uPM1skvJFaFtklWKh4R+qXOMNGG0RtVJaEotG3c4zNdH+BoY/D4o0E6GfXXLv2P4+6gaY85",
-	"pDe9IeIdzX3wt+1ueaWtqqoj1qZLmOZB/6GWquHS+lNp+U7oX0LLuc0fnpQx86gY8w88wJsrxhHrGh+B",
-	"bmPQNNs06hWcW1uhMnBIf+jb79JPv90Vt/M7zOSfsVdjeBcdslzvFDiJ5q2AL719e5i9yTagX888vUv/",
-	"VYz16IP071r469eCFNBmYUNtzZWcnitzH80aJzxEF6Xi6KLSaDgKshHEsERP2hpIYfk2PAocGuU0pPB+",
-	"PBlPIA7cBX0S4mYuRoGb1xLKa8nxJn3KUUNI0cL6qECDXrE2RRQ+KDSOrrlEv9KEkeYot0jmDY8h9JNI",
-	"a0R3+IQ8kyZCBTlraLMZ7yYT+cms4e22OVfpLCQmdyQAti86sZ7bwO6BIWwNB7j+LF7xyzagp7DMw5hL",
-	"XGJlXS0UbqIghsZXkMKK0iSpbKaq0hKnZ5OzSbIiEeZ3AAAA//8+7/RMegoAAA==",
+	"H4sIAAAAAAAC/+xWT2/TThD9Ktb8fhIXJw5wqfZGW4QiRCsROFU9bOyJva29u+yME0rk745m7TROQBVU",
+	"VEgVJ4/W8+fNe+P1bCF3jXcWLROoLVBeYaOj+XaNlsUoDOXBNMZqdkEOfHAeA99d6AZBAYrjpzuP0KXg",
+	"LF6uQF1t4f+AK1DwX7avkA3pswvcfEAiXWJfpUsf9h+cF2j5twJOa5ffYjHEXKc76AZjixH5vBBz5UKj",
+	"GRS0rSkgBZZ+FBAHY0tI4eukdJPhUB40jUnn5+N3E9N4FyJpXnMFCkrDVbuc5q7JviGxLo3L8krzhDCs",
+	"TY6ZsYzB6jqLSaHr0hGfanuEo0sh4JcW6dGoPw7hfxz3AM0ELEBdjZpI72keg7/uUhhEkrK6rn9hbIaA",
+	"eRH1P9RSt1y58FhaPhOGp9By6Yq7n8qYB9SMxRs+wFtoxgmbBn8A3aVgaNEXGiVcOlejtnBMf6w7rjIO",
+	"v75P7pY3mMuXsVfj4JNRxyw39wo8iuadgE89fXuYo8560M+nn/1t+DzaOv4p/LsW/v61IAmMXbmY23At",
+	"b0+1vU0WrRcekrNKc3JWG7ScRNkIUlhjIOMsKFi/jEuBR6u9AQWvp7PpDNLIXdQnI26XYpTYLxsoy4bn",
+	"PnzOSUtIycqFpESLQbOxZRJ/KDRNLrnCsDGEieGkcEj2BU8h1hNPZ0V3eIe8kCJCBXlnqZ+MV7OZPHJn",
+	"eTdt3tcmj4HZDQmA3UIk1kMTOCwYwtZhA5fv5VTOZRowUBzmQ59zXGPtfCMU9l6QQhtqULAhlWW1y3Vd",
+	"OWJ1MjuZZRsSYb4HAAD//xviyve5CQAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

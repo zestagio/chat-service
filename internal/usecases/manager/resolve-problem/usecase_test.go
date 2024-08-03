@@ -5,27 +5,23 @@ import (
 	"database/sql"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/suite"
 
-	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
 	problemsrepo "github.com/zestagio/chat-service/internal/repositories/problems"
-	closechatjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/close-chat"
+	problemresolvedjob "github.com/zestagio/chat-service/internal/services/outbox/jobs/problem-resolved"
 	"github.com/zestagio/chat-service/internal/testingh"
 	"github.com/zestagio/chat-service/internal/types"
 	resolveproblem "github.com/zestagio/chat-service/internal/usecases/manager/resolve-problem"
 	resolveproblemmocks "github.com/zestagio/chat-service/internal/usecases/manager/resolve-problem/mocks"
 )
 
-const msgBody = "Your question has been marked as resolved.\nThank you for being with us!"
-
 type UseCaseSuite struct {
 	testingh.ContextSuite
 
 	ctrl        *gomock.Controller
-	msgRepo     *resolveproblemmocks.MockmessageRepository
+	msgRepo     *resolveproblemmocks.MockmessagesRepository
 	problemRepo *resolveproblemmocks.MockproblemsRepository
 	txtor       *resolveproblemmocks.Mocktransactor
 	outBoxSvc   *resolveproblemmocks.MockoutboxService
@@ -39,13 +35,13 @@ func TestUseCaseSuite(t *testing.T) {
 
 func (s *UseCaseSuite) SetupTest() {
 	s.ctrl = gomock.NewController(s.T())
-	s.msgRepo = resolveproblemmocks.NewMockmessageRepository(s.ctrl)
-	s.problemRepo = resolveproblemmocks.NewMockproblemsRepository(s.ctrl)
+	s.msgRepo = resolveproblemmocks.NewMockmessagesRepository(s.ctrl)
 	s.outBoxSvc = resolveproblemmocks.NewMockoutboxService(s.ctrl)
+	s.problemRepo = resolveproblemmocks.NewMockproblemsRepository(s.ctrl)
 	s.txtor = resolveproblemmocks.NewMocktransactor(s.ctrl)
 
 	var err error
-	s.uCase, err = resolveproblem.New(resolveproblem.NewOptions(s.msgRepo, s.problemRepo, s.outBoxSvc, s.txtor))
+	s.uCase, err = resolveproblem.New(resolveproblem.NewOptions(s.msgRepo, s.outBoxSvc, s.problemRepo, s.txtor))
 	s.Require().NoError(err)
 
 	s.ContextSuite.SetupTest()
@@ -62,11 +58,10 @@ func (s *UseCaseSuite) TestRequestValidationError() {
 	req := resolveproblem.Request{}
 
 	// Action.
-	err := s.uCase.Handle(s.Ctx, req)
+	_, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
 	s.Require().Error(err)
-	s.ErrorIs(err, resolveproblem.ErrInvalidRequest)
 }
 
 func (s *UseCaseSuite) TestGetAssignedProblemID_UnexpectedError() {
@@ -75,10 +70,6 @@ func (s *UseCaseSuite) TestGetAssignedProblemID_UnexpectedError() {
 	managerID := types.NewUserID()
 	chatID := types.NewChatID()
 
-	s.txtor.EXPECT().RunInTx(gomock.Any(), gomock.Any()).DoAndReturn(
-		func(ctx context.Context, f func(ctx context.Context) error) error {
-			return f(ctx)
-		})
 	s.problemRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).
 		Return(types.ProblemIDNil, errors.New("unexpected"))
 
@@ -88,25 +79,21 @@ func (s *UseCaseSuite) TestGetAssignedProblemID_UnexpectedError() {
 		ChatID:    chatID,
 	}
 
-	// Action
-	err := s.uCase.Handle(s.Ctx, req)
+	// Action.
+	_, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
 	s.Require().Error(err)
 }
 
-func (s *UseCaseSuite) TestGetAssignedProblemID_ProblemNotFound() {
+func (s *UseCaseSuite) TestGetAssignedProblemID_ProblemNotFoundError() {
 	// Arrange.
 	reqID := types.NewRequestID()
 	managerID := types.NewUserID()
 	chatID := types.NewChatID()
 
-	s.txtor.EXPECT().RunInTx(gomock.Any(), gomock.Any()).DoAndReturn(
-		func(ctx context.Context, f func(ctx context.Context) error) error {
-			return f(ctx)
-		})
 	s.problemRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).
-		Return(types.ProblemIDNil, problemsrepo.ErrProblemNotFound)
+		Return(types.ProblemIDNil, problemsrepo.ErrAssignedProblemNotFound)
 
 	req := resolveproblem.Request{
 		ID:        reqID,
@@ -114,26 +101,27 @@ func (s *UseCaseSuite) TestGetAssignedProblemID_ProblemNotFound() {
 		ChatID:    chatID,
 	}
 
-	// Action
-	err := s.uCase.Handle(s.Ctx, req)
+	// Action.
+	_, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
-	s.Require().Error(err)
+	s.Require().ErrorIs(err, resolveproblem.ErrAssignedProblemNotFound)
 }
 
-func (s *UseCaseSuite) TestResolve_UnexpectedError() {
+func (s *UseCaseSuite) TestResolveProblemError() {
 	// Arrange.
 	reqID := types.NewRequestID()
 	managerID := types.NewUserID()
 	chatID := types.NewChatID()
-	problemID := types.NewProblemID()
 
 	s.txtor.EXPECT().RunInTx(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(ctx context.Context, f func(ctx context.Context) error) error {
 			return f(ctx)
 		})
+
+	problemID := types.NewProblemID()
 	s.problemRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).Return(problemID, nil)
-	s.problemRepo.EXPECT().Resolve(gomock.Any(), problemID).Return(errors.New("unexpected"))
+	s.problemRepo.EXPECT().ResolveProblem(gomock.Any(), reqID, problemID).Return(errors.New("unexpected"))
 
 	req := resolveproblem.Request{
 		ID:        reqID,
@@ -141,27 +129,30 @@ func (s *UseCaseSuite) TestResolve_UnexpectedError() {
 		ChatID:    chatID,
 	}
 
-	// Action
-	err := s.uCase.Handle(s.Ctx, req)
+	// Action.
+	_, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
 	s.Require().Error(err)
 }
 
-func (s *UseCaseSuite) TestCreateClientService_UnexpectedError() {
+func (s *UseCaseSuite) TestCreateServiceMessageForClientError() {
 	// Arrange.
 	reqID := types.NewRequestID()
 	managerID := types.NewUserID()
 	chatID := types.NewChatID()
-	problemID := types.NewProblemID()
 
 	s.txtor.EXPECT().RunInTx(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(ctx context.Context, f func(ctx context.Context) error) error {
 			return f(ctx)
 		})
+
+	problemID := types.NewProblemID()
 	s.problemRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).Return(problemID, nil)
-	s.problemRepo.EXPECT().Resolve(gomock.Any(), problemID).Return(nil)
-	s.msgRepo.EXPECT().CreateClientService(gomock.Any(), problemID, chatID, msgBody).Return(nil, errors.New("unexpected"))
+	s.problemRepo.EXPECT().ResolveProblem(gomock.Any(), reqID, problemID).Return(nil)
+
+	s.msgRepo.EXPECT().CreateServiceMessageForClient(gomock.Any(), reqID, problemID, chatID, gomock.Any()).
+		Return(types.MessageIDNil, errors.New("unexpected"))
 
 	req := resolveproblem.Request{
 		ID:        reqID,
@@ -169,38 +160,32 @@ func (s *UseCaseSuite) TestCreateClientService_UnexpectedError() {
 		ChatID:    chatID,
 	}
 
-	// Action
-	err := s.uCase.Handle(s.Ctx, req)
+	// Action.
+	_, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
 	s.Require().Error(err)
 }
 
-func (s *UseCaseSuite) TestPubJobError_UnexpectedError() {
+func (s *UseCaseSuite) TestPutJobError() {
 	// Arrange.
 	reqID := types.NewRequestID()
 	managerID := types.NewUserID()
 	chatID := types.NewChatID()
-	problemID := types.NewProblemID()
-	messageID := types.NewMessageID()
 
 	s.txtor.EXPECT().RunInTx(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(ctx context.Context, f func(ctx context.Context) error) error {
 			return f(ctx)
 		})
+
+	problemID := types.NewProblemID()
 	s.problemRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).Return(problemID, nil)
-	s.problemRepo.EXPECT().Resolve(gomock.Any(), problemID).Return(nil)
-	s.msgRepo.EXPECT().CreateClientService(gomock.Any(), problemID, chatID, msgBody).
-		Return(&messagesrepo.Message{
-			ID:                 messageID,
-			ChatID:             chatID,
-			ProblemID:          problemID,
-			Body:               msgBody,
-			CreatedAt:          time.Now(),
-			IsVisibleForClient: true,
-			IsService:          true,
-		}, nil)
-	s.outBoxSvc.EXPECT().Put(gomock.Any(), closechatjob.Name, gomock.Any(), gomock.Any()).
+	s.problemRepo.EXPECT().ResolveProblem(gomock.Any(), reqID, problemID).Return(nil)
+
+	s.msgRepo.EXPECT().CreateServiceMessageForClient(gomock.Any(), reqID, problemID, chatID, gomock.Any()).
+		Return(types.NewMessageID(), nil)
+
+	s.outBoxSvc.EXPECT().Put(gomock.Any(), problemresolvedjob.Name, gomock.Any(), gomock.Any()).
 		Return(types.JobIDNil, errors.New("unexpected"))
 
 	req := resolveproblem.Request{
@@ -209,8 +194,8 @@ func (s *UseCaseSuite) TestPubJobError_UnexpectedError() {
 		ChatID:    chatID,
 	}
 
-	// Action
-	err := s.uCase.Handle(s.Ctx, req)
+	// Action.
+	_, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
 	s.Require().Error(err)
@@ -221,28 +206,22 @@ func (s *UseCaseSuite) TestTransactionError() {
 	reqID := types.NewRequestID()
 	managerID := types.NewUserID()
 	chatID := types.NewChatID()
-	problemID := types.NewProblemID()
-	messageID := types.NewMessageID()
 
 	s.txtor.EXPECT().RunInTx(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(ctx context.Context, f func(ctx context.Context) error) error {
 			_ = f(ctx)
 			return sql.ErrTxDone
 		})
+
+	problemID := types.NewProblemID()
 	s.problemRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).Return(problemID, nil)
-	s.problemRepo.EXPECT().Resolve(gomock.Any(), problemID).Return(nil)
-	s.msgRepo.EXPECT().CreateClientService(gomock.Any(), problemID, chatID, msgBody).
-		Return(&messagesrepo.Message{
-			ID:                 messageID,
-			ChatID:             chatID,
-			ProblemID:          problemID,
-			Body:               msgBody,
-			CreatedAt:          time.Now(),
-			IsVisibleForClient: true,
-			IsService:          true,
-		}, nil)
-	s.outBoxSvc.EXPECT().Put(gomock.Any(), closechatjob.Name, gomock.Any(), gomock.Any()).
-		Return(types.JobIDNil, nil)
+	s.problemRepo.EXPECT().ResolveProblem(gomock.Any(), reqID, problemID).Return(nil)
+
+	s.msgRepo.EXPECT().CreateServiceMessageForClient(gomock.Any(), reqID, problemID, chatID, gomock.Any()).
+		Return(types.NewMessageID(), nil)
+
+	s.outBoxSvc.EXPECT().Put(gomock.Any(), problemresolvedjob.Name, gomock.Any(), gomock.Any()).
+		Return(types.NewJobID(), nil)
 
 	req := resolveproblem.Request{
 		ID:        reqID,
@@ -250,39 +229,33 @@ func (s *UseCaseSuite) TestTransactionError() {
 		ChatID:    chatID,
 	}
 
-	// Action
-	err := s.uCase.Handle(s.Ctx, req)
+	// Action.
+	_, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
 	s.Require().Error(err)
 }
 
-func (s *UseCaseSuite) TestProblemResolvedSuccessfully() {
+func (s *UseCaseSuite) TestSuccessStory() {
 	// Arrange.
 	reqID := types.NewRequestID()
-	chatID := types.NewChatID()
 	managerID := types.NewUserID()
-	problemID := types.NewProblemID()
-	messageID := types.NewMessageID()
+	chatID := types.NewChatID()
 
 	s.txtor.EXPECT().RunInTx(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(ctx context.Context, f func(ctx context.Context) error) error {
 			return f(ctx)
 		})
+
+	problemID := types.NewProblemID()
 	s.problemRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).Return(problemID, nil)
-	s.problemRepo.EXPECT().Resolve(gomock.Any(), problemID).Return(nil)
-	s.msgRepo.EXPECT().CreateClientService(gomock.Any(), problemID, chatID, msgBody).
-		Return(&messagesrepo.Message{
-			ID:                 messageID,
-			ChatID:             chatID,
-			ProblemID:          problemID,
-			Body:               msgBody,
-			CreatedAt:          time.Now(),
-			IsVisibleForClient: true,
-			IsService:          true,
-		}, nil)
-	s.outBoxSvc.EXPECT().Put(gomock.Any(), closechatjob.Name, gomock.Any(), gomock.Any()).
-		Return(types.JobIDNil, nil)
+	s.problemRepo.EXPECT().ResolveProblem(gomock.Any(), reqID, problemID).Return(nil)
+
+	s.msgRepo.EXPECT().CreateServiceMessageForClient(gomock.Any(), reqID, problemID, chatID, gomock.Any()).
+		Return(types.NewMessageID(), nil)
+
+	s.outBoxSvc.EXPECT().Put(gomock.Any(), problemresolvedjob.Name, gomock.Any(), gomock.Any()).
+		Return(types.NewJobID(), nil)
 
 	req := resolveproblem.Request{
 		ID:        reqID,
@@ -290,8 +263,8 @@ func (s *UseCaseSuite) TestProblemResolvedSuccessfully() {
 		ChatID:    chatID,
 	}
 
-	// Action
-	err := s.uCase.Handle(s.Ctx, req)
+	// Action.
+	_, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
 	s.Require().NoError(err)
