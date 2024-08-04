@@ -30,7 +30,11 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
       - uses: actions/checkout@v4
-      - run: go test -race ./...
+      - run: go test -race -coverprofile=profile.cov ./...
+      - uses: shogo82148/actions-goveralls@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-profile: profile.cov
 
   build:
     strategy:

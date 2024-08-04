@@ -49,7 +49,7 @@ func main() {
 	}
 }
 
-func run() (errReturned error) { 
+func run() (errReturned error) {
 	flag.Parse()
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

@@ -25,6 +25,7 @@ vars:
     github.com/kazhuravlev/options-gen/cmd/options-gen@v0.33.0
     github.com/moznion/gonstructor/cmd/gonstructor@v0.5.1
     github.com/onsi/ginkgo/v2/ginkgo@v2.19.0
+    github.com/loov/goda@v0.5.9
     golang.org/x/tools/cmd/goimports@v0.23.0
     mvdan.cc/gofumpt@v0.6.0
 
@@ -250,6 +251,23 @@ tasks:
 
       - echo "[E2E] Generate manager events..."
       - .{{.DEV_TOOLS_PATH}}/oapi-codegen --old-config-style -generate skip-prune,types -package {{.E2E_MANAGER_EVENTS_PKG}} {{.MANAGER_EVENTS_SRC}} > {{.E2E_MANAGER_EVENTS_DST}}
+
+  gen:deps-graph:
+    vars:
+      INCLUDE: |-
+        ./internal/repositories/...
+        ./internal/server/...
+        ./internal/server-client/...
+        ./internal/server-manager/...
+        ./internal/services/...
+        ./internal/store
+        ./internal/usecases/...
+      EXCLUDE: |-
+        - ./internal/store/gen
+        - ./internal/types
+        - ./internal/.../mocks
+    cmds:
+      - .{{.DEV_TOOLS_PATH}}/goda graph -cluster -short "{{ .INCLUDE | splitLines | join " " }} {{ .EXCLUDE | splitLines | join " " }}" | dot -Tpng -o docs/dependency-graph.png
 
   kc:export:
     vars:

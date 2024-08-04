@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 
 	"github.com/zestagio/chat-service/internal/store"
 	storechat "github.com/zestagio/chat-service/internal/store/chat"
@@ -85,6 +86,7 @@ func TestChatServiceSchema(t *testing.T) {
 			SetIsBlocked(false).
 			SetIsService(false).
 			SetInitialRequestID(types.NewRequestID()).
+			SetCreatedAt(time.Now()).
 			SetBody("I lost my money."),
 
 		client.Message.
@@ -97,6 +99,7 @@ func TestChatServiceSchema(t *testing.T) {
 			SetIsBlocked(false).
 			SetIsService(false).
 			SetInitialRequestID(types.NewRequestID()).
+			SetCreatedAt(time.Now().Add(time.Second)).
 			SetBody("No money, no honey."),
 	).SaveX(ctx)
 
