@@ -7,7 +7,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
-	chatsrepo "github.com/zestagio/chat-service/internal/repositories/chats"
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
 	eventstream "github.com/zestagio/chat-service/internal/services/event-stream"
 	msgproducer "github.com/zestagio/chat-service/internal/services/msg-producer"
@@ -16,9 +15,11 @@ import (
 	"github.com/zestagio/chat-service/internal/types"
 )
 
-//go:generate mockgen -source=$GOFILE -destination=mocks/job_mock.gen.go -package=sendmanagermessagejobmocks
-
 const Name = "send-manager-message"
+
+type chatsRepository interface {
+	GetChatClient(ctx context.Context, chatID types.ChatID) (types.UserID, error)
+}
 
 type eventStream interface {
 	Publish(ctx context.Context, userID types.UserID, event eventstream.Event) error
@@ -32,15 +33,11 @@ type messageRepository interface {
 	GetMessageByID(ctx context.Context, msgID types.MessageID) (*messagesrepo.Message, error)
 }
 
-type chatRepository interface {
-	GetChatByID(ctx context.Context, chatID types.ChatID) (*chatsrepo.Chat, error)
-}
-
 //go:generate options-gen -out-filename=job_options.gen.go -from-struct=Options
 type Options struct {
+	chatsRepo   chatsRepository   `option:"mandatory" validate:"required"`
 	eventStream eventStream       `option:"mandatory" validate:"required"`
 	msgProducer messageProducer   `option:"mandatory" validate:"required"`
-	chatsRepo   chatRepository    `option:"mandatory" validate:"required"`
 	msgRepo     messageRepository `option:"mandatory" validate:"required"`
 }
 
@@ -80,20 +77,20 @@ func (j *Job) Handle(ctx context.Context, payload string) error {
 		return fmt.Errorf("unmarshal payload: %v", err)
 	}
 
-	msg, err := j.msgRepo.GetMessageByID(ctx, msgID)
+	m, err := j.msgRepo.GetMessageByID(ctx, msgID)
 	if err != nil {
 		return fmt.Errorf("get message: %v", err)
 	}
 
-	chat, err := j.chatsRepo.GetChatByID(ctx, msg.ChatID)
+	clientID, err := j.chatsRepo.GetChatClient(ctx, m.ChatID)
 	if err != nil {
-		return fmt.Errorf("get chat: %v", err)
+		return fmt.Errorf("get chat client: %v", err)
 	}
 
 	if err := j.msgProducer.ProduceMessage(ctx, msgproducer.Message{
-		ID:         msg.ID,
-		ChatID:     msg.ChatID,
-		Body:       msg.Body,
+		ID:         m.ID,
+		ChatID:     m.ChatID,
+		Body:       m.Body,
 		FromClient: false,
 	}); err != nil {
 		return fmt.Errorf("produce message to queue: %v", err)
@@ -101,37 +98,32 @@ func (j *Job) Handle(ctx context.Context, payload string) error {
 
 	wg, ctx := errgroup.WithContext(ctx)
 
+	// Send update to client.
 	wg.Go(func() error {
-		if err := j.eventStream.Publish(ctx, chat.ClientID, eventstream.NewNewMessageEvent(
+		return j.eventStream.Publish(ctx, clientID, eventstream.NewNewMessageEvent(
 			types.NewEventID(),
-			msg.InitialRequestID,
-			msg.ChatID,
-			msg.ID,
-			msg.AuthorID,
-			msg.CreatedAt,
-			msg.Body,
-			msg.IsService,
-		)); err != nil {
-			return fmt.Errorf("publish NewMesaggeEvent to client: %v", err)
-		}
-		return nil
+			m.InitialRequestID,
+			m.ChatID,
+			m.ID,
+			m.AuthorID,
+			m.CreatedAt,
+			m.Body,
+			m.IsService,
+		))
 	})
 
+	// Send update to manager (to oneself).
 	wg.Go(func() error {
-		if err := j.eventStream.Publish(ctx, msg.AuthorID,
-			eventstream.NewNewMessageEvent(
-				types.NewEventID(),
-				msg.InitialRequestID,
-				msg.ChatID,
-				msg.ID,
-				msg.AuthorID,
-				msg.CreatedAt,
-				msg.Body,
-				msg.IsService,
-			)); err != nil {
-			return fmt.Errorf("publish NewMessageEvent to manager: %v", err)
-		}
-		return nil
+		return j.eventStream.Publish(ctx, m.AuthorID, eventstream.NewNewMessageEvent(
+			types.NewEventID(),
+			m.InitialRequestID,
+			m.ChatID,
+			m.ID,
+			m.AuthorID,
+			m.CreatedAt,
+			m.Body,
+			m.IsService,
+		))
 	})
 
 	return wg.Wait()

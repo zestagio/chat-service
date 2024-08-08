@@ -2,7 +2,6 @@ package getchats
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	chatsrepo "github.com/zestagio/chat-service/internal/repositories/chats"
@@ -11,10 +10,8 @@ import (
 
 //go:generate mockgen -source=$GOFILE -destination=mocks/usecase_mock.gen.go -package=getchatsmocks
 
-var ErrInvalidRequest = errors.New("invalid request")
-
 type chatsRepository interface {
-	GetManagerChatsWithProblems(ctx context.Context, managerID types.UserID) ([]chatsrepo.Chat, error)
+	GetChatsWithOpenProblems(ctx context.Context, managerID types.UserID) ([]chatsrepo.Chat, error)
 }
 
 //go:generate options-gen -out-filename=usecase_options.gen.go -from-struct=Options
@@ -32,19 +29,19 @@ func New(opts Options) (UseCase, error) {
 
 func (u UseCase) Handle(ctx context.Context, req Request) (Response, error) {
 	if err := req.Validate(); err != nil {
-		return Response{}, fmt.Errorf("validate request: %w: %v", ErrInvalidRequest, err)
+		return Response{}, err
 	}
 
-	chats, err := u.chatsRepo.GetManagerChatsWithProblems(ctx, req.ManagerID)
+	openChats, err := u.chatsRepo.GetChatsWithOpenProblems(ctx, req.ManagerID)
 	if err != nil {
-		return Response{}, fmt.Errorf("get manager chats: %w", err)
+		return Response{}, fmt.Errorf("get chats with open problems: %v", err)
 	}
 
-	result := make([]Chat, 0, len(chats))
-	for _, chat := range chats {
+	result := make([]Chat, 0, len(openChats))
+	for _, c := range openChats {
 		result = append(result, Chat{
-			ID:       chat.ID,
-			ClientID: chat.ClientID,
+			ID:       c.ID,
+			ClientID: c.ClientID,
 		})
 	}
 

@@ -31,7 +31,7 @@ func (Message) Fields() []ent.Field {
 		field.Time("checked_at").Optional(),
 		field.Bool("is_blocked").Default(false),
 		field.Bool("is_service").Default(false).Immutable(),
-		field.UUID("initial_request_id", types.RequestID{}).Optional().Unique().Immutable(),
+		field.UUID("initial_request_id", types.RequestID{}).Immutable(),
 		field.Time("created_at").Default(time.Now).Immutable(),
 	}
 }
@@ -55,11 +55,21 @@ func (Message) Edges() []ent.Edge {
 
 func (Message) Indexes() []ent.Index {
 	return []ent.Index{
-		// Getting history is based on created_at field.
-		index.Fields("created_at").
+		// Getting client chat history.
+		index.Fields("chat_id", "created_at").
 			Annotations(
 				entsql.DescColumns("created_at"),
-				entsql.IndexType("BTREE"),
 			),
+
+		// Getting problem history (for manager).
+		index.Fields("problem_id", "created_at").
+			Annotations(
+				entsql.DescColumns("created_at"),
+			),
+
+		// Idempotency of `send message` usecase.
+		index.Fields("initial_request_id").
+			Unique().
+			Annotations(entsql.IndexWhere("not is_service")),
 	}
 }

@@ -68,7 +68,7 @@ func TestRequest_Validate(t *testing.T) {
 				ID:        types.RequestIDNil,
 				ManagerID: types.NewUserID(),
 				ChatID:    types.NewChatID(),
-				PageSize:  10,
+				PageSize:  50,
 				Cursor:    "",
 			},
 			wantErr: true,
@@ -79,7 +79,7 @@ func TestRequest_Validate(t *testing.T) {
 				ID:        types.NewRequestID(),
 				ManagerID: types.UserIDNil,
 				ChatID:    types.NewChatID(),
-				PageSize:  10,
+				PageSize:  50,
 				Cursor:    "",
 			},
 			wantErr: true,
@@ -90,7 +90,7 @@ func TestRequest_Validate(t *testing.T) {
 				ID:        types.NewRequestID(),
 				ManagerID: types.NewUserID(),
 				ChatID:    types.ChatIDNil,
-				PageSize:  10,
+				PageSize:  50,
 				Cursor:    "",
 			},
 			wantErr: true,
@@ -100,7 +100,8 @@ func TestRequest_Validate(t *testing.T) {
 			request: getchathistory.Request{
 				ID:        types.NewRequestID(),
 				ManagerID: types.NewUserID(),
-				PageSize:  0,
+				ChatID:    types.NewChatID(),
+				PageSize:  50,
 				Cursor:    "eyJwYWdlX3NpemUiOjUwLCJs YXN0IjoxNjcwNTAyNTAyfQ", // With space.
 			},
 			wantErr: true,
@@ -110,6 +111,7 @@ func TestRequest_Validate(t *testing.T) {
 			request: getchathistory.Request{
 				ID:        types.NewRequestID(),
 				ManagerID: types.NewUserID(),
+				ChatID:    types.NewChatID(),
 				PageSize:  9,
 				Cursor:    "",
 			},
@@ -120,6 +122,7 @@ func TestRequest_Validate(t *testing.T) {
 			request: getchathistory.Request{
 				ID:        types.NewRequestID(),
 				ManagerID: types.NewUserID(),
+				ChatID:    types.NewChatID(),
 				PageSize:  101,
 				Cursor:    "",
 			},

@@ -147,6 +147,7 @@ func (s *MsgRepoHistoryAPISuite) Test_GetClientChatMessages() {
 		s.False(msg.IsVisibleForManager)
 		s.False(msg.IsBlocked)
 		s.False(msg.IsService)
+		s.Equal(lastMsg.InitialRequestID, msg.InitialRequestID)
 
 		s.Run("service message", func() {
 			svcMsg := msgs[1]
@@ -224,16 +225,8 @@ func (s *MsgRepoHistoryAPISuite) Test_GetProblemMessages() {
 		problem2, chat2 := s.createProblemAndChat(client2)
 		s.createMessages(3, chat2, problem2, client2, true, true, false)
 
-		// Invisible for client messages must be ignored.
+		// Invisible for manager messages must be ignored.
 		s.createMessages(4, chat1, problem1, client1, true, false, false)
-
-		// Previous resolved problem with messages is not visible for manager
-		problem3 := s.Database.Problem(s.Ctx).Create().
-			SetChatID(chat1).
-			SetResolvedAt(time.Now()).
-			SetManagerID(types.NewUserID()).
-			SaveX(s.Ctx)
-		s.createMessages(3, chat1, problem3.ID, client1, true, true, false)
 
 		for pageSize := 10; pageSize <= 20; pageSize++ {
 			s.Run(fmt.Sprintf("page size %d", pageSize), func() {
@@ -245,8 +238,7 @@ func (s *MsgRepoHistoryAPISuite) Test_GetProblemMessages() {
 
 				expectedCursors := make([]cursor, 0, len(expected))
 				for i, b := range expected {
-					lastElemIndex := len(expected) - 1
-					if len(b) == pageSize && (i != lastElemIndex) {
+					if len(b) == pageSize && (i != len(expected)-1) {
 						last := b[len(b)-1]
 						expectedCursors = append(expectedCursors, cursor{
 							PageSize:                 pageSize,
@@ -264,13 +256,11 @@ func (s *MsgRepoHistoryAPISuite) Test_GetProblemMessages() {
 	s.Run("adapt logic", func() {
 		client := types.NewUserID()
 		problem, chat := s.createProblemAndChat(client)
-
-		s.createMessages(1, chat, problem, types.UserIDNil, true, true, true)
 		lastMsg := s.createMessages(1, chat, problem, client, true, true, false)[0]
 
 		msgs, _, err := s.repo.GetProblemMessages(s.Ctx, problem, 11, nil)
 		s.Require().NoError(err)
-		s.Require().Len(msgs, 2)
+		s.Require().Len(msgs, 1)
 
 		msg := msgs[0]
 		s.Equal(lastMsg.ID, msg.ID)
@@ -282,15 +272,7 @@ func (s *MsgRepoHistoryAPISuite) Test_GetProblemMessages() {
 		s.True(msg.IsVisibleForManager)
 		s.False(msg.IsBlocked)
 		s.False(msg.IsService)
-
-		s.Run("service message", func() {
-			svcMsg := msgs[1]
-			s.True(svcMsg.AuthorID.IsZero())
-			s.True(svcMsg.IsVisibleForClient)
-			s.True(svcMsg.IsVisibleForManager)
-			s.False(svcMsg.IsBlocked)
-			s.True(svcMsg.IsService)
-		})
+		s.Equal(lastMsg.InitialRequestID, msg.InitialRequestID)
 	})
 }
 

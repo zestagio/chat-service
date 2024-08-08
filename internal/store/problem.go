@@ -25,6 +25,8 @@ type Problem struct {
 	ManagerID types.UserID `json:"manager_id,omitempty"`
 	// ResolvedAt holds the value of the "resolved_at" field.
 	ResolvedAt time.Time `json:"resolved_at,omitempty"`
+	// ResolveRequestID holds the value of the "resolve_request_id" field.
+	ResolveRequestID types.RequestID `json:"resolve_request_id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -75,6 +77,8 @@ func (*Problem) scanValues(columns []string) ([]any, error) {
 			values[i] = new(types.ChatID)
 		case problem.FieldID:
 			values[i] = new(types.ProblemID)
+		case problem.FieldResolveRequestID:
+			values[i] = new(types.RequestID)
 		case problem.FieldManagerID:
 			values[i] = new(types.UserID)
 		default:
@@ -115,6 +119,12 @@ func (pr *Problem) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field resolved_at", values[i])
 			} else if value.Valid {
 				pr.ResolvedAt = value.Time
+			}
+		case problem.FieldResolveRequestID:
+			if value, ok := values[i].(*types.RequestID); !ok {
+				return fmt.Errorf("unexpected type %T for field resolve_request_id", values[i])
+			} else if value != nil {
+				pr.ResolveRequestID = *value
 			}
 		case problem.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -176,6 +186,9 @@ func (pr *Problem) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("resolved_at=")
 	builder.WriteString(pr.ResolvedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("resolve_request_id=")
+	builder.WriteString(fmt.Sprintf("%v", pr.ResolveRequestID))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(pr.CreatedAt.Format(time.ANSIC))

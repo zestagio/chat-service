@@ -2,11 +2,13 @@ package clientmessagesentjob
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
+	chatsrepo "github.com/zestagio/chat-service/internal/repositories/chats"
 	messagesrepo "github.com/zestagio/chat-service/internal/repositories/messages"
 	eventstream "github.com/zestagio/chat-service/internal/services/event-stream"
 	"github.com/zestagio/chat-service/internal/services/outbox"
@@ -15,6 +17,10 @@ import (
 )
 
 const Name = "client-message-sent"
+
+type chatsRepository interface {
+	GetChatManager(ctx context.Context, chatID types.ChatID) (types.UserID, error)
+}
 
 type eventStream interface {
 	Publish(ctx context.Context, userID types.UserID, event eventstream.Event) error
@@ -26,6 +32,7 @@ type messageRepository interface {
 
 //go:generate options-gen -out-filename=job_options.gen.go -from-struct=Options
 type Options struct {
+	chatsRepo   chatsRepository   `option:"mandatory" validate:"required"`
 	eventStream eventStream       `option:"mandatory" validate:"required"`
 	msgRepo     messageRepository `option:"mandatory" validate:"required"`
 }
@@ -87,8 +94,17 @@ func (j *Job) Handle(ctx context.Context, payload string) error {
 		return nil
 	})
 
+	// Send update to manager.
 	wg.Go(func() error {
-		if err := j.eventStream.Publish(ctx, msg.ManagerID, eventstream.NewNewMessageEvent(
+		managerID, err := j.chatsRepo.GetChatManager(ctx, msg.ChatID)
+		if errors.Is(err, chatsrepo.ErrChatWithoutManager) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("get chat manager: %v", err)
+		}
+
+		if err := j.eventStream.Publish(ctx, managerID, eventstream.NewNewMessageEvent(
 			types.NewEventID(),
 			msg.InitialRequestID,
 			msg.ChatID,
@@ -96,7 +112,7 @@ func (j *Job) Handle(ctx context.Context, payload string) error {
 			msg.AuthorID,
 			msg.CreatedAt,
 			msg.Body,
-			msg.IsService,
+			false,
 		)); err != nil {
 			return fmt.Errorf("publish NewMessageEvent to manager: %v", err)
 		}

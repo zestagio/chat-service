@@ -24,8 +24,8 @@ const (
 
 // Defines values for ErrorCode.
 const (
-	ErrorCodeManagerOverloaded ErrorCode = 5000
-	ErrorCodeNoFoundProblem    ErrorCode = 5001
+	ErrorCodeAssignedProblemNotFound ErrorCode = 5001
+	ErrorCodeManagerOverloaded       ErrorCode = 5000
 )
 
 // Chat defines model for Chat.
@@ -44,10 +44,13 @@ type ChatList struct {
 	Chats []Chat `json:"chats"`
 }
 
+// CloseChatRequest defines model for CloseChatRequest.
+type CloseChatRequest = ChatId
+
 // CloseChatResponse defines model for CloseChatResponse.
 type CloseChatResponse struct {
-	Data  *string `json:"data"`
-	Error *Error  `json:"error,omitempty"`
+	Data  *map[string]interface{} `json:"data,omitempty"`
+	Error *Error                  `json:"error,omitempty"`
 }
 
 // Error defines model for Error.
@@ -101,13 +104,6 @@ type GetFreeHandsBtnAvailabilityResponse struct {
 type Message struct {
 	AuthorId  types.UserID    `json:"authorId"`
 	Body      string          `json:"body"`
-	CreatedAt time.Time       `json:"createdAt"`
-	Id        types.MessageID `json:"id"`
-}
-
-// MessageHeader defines model for MessageHeader.
-type MessageHeader struct {
-	AuthorId  types.UserID    `json:"authorId"`
 	CreatedAt time.Time       `json:"createdAt"`
 	Id        types.MessageID `json:"id"`
 }
@@ -171,7 +167,7 @@ type PostSendMessageParams struct {
 }
 
 // PostCloseChatJSONRequestBody defines body for PostCloseChat for application/json ContentType.
-type PostCloseChatJSONRequestBody = ChatId
+type PostCloseChatJSONRequestBody = CloseChatRequest
 
 // PostGetChatHistoryJSONRequestBody defines body for PostGetChatHistory for application/json ContentType.
 type PostGetChatHistoryJSONRequestBody = GetChatHistoryRequest

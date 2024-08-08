@@ -21,8 +21,9 @@ import (
 // ProblemUpdate is the builder for updating Problem entities.
 type ProblemUpdate struct {
 	config
-	hooks    []Hook
-	mutation *ProblemMutation
+	hooks     []Hook
+	mutation  *ProblemMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // Where appends a list predicates to the ProblemUpdate builder.
@@ -82,6 +83,26 @@ func (pu *ProblemUpdate) SetNillableResolvedAt(t *time.Time) *ProblemUpdate {
 // ClearResolvedAt clears the value of the "resolved_at" field.
 func (pu *ProblemUpdate) ClearResolvedAt() *ProblemUpdate {
 	pu.mutation.ClearResolvedAt()
+	return pu
+}
+
+// SetResolveRequestID sets the "resolve_request_id" field.
+func (pu *ProblemUpdate) SetResolveRequestID(ti types.RequestID) *ProblemUpdate {
+	pu.mutation.SetResolveRequestID(ti)
+	return pu
+}
+
+// SetNillableResolveRequestID sets the "resolve_request_id" field if the given value is not nil.
+func (pu *ProblemUpdate) SetNillableResolveRequestID(ti *types.RequestID) *ProblemUpdate {
+	if ti != nil {
+		pu.SetResolveRequestID(*ti)
+	}
+	return pu
+}
+
+// ClearResolveRequestID clears the value of the "resolve_request_id" field.
+func (pu *ProblemUpdate) ClearResolveRequestID() *ProblemUpdate {
+	pu.mutation.ClearResolveRequestID()
 	return pu
 }
 
@@ -176,10 +197,21 @@ func (pu *ProblemUpdate) check() error {
 			return &ValidationError{Name: "manager_id", err: fmt.Errorf(`store: validator failed for field "Problem.manager_id": %w`, err)}
 		}
 	}
+	if v, ok := pu.mutation.ResolveRequestID(); ok {
+		if err := v.Validate(); err != nil {
+			return &ValidationError{Name: "resolve_request_id", err: fmt.Errorf(`store: validator failed for field "Problem.resolve_request_id": %w`, err)}
+		}
+	}
 	if _, ok := pu.mutation.ChatID(); pu.mutation.ChatCleared() && !ok {
 		return errors.New(`store: clearing a required unique edge "Problem.chat"`)
 	}
 	return nil
+}
+
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (pu *ProblemUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *ProblemUpdate {
+	pu.modifiers = append(pu.modifiers, modifiers...)
+	return pu
 }
 
 func (pu *ProblemUpdate) sqlSave(ctx context.Context) (n int, err error) {
@@ -205,6 +237,12 @@ func (pu *ProblemUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if pu.mutation.ResolvedAtCleared() {
 		_spec.ClearField(problem.FieldResolvedAt, field.TypeTime)
+	}
+	if value, ok := pu.mutation.ResolveRequestID(); ok {
+		_spec.SetField(problem.FieldResolveRequestID, field.TypeUUID, value)
+	}
+	if pu.mutation.ResolveRequestIDCleared() {
+		_spec.ClearField(problem.FieldResolveRequestID, field.TypeUUID)
 	}
 	if pu.mutation.ChatCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -280,6 +318,7 @@ func (pu *ProblemUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(pu.modifiers...)
 	if n, err = sqlgraph.UpdateNodes(ctx, pu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{problem.Label}
@@ -295,9 +334,10 @@ func (pu *ProblemUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // ProblemUpdateOne is the builder for updating a single Problem entity.
 type ProblemUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *ProblemMutation
+	fields    []string
+	hooks     []Hook
+	mutation  *ProblemMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // SetChatID sets the "chat_id" field.
@@ -351,6 +391,26 @@ func (puo *ProblemUpdateOne) SetNillableResolvedAt(t *time.Time) *ProblemUpdateO
 // ClearResolvedAt clears the value of the "resolved_at" field.
 func (puo *ProblemUpdateOne) ClearResolvedAt() *ProblemUpdateOne {
 	puo.mutation.ClearResolvedAt()
+	return puo
+}
+
+// SetResolveRequestID sets the "resolve_request_id" field.
+func (puo *ProblemUpdateOne) SetResolveRequestID(ti types.RequestID) *ProblemUpdateOne {
+	puo.mutation.SetResolveRequestID(ti)
+	return puo
+}
+
+// SetNillableResolveRequestID sets the "resolve_request_id" field if the given value is not nil.
+func (puo *ProblemUpdateOne) SetNillableResolveRequestID(ti *types.RequestID) *ProblemUpdateOne {
+	if ti != nil {
+		puo.SetResolveRequestID(*ti)
+	}
+	return puo
+}
+
+// ClearResolveRequestID clears the value of the "resolve_request_id" field.
+func (puo *ProblemUpdateOne) ClearResolveRequestID() *ProblemUpdateOne {
+	puo.mutation.ClearResolveRequestID()
 	return puo
 }
 
@@ -458,10 +518,21 @@ func (puo *ProblemUpdateOne) check() error {
 			return &ValidationError{Name: "manager_id", err: fmt.Errorf(`store: validator failed for field "Problem.manager_id": %w`, err)}
 		}
 	}
+	if v, ok := puo.mutation.ResolveRequestID(); ok {
+		if err := v.Validate(); err != nil {
+			return &ValidationError{Name: "resolve_request_id", err: fmt.Errorf(`store: validator failed for field "Problem.resolve_request_id": %w`, err)}
+		}
+	}
 	if _, ok := puo.mutation.ChatID(); puo.mutation.ChatCleared() && !ok {
 		return errors.New(`store: clearing a required unique edge "Problem.chat"`)
 	}
 	return nil
+}
+
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (puo *ProblemUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *ProblemUpdateOne {
+	puo.modifiers = append(puo.modifiers, modifiers...)
+	return puo
 }
 
 func (puo *ProblemUpdateOne) sqlSave(ctx context.Context) (_node *Problem, err error) {
@@ -504,6 +575,12 @@ func (puo *ProblemUpdateOne) sqlSave(ctx context.Context) (_node *Problem, err e
 	}
 	if puo.mutation.ResolvedAtCleared() {
 		_spec.ClearField(problem.FieldResolvedAt, field.TypeTime)
+	}
+	if value, ok := puo.mutation.ResolveRequestID(); ok {
+		_spec.SetField(problem.FieldResolveRequestID, field.TypeUUID, value)
+	}
+	if puo.mutation.ResolveRequestIDCleared() {
+		_spec.ClearField(problem.FieldResolveRequestID, field.TypeUUID)
 	}
 	if puo.mutation.ChatCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -579,6 +656,7 @@ func (puo *ProblemUpdateOne) sqlSave(ctx context.Context) (_node *Problem, err e
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(puo.modifiers...)
 	_node = &Problem{config: puo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

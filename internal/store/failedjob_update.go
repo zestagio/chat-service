@@ -17,8 +17,9 @@ import (
 // FailedJobUpdate is the builder for updating FailedJob entities.
 type FailedJobUpdate struct {
 	config
-	hooks    []Hook
-	mutation *FailedJobMutation
+	hooks     []Hook
+	mutation  *FailedJobMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // Where appends a list predicates to the FailedJobUpdate builder.
@@ -59,6 +60,12 @@ func (fju *FailedJobUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (fju *FailedJobUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *FailedJobUpdate {
+	fju.modifiers = append(fju.modifiers, modifiers...)
+	return fju
+}
+
 func (fju *FailedJobUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(failedjob.Table, failedjob.Columns, sqlgraph.NewFieldSpec(failedjob.FieldID, field.TypeUUID))
 	if ps := fju.mutation.predicates; len(ps) > 0 {
@@ -68,6 +75,7 @@ func (fju *FailedJobUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
+	_spec.AddModifiers(fju.modifiers...)
 	if n, err = sqlgraph.UpdateNodes(ctx, fju.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{failedjob.Label}
@@ -83,9 +91,10 @@ func (fju *FailedJobUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // FailedJobUpdateOne is the builder for updating a single FailedJob entity.
 type FailedJobUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *FailedJobMutation
+	fields    []string
+	hooks     []Hook
+	mutation  *FailedJobMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // Mutation returns the FailedJobMutation object of the builder.
@@ -133,6 +142,12 @@ func (fjuo *FailedJobUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (fjuo *FailedJobUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *FailedJobUpdateOne {
+	fjuo.modifiers = append(fjuo.modifiers, modifiers...)
+	return fjuo
+}
+
 func (fjuo *FailedJobUpdateOne) sqlSave(ctx context.Context) (_node *FailedJob, err error) {
 	_spec := sqlgraph.NewUpdateSpec(failedjob.Table, failedjob.Columns, sqlgraph.NewFieldSpec(failedjob.FieldID, field.TypeUUID))
 	id, ok := fjuo.mutation.ID()
@@ -159,6 +174,7 @@ func (fjuo *FailedJobUpdateOne) sqlSave(ctx context.Context) (_node *FailedJob, 
 			}
 		}
 	}
+	_spec.AddModifiers(fjuo.modifiers...)
 	_node = &FailedJob{config: fjuo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

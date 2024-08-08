@@ -33,11 +33,11 @@ func (h Handlers) PostSendMessage(eCtx echo.Context, params PostSendMessageParam
 		}
 
 		if errors.Is(err, sendmessage.ErrChatNotCreated) {
-			return internalerrors.NewServerError(ErrorCodeCreateChatError, "create chat error", err)
+			return internalerrors.NewServerError(int(ErrorCodeCreateChatError), "create chat error", err)
 		}
 
 		if errors.Is(err, sendmessage.ErrProblemNotCreated) {
-			return internalerrors.NewServerError(ErrorCodeCreateProblemError, "create problem error", err)
+			return internalerrors.NewServerError(int(ErrorCodeCreateProblemError), "create problem error", err)
 		}
 
 		return fmt.Errorf("handle `send message` use case: %v", err)

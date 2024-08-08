@@ -22,6 +22,7 @@ type FailedJobQuery struct {
 	order      []failedjob.OrderOption
 	inters     []Interceptor
 	predicates []predicate.FailedJob
+	modifiers  []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -343,6 +344,9 @@ func (fjq *FailedJobQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*F
 		nodes = append(nodes, node)
 		return node.assignValues(columns, values)
 	}
+	if len(fjq.modifiers) > 0 {
+		_spec.Modifiers = fjq.modifiers
+	}
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -357,6 +361,9 @@ func (fjq *FailedJobQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*F
 
 func (fjq *FailedJobQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := fjq.querySpec()
+	if len(fjq.modifiers) > 0 {
+		_spec.Modifiers = fjq.modifiers
+	}
 	_spec.Node.Columns = fjq.ctx.Fields
 	if len(fjq.ctx.Fields) > 0 {
 		_spec.Unique = fjq.ctx.Unique != nil && *fjq.ctx.Unique
@@ -419,6 +426,9 @@ func (fjq *FailedJobQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if fjq.ctx.Unique != nil && *fjq.ctx.Unique {
 		selector.Distinct()
 	}
+	for _, m := range fjq.modifiers {
+		m(selector)
+	}
 	for _, p := range fjq.predicates {
 		p(selector)
 	}
@@ -434,6 +444,12 @@ func (fjq *FailedJobQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (fjq *FailedJobQuery) Modify(modifiers ...func(s *sql.Selector)) *FailedJobSelect {
+	fjq.modifiers = append(fjq.modifiers, modifiers...)
+	return fjq.Select()
 }
 
 // FailedJobGroupBy is the group-by builder for FailedJob entities.
@@ -524,4 +540,10 @@ func (fjs *FailedJobSelect) sqlScan(ctx context.Context, root *FailedJobQuery, v
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (fjs *FailedJobSelect) Modify(modifiers ...func(s *sql.Selector)) *FailedJobSelect {
+	fjs.modifiers = append(fjs.modifiers, modifiers...)
+	return fjs
 }

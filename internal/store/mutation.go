@@ -2240,22 +2240,9 @@ func (m *MessageMutation) OldInitialRequestID(ctx context.Context) (v types.Requ
 	return oldValue.InitialRequestID, nil
 }
 
-// ClearInitialRequestID clears the value of the "initial_request_id" field.
-func (m *MessageMutation) ClearInitialRequestID() {
-	m.initial_request_id = nil
-	m.clearedFields[message.FieldInitialRequestID] = struct{}{}
-}
-
-// InitialRequestIDCleared returns if the "initial_request_id" field was cleared in this mutation.
-func (m *MessageMutation) InitialRequestIDCleared() bool {
-	_, ok := m.clearedFields[message.FieldInitialRequestID]
-	return ok
-}
-
 // ResetInitialRequestID resets all changes to the "initial_request_id" field.
 func (m *MessageMutation) ResetInitialRequestID() {
 	m.initial_request_id = nil
-	delete(m.clearedFields, message.FieldInitialRequestID)
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -2599,9 +2586,6 @@ func (m *MessageMutation) ClearedFields() []string {
 	if m.FieldCleared(message.FieldCheckedAt) {
 		fields = append(fields, message.FieldCheckedAt)
 	}
-	if m.FieldCleared(message.FieldInitialRequestID) {
-		fields = append(fields, message.FieldInitialRequestID)
-	}
 	return fields
 }
 
@@ -2621,9 +2605,6 @@ func (m *MessageMutation) ClearField(name string) error {
 		return nil
 	case message.FieldCheckedAt:
 		m.ClearCheckedAt()
-		return nil
-	case message.FieldInitialRequestID:
-		m.ClearInitialRequestID()
 		return nil
 	}
 	return fmt.Errorf("unknown Message nullable field %s", name)
@@ -2765,21 +2746,22 @@ func (m *MessageMutation) ResetEdge(name string) error {
 // ProblemMutation represents an operation that mutates the Problem nodes in the graph.
 type ProblemMutation struct {
 	config
-	op              Op
-	typ             string
-	id              *types.ProblemID
-	manager_id      *types.UserID
-	resolved_at     *time.Time
-	created_at      *time.Time
-	clearedFields   map[string]struct{}
-	chat            *types.ChatID
-	clearedchat     bool
-	messages        map[types.MessageID]struct{}
-	removedmessages map[types.MessageID]struct{}
-	clearedmessages bool
-	done            bool
-	oldValue        func(context.Context) (*Problem, error)
-	predicates      []predicate.Problem
+	op                 Op
+	typ                string
+	id                 *types.ProblemID
+	manager_id         *types.UserID
+	resolved_at        *time.Time
+	resolve_request_id *types.RequestID
+	created_at         *time.Time
+	clearedFields      map[string]struct{}
+	chat               *types.ChatID
+	clearedchat        bool
+	messages           map[types.MessageID]struct{}
+	removedmessages    map[types.MessageID]struct{}
+	clearedmessages    bool
+	done               bool
+	oldValue           func(context.Context) (*Problem, error)
+	predicates         []predicate.Problem
 }
 
 var _ ent.Mutation = (*ProblemMutation)(nil)
@@ -3020,6 +3002,55 @@ func (m *ProblemMutation) ResetResolvedAt() {
 	delete(m.clearedFields, problem.FieldResolvedAt)
 }
 
+// SetResolveRequestID sets the "resolve_request_id" field.
+func (m *ProblemMutation) SetResolveRequestID(ti types.RequestID) {
+	m.resolve_request_id = &ti
+}
+
+// ResolveRequestID returns the value of the "resolve_request_id" field in the mutation.
+func (m *ProblemMutation) ResolveRequestID() (r types.RequestID, exists bool) {
+	v := m.resolve_request_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldResolveRequestID returns the old "resolve_request_id" field's value of the Problem entity.
+// If the Problem object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProblemMutation) OldResolveRequestID(ctx context.Context) (v types.RequestID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldResolveRequestID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldResolveRequestID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldResolveRequestID: %w", err)
+	}
+	return oldValue.ResolveRequestID, nil
+}
+
+// ClearResolveRequestID clears the value of the "resolve_request_id" field.
+func (m *ProblemMutation) ClearResolveRequestID() {
+	m.resolve_request_id = nil
+	m.clearedFields[problem.FieldResolveRequestID] = struct{}{}
+}
+
+// ResolveRequestIDCleared returns if the "resolve_request_id" field was cleared in this mutation.
+func (m *ProblemMutation) ResolveRequestIDCleared() bool {
+	_, ok := m.clearedFields[problem.FieldResolveRequestID]
+	return ok
+}
+
+// ResetResolveRequestID resets all changes to the "resolve_request_id" field.
+func (m *ProblemMutation) ResetResolveRequestID() {
+	m.resolve_request_id = nil
+	delete(m.clearedFields, problem.FieldResolveRequestID)
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *ProblemMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -3171,7 +3202,7 @@ func (m *ProblemMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ProblemMutation) Fields() []string {
-	fields := make([]string, 0, 4)
+	fields := make([]string, 0, 5)
 	if m.chat != nil {
 		fields = append(fields, problem.FieldChatID)
 	}
@@ -3180,6 +3211,9 @@ func (m *ProblemMutation) Fields() []string {
 	}
 	if m.resolved_at != nil {
 		fields = append(fields, problem.FieldResolvedAt)
+	}
+	if m.resolve_request_id != nil {
+		fields = append(fields, problem.FieldResolveRequestID)
 	}
 	if m.created_at != nil {
 		fields = append(fields, problem.FieldCreatedAt)
@@ -3198,6 +3232,8 @@ func (m *ProblemMutation) Field(name string) (ent.Value, bool) {
 		return m.ManagerID()
 	case problem.FieldResolvedAt:
 		return m.ResolvedAt()
+	case problem.FieldResolveRequestID:
+		return m.ResolveRequestID()
 	case problem.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -3215,6 +3251,8 @@ func (m *ProblemMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldManagerID(ctx)
 	case problem.FieldResolvedAt:
 		return m.OldResolvedAt(ctx)
+	case problem.FieldResolveRequestID:
+		return m.OldResolveRequestID(ctx)
 	case problem.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -3246,6 +3284,13 @@ func (m *ProblemMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetResolvedAt(v)
+		return nil
+	case problem.FieldResolveRequestID:
+		v, ok := value.(types.RequestID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetResolveRequestID(v)
 		return nil
 	case problem.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -3290,6 +3335,9 @@ func (m *ProblemMutation) ClearedFields() []string {
 	if m.FieldCleared(problem.FieldResolvedAt) {
 		fields = append(fields, problem.FieldResolvedAt)
 	}
+	if m.FieldCleared(problem.FieldResolveRequestID) {
+		fields = append(fields, problem.FieldResolveRequestID)
+	}
 	return fields
 }
 
@@ -3310,6 +3358,9 @@ func (m *ProblemMutation) ClearField(name string) error {
 	case problem.FieldResolvedAt:
 		m.ClearResolvedAt()
 		return nil
+	case problem.FieldResolveRequestID:
+		m.ClearResolveRequestID()
+		return nil
 	}
 	return fmt.Errorf("unknown Problem nullable field %s", name)
 }
@@ -3326,6 +3377,9 @@ func (m *ProblemMutation) ResetField(name string) error {
 		return nil
 	case problem.FieldResolvedAt:
 		m.ResetResolvedAt()
+		return nil
+	case problem.FieldResolveRequestID:
+		m.ResetResolveRequestID()
 		return nil
 	case problem.FieldCreatedAt:
 		m.ResetCreatedAt()

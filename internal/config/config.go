@@ -97,7 +97,7 @@ type ManagerLoadConfig struct {
 }
 
 type ManagerSchedulerConfig struct {
-	Period time.Duration `toml:"period" validate:"required,min=1s,max=10s"`
+	Period time.Duration `toml:"period" validate:"min=1s,max=1m"`
 }
 
 type MsgProducerConfig struct {

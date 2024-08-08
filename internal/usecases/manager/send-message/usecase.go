@@ -2,7 +2,6 @@ package sendmessage
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -14,10 +13,7 @@ import (
 
 //go:generate mockgen -source=$GOFILE -destination=mocks/usecase_mock.gen.go -package=sendmessagemocks
 
-var ErrInvalidRequest = errors.New("invalid request")
-
 type messagesRepository interface {
-	GetMessageByRequestID(ctx context.Context, reqID types.RequestID) (*messagesrepo.Message, error)
 	CreateFullVisible(
 		ctx context.Context,
 		reqID types.RequestID,
@@ -43,8 +39,8 @@ type transactor interface {
 //go:generate options-gen -out-filename=usecase_options.gen.go -from-struct=Options
 type Options struct {
 	msgRepo      messagesRepository `option:"mandatory" validate:"required"`
+	outBox       outboxService      `option:"mandatory" validate:"required"`
 	problemsRepo problemsRepository `option:"mandatory" validate:"required"`
-	outbox       outboxService      `option:"mandatory" validate:"required"`
 	txtor        transactor         `option:"mandatory" validate:"required"`
 }
 
@@ -58,32 +54,23 @@ func New(opts Options) (UseCase, error) {
 
 func (u UseCase) Handle(ctx context.Context, req Request) (Response, error) {
 	if err := req.Validate(); err != nil {
-		return Response{}, fmt.Errorf("validate request: %w: %v", ErrInvalidRequest, err)
+		return Response{}, err
+	}
+
+	problemID, err := u.problemsRepo.GetAssignedProblemID(ctx, req.ManagerID, req.ChatID)
+	if err != nil {
+		return Response{}, fmt.Errorf("get assigned problem: %v", err)
 	}
 
 	var msg *messagesrepo.Message
 
 	if err := u.txtor.RunInTx(ctx, func(ctx context.Context) error {
-		m, err := u.msgRepo.GetMessageByRequestID(ctx, req.ID)
-		if nil == err {
-			msg = m
-			return nil
-		}
-		if !errors.Is(err, messagesrepo.ErrMsgNotFound) {
-			return fmt.Errorf("get msg by initial request id: %v", err)
-		}
-
-		problemID, err := u.problemsRepo.GetAssignedProblemID(ctx, req.ManagerID, req.ChatID)
-		if err != nil {
-			return fmt.Errorf("get assigned problem id: %w", err)
-		}
-
-		m, err = u.msgRepo.CreateFullVisible(ctx, req.ID, problemID, req.ChatID, req.ManagerID, req.MessageBody)
+		m, err := u.msgRepo.CreateFullVisible(ctx, req.ID, problemID, req.ChatID, req.ManagerID, req.MessageBody)
 		if err != nil {
 			return fmt.Errorf("create full visible message: %v", err)
 		}
 
-		_, err = u.outbox.Put(ctx, sendmanagermessagejob.Name, simpleid.MustMarshal(m.ID), time.Now())
+		_, err = u.outBox.Put(ctx, sendmanagermessagejob.Name, simpleid.MustMarshal(m.ID), time.Now())
 		if err != nil {
 			return fmt.Errorf("create `send manager message` job: %v", err)
 		}
@@ -91,7 +78,7 @@ func (u UseCase) Handle(ctx context.Context, req Request) (Response, error) {
 		msg = m
 		return nil
 	}); err != nil {
-		return Response{}, fmt.Errorf("`send manager message` tx: %w", err)
+		return Response{}, fmt.Errorf("`send manager message` tx: %v", err)
 	}
 
 	return Response{

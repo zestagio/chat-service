@@ -22,6 +22,7 @@ func (Problem) Fields() []ent.Field {
 		field.UUID("chat_id", types.ChatID{}),
 		field.UUID("manager_id", types.UserID{}).Optional(),
 		field.Time("resolved_at").Optional(),
+		field.UUID("resolve_request_id", types.RequestID{}).Optional().Unique(),
 		field.Time("created_at").Default(time.Now).Immutable(),
 	}
 }
@@ -42,6 +43,10 @@ func (Problem) Edges() []ent.Edge {
 
 func (Problem) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("manager_id", "resolved_at").Unique(),
+		// The most part of queries in framework of specific chat.
+		index.Fields("chat_id"),
+
+		// Getting open problems for manager.
+		index.Fields("manager_id"),
 	}
 }

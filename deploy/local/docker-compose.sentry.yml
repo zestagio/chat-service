@@ -8,7 +8,6 @@ services:
       &sentry-environment
       SENTRY_SECRET_KEY: 'secret-key'
       SENTRY_POSTGRES_HOST: postgres
-      SENTRY_DB_NAME: sentry
       SENTRY_DB_USER: sentry
       SENTRY_DB_PASSWORD: sentry
       SENTRY_REDIS_HOST: redis

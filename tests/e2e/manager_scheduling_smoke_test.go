@@ -128,68 +128,81 @@ var _ = Describe("Manager Scheduling Smoke", Ordered, func() {
 	})
 
 	It("manager answers back", func() {
-		lastChat, ok := managerWs.LastChat()
-		Expect(ok).Should(BeTrue())
-
-		err := managerWs.SendMessage(ctx, lastChat.ID, "hello")
+		const response = "Hello, how can I help?"
+		lastChat, _ := managerWs.LastChat()
+		err := managerWs.SendMessage(ctx, lastChat.ID, response)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		waitForEvent(clientStream) // NewMessageEvent
+		// Client side.
 
-		lastClientMsg, ok := clientChat.LastMessage()
-		Expect(ok).Should(BeTrue())
-		Expect(lastClientMsg.ID).ShouldNot(BeEmpty())
-		Expect(lastClientMsg.AuthorID.String()).Should(Equal(managerWs.ManagerID().String()))
-		Expect(lastClientMsg.CreatedAt).ShouldNot(BeZero())
+		waitForEvent(clientStream) // NewMessageEvent.
 
-		waitForEvent(managerStream) // NewMessageEvent
+		msg, ok := clientChat.LastMessage()
+		Expect(ok).Should(BeTrue())
+		Expect(msg.ID).ShouldNot(BeEmpty())
+		Expect(msg.AuthorID.String()).Should(Equal(managerWs.ManagerID().String()))
+		Expect(msg.Body).Should(Equal(response))
+		Expect(msg.IsService).Should(BeFalse())
+		Expect(msg.CreatedAt.IsZero()).Should(BeFalse())
 
-		lastChat, ok = managerWs.LastChat()
+		// Manager side.
+
+		waitForEvent(managerStream) // NewMessageEvent.
+
+		lastChat, _ = managerWs.LastChat()
+		mngrMsg, ok := lastChat.LastMessage()
 		Expect(ok).Should(BeTrue())
-		lastMsg, ok := lastChat.LastMessage()
-		Expect(ok).Should(BeTrue())
-		Expect(lastMsg.ID).ShouldNot(BeEmpty())
-		Expect(lastMsg.AuthorID.String()).Should(Equal(managerWs.ManagerID().String()))
-		Expect(lastMsg.CreatedAt).ShouldNot(BeZero())
-		Expect(lastMsg.Body).Should(Equal("hello"))
+		Expect(mngrMsg.ID).ShouldNot(BeEmpty())
+		Expect(mngrMsg.ChatID).Should(Equal(lastChat.ID))
+		Expect(mngrMsg.AuthorID.String()).Should(Equal(managerWs.ManagerID().String()))
+		Expect(mngrMsg.Body).Should(Equal(response))
+		Expect(mngrMsg.CreatedAt.IsZero()).Should(BeFalse())
 
 		err = managerWs.Refresh(ctx)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		lastChat, ok = managerWs.LastChat()
-		Expect(ok).Should(BeTrue())
-
-		count := lastChat.MessagesCount()
-		Expect(count).Should(Equal(2))
+		n := lastChat.MessagesCount()
+		Expect(n).Should(Equal(2))
 	})
 
 	It("manager closes chat", func() {
-		chatsCount := managerWs.ChatsCount()
-		chat, ok := managerWs.LastChat()
-		Expect(ok).Should(BeTrue())
+		chatsNum := managerWs.ChatsCount()
+		lastChat, _ := managerWs.LastChat()
 
-		err := managerWs.CloseChat(ctx, chat.ID)
+		err := managerWs.CloseChat(ctx, lastChat.ID)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		waitForEvent(managerStream) // CloseChatEvent
+		// Manager side.
 
-		Expect(chatsCount).Should(BeNumerically(">", managerWs.ChatsCount()))
+		waitForEvent(managerStream) // ChatClosedEvent.
 
-		canTakeMoreProblem := managerWs.CanTakeMoreProblems()
-		Expect(canTakeMoreProblem).Should(BeTrue())
+		n := managerWs.ChatsCount()
+		Expect(n).Should(Equal(chatsNum - 1))
 
-		waitForEvent(clientStream) // NewMessageEvent (that chat was closed)
+		canTakeMore := managerWs.CanTakeMoreProblems()
+		Expect(canTakeMore).Should(BeTrue())
 
-		lastClientMsg, ok := clientChat.LastMessage()
+		// Client side.
+
+		waitForEvent(clientStream) // NewMessageEvent (service).
+
+		msg, ok := clientChat.LastMessage()
 		Expect(ok).Should(BeTrue())
-		Expect(lastClientMsg.AuthorID).Should(BeZero())
-		Expect(lastClientMsg.IsService).Should(BeTrue())
-		Expect(lastClientMsg.CreatedAt).ShouldNot(BeZero())
+		Expect(msg.ID).ShouldNot(BeEmpty())
+		Expect(msg.AuthorID.IsZero()).Should(BeTrue())
+		Expect(msg.Body).Should(Equal(`Your question has been marked as resolved.
+Thank you for being with us!`))
+		Expect(msg.IsService).Should(BeTrue())
+		Expect(msg.CreatedAt.IsZero()).Should(BeFalse())
 
 		err = clientChat.Refresh(ctx)
 		Expect(err).ShouldNot(HaveOccurred())
-
-		clientMessageCount := clientChat.MessagesCount()
-		Expect(clientMessageCount).Should(Equal(4))
+		/*
+			- "Hello, sir!"
+			- "Manager %s will answer you"
+			- "Hello, how can I help?"
+			- "Your question has been marked as resolved..."
+		*/
+		Expect(clientChat.MessagesCount()).Should(Equal(4))
 	})
 })

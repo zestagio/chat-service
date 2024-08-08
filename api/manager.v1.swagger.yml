@@ -60,7 +60,7 @@ paths:
               $ref: "#/components/schemas/GetChatHistoryRequest"
       responses:
         '200':
-          description: Messages list
+          description: Messages list.
           content:
             application/json:
               schema:
@@ -87,7 +87,7 @@ paths:
 
   /closeChat:
     post:
-      description: Send signal that problem is resolved.
+      description: Send signal that client's chat closed (problem was resolved).
       parameters:
         - $ref: "#/components/parameters/XRequestIDHeader"
       requestBody:
@@ -95,10 +95,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ChatId"
+              $ref: "#/components/schemas/CloseChatRequest"
       responses:
         '200':
-          description: Message created.
+          description: No data on success.
           content:
             application/json:
               schema:
@@ -157,27 +157,8 @@ components:
         - 5001
       x-enum-varnames:
         - ErrorCodeManagerOverloaded
-        - ErrorCodeNoFoundProblem
+        - ErrorCodeAssignedProblemNotFound
       minimum: 400
-
-    MessageHeader:
-      required: [ id, createdAt, authorId ]
-      properties:
-        id:
-          type: string
-          format: uuid
-          x-go-type: types.MessageID
-          x-go-type-import:
-            path: "github.com/zestagio/chat-service/internal/types"
-        authorId:
-          type: string
-          format: uuid
-          x-go-type: types.UserID
-          x-go-type-import:
-            path: "github.com/zestagio/chat-service/internal/types"
-        createdAt:
-          type: string
-          format: date-time
 
     # /getFreeHandsBtnAvailability
 
@@ -268,7 +249,7 @@ components:
 
     Message:
       allOf:
-        - $ref: "#/components/schemas/MessageHeader"
+        - $ref: "#/components/schemas/MessageWithoutBody"
         - required: [ body ]
           properties:
             body:
@@ -315,10 +296,12 @@ components:
 
     # /closeChat
 
+    CloseChatRequest:
+      $ref: "#/components/schemas/ChatId"
+
     CloseChatResponse:
       properties:
         data:
-          type: string
-          nullable: true
+          type: object
         error:
           $ref: "#/components/schemas/Error"

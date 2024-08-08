@@ -19,7 +19,7 @@ type Job struct {
 }
 
 func (r *Repo) FindAndReserveJob(ctx context.Context, until time.Time) (Job, error) {
-	query := `
+	const query = `
 	with cte as (
 		select "id" from "jobs"
 		where "available_at" <= now()

@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 
 	"github.com/zestagio/chat-service/internal/store"
 	storechat "github.com/zestagio/chat-service/internal/store/chat"
@@ -85,6 +86,7 @@ func TestChatServiceSchema(t *testing.T) {
 			SetIsBlocked(false).
 			SetIsService(false).
 			SetInitialRequestID(types.NewRequestID()).
+			SetCreatedAt(time.Now()).
 			SetBody("I lost my money."),
 
 		client.Message.
@@ -97,18 +99,28 @@ func TestChatServiceSchema(t *testing.T) {
 			SetIsBlocked(false).
 			SetIsService(false).
 			SetInitialRequestID(types.NewRequestID()).
+			SetCreatedAt(time.Now().Add(time.Second)).
 			SetBody("No money, no honey."),
 	).SaveX(ctx)
 
 	// Querying.
 	var chatProblemIDs []types.ProblemID
-	client.Chat.QueryProblems(chat).Select(problem.FieldID).ScanX(ctx, &chatProblemIDs)
+	client.Chat.QueryProblems(chat).
+		Order(store.Asc(problem.FieldCreatedAt)).
+		Select(problem.FieldID).
+		ScanX(ctx, &chatProblemIDs)
 	assert.Equal(t, []types.ProblemID{problems[0].ID, problems[1].ID}, chatProblemIDs)
 
-	p1messages := client.Problem.QueryMessages(problems[0]).Select(message.FieldBody).StringsX(ctx)
+	p1messages := client.Problem.QueryMessages(problems[0]).
+		Order(store.Asc(message.FieldCreatedAt)).
+		Select(message.FieldBody).
+		StringsX(ctx)
 	assert.Equal(t, []string{"Hello, manager!", "Hello, client!"}, p1messages)
 
-	p2messages := client.Problem.QueryMessages(problems[1]).Select(message.FieldBody).StringsX(ctx)
+	p2messages := client.Problem.QueryMessages(problems[1]).
+		Order(store.Asc(message.FieldCreatedAt)).
+		Select(message.FieldBody).
+		StringsX(ctx)
 	assert.Equal(t, []string{"I lost my money.", "No money, no honey."}, p2messages)
 
 	t.Run("assert edges", func(t *testing.T) {

@@ -36,17 +36,17 @@ func (m *MockchatsRepository) EXPECT() *MockchatsRepositoryMockRecorder {
 	return m.recorder
 }
 
-// GetManagerChatsWithProblems mocks base method.
-func (m *MockchatsRepository) GetManagerChatsWithProblems(ctx context.Context, managerID types.UserID) ([]chatsrepo.Chat, error) {
+// GetChatsWithOpenProblems mocks base method.
+func (m *MockchatsRepository) GetChatsWithOpenProblems(ctx context.Context, managerID types.UserID) ([]chatsrepo.Chat, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetManagerChatsWithProblems", ctx, managerID)
+	ret := m.ctrl.Call(m, "GetChatsWithOpenProblems", ctx, managerID)
 	ret0, _ := ret[0].([]chatsrepo.Chat)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetManagerChatsWithProblems indicates an expected call of GetManagerChatsWithProblems.
-func (mr *MockchatsRepositoryMockRecorder) GetManagerChatsWithProblems(ctx, managerID interface{}) *gomock.Call {
+// GetChatsWithOpenProblems indicates an expected call of GetChatsWithOpenProblems.
+func (mr *MockchatsRepositoryMockRecorder) GetChatsWithOpenProblems(ctx, managerID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetManagerChatsWithProblems", reflect.TypeOf((*MockchatsRepository)(nil).GetManagerChatsWithProblems), ctx, managerID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetChatsWithOpenProblems", reflect.TypeOf((*MockchatsRepository)(nil).GetChatsWithOpenProblems), ctx, managerID)
 }

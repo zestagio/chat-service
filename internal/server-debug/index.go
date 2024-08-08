@@ -26,16 +26,14 @@ func (i *indexPage) addPage(path string, description string) {
 }
 
 func (i indexPage) handler(eCtx echo.Context) error {
-	return template.Must(
-		template.New("index").Parse(
-			`<html>
+	return template.Must(template.New("index").Parse(`<html>
 	<title>Chat Service Debug</title>
 <body>
 	<h2>Chat Service Debug</h2>
 	<ul>
-		{{range .Pages}}
-		<li><a href="{{.Path}}">{{.Path}}</a> {{.Description}}</li>
-		{{end}}
+	{{- range $, $p := .Pages }}
+		<li><a href="{{ $p.Path }}">{{ $p.Path }}</a>&nbsp;&nbsp;{{ $p.Description }}</li>
+	{{- end }}
 	</ul>
 
 	<h2>Log Level</h2>
@@ -61,15 +59,11 @@ func (i indexPage) handler(eCtx echo.Context) error {
 	</script>
 </body>
 </html>
-`,
-		),
-	).Execute(
-		eCtx.Response(), struct {
-			Pages    []page
-			LogLevel string
-		}{
-			Pages:    i.pages,
-			LogLevel: logger.Level.String(),
-		},
-	)
+`)).Execute(eCtx.Response(), struct {
+		Pages    []page
+		LogLevel string
+	}{
+		Pages:    i.pages,
+		LogLevel: logger.Level.String(),
+	})
 }

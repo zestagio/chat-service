@@ -59,14 +59,14 @@ func NewNewChatEvent(
 	requestID types.RequestID,
 	chatID types.ChatID,
 	clientID types.UserID,
-	canTakeMoreProblem bool,
+	canTakeMoreProblems bool,
 ) *NewChatEvent {
 	return &NewChatEvent{
-		EventID:            eventID,
-		RequestID:          requestID,
-		ChatID:             chatID,
-		ClientID:           clientID,
-		CanTakeMoreProblem: canTakeMoreProblem,
+		EventID:             eventID,
+		RequestID:           requestID,
+		ChatID:              chatID,
+		ClientID:            clientID,
+		CanTakeMoreProblems: canTakeMoreProblems,
 	}
 }
 
@@ -74,12 +74,12 @@ func NewChatClosedEvent(
 	eventID types.EventID,
 	requestID types.RequestID,
 	chatID types.ChatID,
-	canTakeMoreProblem bool,
+	canTakeMoreProblems bool,
 ) *ChatClosedEvent {
 	return &ChatClosedEvent{
-		EventID:            eventID,
-		RequestID:          requestID,
-		ChatID:             chatID,
-		CanTakeMoreProblem: canTakeMoreProblem,
+		EventID:             eventID,
+		RequestID:           requestID,
+		ChatID:              chatID,
+		CanTakeMoreProblems: canTakeMoreProblems,
 	}
 }

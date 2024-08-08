@@ -2,7 +2,6 @@ package getchathistory
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/zestagio/chat-service/internal/cursor"
@@ -11,11 +10,6 @@ import (
 )
 
 //go:generate mockgen -source=$GOFILE -destination=mocks/usecase_mock.gen.go -package=getchathistorymocks
-
-var (
-	ErrInvalidRequest = errors.New("invalid request")
-	ErrInvalidCursor  = errors.New("invalid cursor")
-)
 
 type messagesRepository interface {
 	GetProblemMessages(
@@ -27,11 +21,7 @@ type messagesRepository interface {
 }
 
 type problemsRepository interface {
-	GetAssignedProblemID(
-		ctx context.Context,
-		managerID types.UserID,
-		chatID types.ChatID,
-	) (types.ProblemID, error)
+	GetAssignedProblemID(ctx context.Context, managerID types.UserID, chatID types.ChatID) (types.ProblemID, error)
 }
 
 //go:generate options-gen -out-filename=usecase_options.gen.go -from-struct=Options
@@ -50,27 +40,24 @@ func New(opts Options) (UseCase, error) {
 
 func (u UseCase) Handle(ctx context.Context, req Request) (Response, error) {
 	if err := req.Validate(); err != nil {
-		return Response{}, fmt.Errorf("validate request: %w: %v", ErrInvalidRequest, err)
+		return Response{}, err
 	}
 
 	var c *messagesrepo.Cursor
 	if req.Cursor != "" {
 		if err := cursor.Decode(req.Cursor, &c); err != nil {
-			return Response{}, fmt.Errorf("decode cursor: %w: %v", ErrInvalidCursor, err)
+			return Response{}, fmt.Errorf("decode cursor: %v", err)
 		}
 	}
 
-	problemID, err := u.problemsRepo.GetAssignedProblemID(ctx, req.ManagerID, req.ChatID)
+	currentProblemID, err := u.problemsRepo.GetAssignedProblemID(ctx, req.ManagerID, req.ChatID)
 	if err != nil {
-		return Response{}, fmt.Errorf("get chat history messages: %v", err)
+		return Response{}, fmt.Errorf("get assigned problem: %v", err)
 	}
 
-	msgs, next, err := u.msgRepo.GetProblemMessages(ctx, problemID, req.PageSize, c)
+	msgs, next, err := u.msgRepo.GetProblemMessages(ctx, currentProblemID, req.PageSize, c)
 	if err != nil {
-		if errors.Is(err, messagesrepo.ErrInvalidCursor) {
-			return Response{}, fmt.Errorf("get chat history messages: %w: %v", ErrInvalidCursor, err)
-		}
-		return Response{}, fmt.Errorf("get chat history messages: %v", err)
+		return Response{}, fmt.Errorf("get manager chat messages: %v", err)
 	}
 
 	var nextCursor string

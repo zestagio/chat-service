@@ -3,6 +3,7 @@ version: "3.8"
 services:
   postgres:
     image: postgres:14-alpine
+    container_name: postgres
     environment:
       POSTGRES_DB: chat-service
       POSTGRES_USER: chat-service
@@ -16,6 +17,7 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:24.0.5
+    container_name: keycloak
     command: ["start-dev", "--import-realm"]
     environment:
       DB_VENDOR: POSTGRES

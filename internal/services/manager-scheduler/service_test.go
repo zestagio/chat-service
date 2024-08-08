@@ -56,8 +56,8 @@ func (s *ManagerSchedulerSuite) SetupTest() {
 		period,
 		s.mPool,
 		msgRepo,
-		problemRepo,
 		outboxSvc,
+		problemRepo,
 		s.Database,
 	))
 	s.Require().NoError(err)

@@ -22,6 +22,7 @@ type JobQuery struct {
 	order      []job.OrderOption
 	inters     []Interceptor
 	predicates []predicate.Job
+	modifiers  []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -343,6 +344,9 @@ func (jq *JobQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Job, err
 		nodes = append(nodes, node)
 		return node.assignValues(columns, values)
 	}
+	if len(jq.modifiers) > 0 {
+		_spec.Modifiers = jq.modifiers
+	}
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -357,6 +361,9 @@ func (jq *JobQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Job, err
 
 func (jq *JobQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := jq.querySpec()
+	if len(jq.modifiers) > 0 {
+		_spec.Modifiers = jq.modifiers
+	}
 	_spec.Node.Columns = jq.ctx.Fields
 	if len(jq.ctx.Fields) > 0 {
 		_spec.Unique = jq.ctx.Unique != nil && *jq.ctx.Unique
@@ -419,6 +426,9 @@ func (jq *JobQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if jq.ctx.Unique != nil && *jq.ctx.Unique {
 		selector.Distinct()
 	}
+	for _, m := range jq.modifiers {
+		m(selector)
+	}
 	for _, p := range jq.predicates {
 		p(selector)
 	}
@@ -434,6 +444,12 @@ func (jq *JobQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (jq *JobQuery) Modify(modifiers ...func(s *sql.Selector)) *JobSelect {
+	jq.modifiers = append(jq.modifiers, modifiers...)
+	return jq.Select()
 }
 
 // JobGroupBy is the group-by builder for Job entities.
@@ -524,4 +540,10 @@ func (js *JobSelect) sqlScan(ctx context.Context, root *JobQuery, v any) error {
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (js *JobSelect) Modify(modifiers ...func(s *sql.Selector)) *JobSelect {
+	js.modifiers = append(js.modifiers, modifiers...)
+	return js
 }

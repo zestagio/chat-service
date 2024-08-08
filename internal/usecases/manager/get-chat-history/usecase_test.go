@@ -20,10 +20,10 @@ import (
 type UseCaseSuite struct {
 	testingh.ContextSuite
 
-	ctrl         *gomock.Controller
-	msgRepo      *getchathistorymocks.MockmessagesRepository
-	problemsRepo *getchathistorymocks.MockproblemsRepository
-	uCase        getchathistory.UseCase
+	ctrl        *gomock.Controller
+	problemRepo *getchathistorymocks.MockproblemsRepository
+	msgRepo     *getchathistorymocks.MockmessagesRepository
+	uCase       getchathistory.UseCase
 }
 
 func TestUseCaseSuite(t *testing.T) {
@@ -33,11 +33,11 @@ func TestUseCaseSuite(t *testing.T) {
 
 func (s *UseCaseSuite) SetupTest() {
 	s.ctrl = gomock.NewController(s.T())
+	s.problemRepo = getchathistorymocks.NewMockproblemsRepository(s.ctrl)
 	s.msgRepo = getchathistorymocks.NewMockmessagesRepository(s.ctrl)
-	s.problemsRepo = getchathistorymocks.NewMockproblemsRepository(s.ctrl)
 
 	var err error
-	s.uCase, err = getchathistory.New(getchathistory.NewOptions(s.msgRepo, s.problemsRepo))
+	s.uCase, err = getchathistory.New(getchathistory.NewOptions(s.msgRepo, s.problemRepo))
 	s.Require().NoError(err)
 
 	s.ContextSuite.SetupTest()
@@ -57,7 +57,7 @@ func (s *UseCaseSuite) TestRequestValidationError() {
 	resp, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
-	s.Require().ErrorIs(err, getchathistory.ErrInvalidRequest)
+	s.Require().Error(err)
 	s.Empty(resp.Messages)
 	s.Empty(resp.NextCursor)
 }
@@ -75,60 +75,49 @@ func (s *UseCaseSuite) TestCursorDecodingError() {
 	resp, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
-	s.Require().ErrorIs(err, getchathistory.ErrInvalidCursor)
+	s.Require().Error(err)
 	s.Empty(resp.Messages)
 	s.Empty(resp.NextCursor)
 }
 
-func (s *UseCaseSuite) TestGetProblemMessages_InvalidCursor() {
+func (s *UseCaseSuite) TestGetAssignedProblemID_Error() {
 	// Arrange.
 	managerID := types.NewUserID()
-	problemID := types.NewProblemID()
 	chatID := types.NewChatID()
-
-	c := messagesrepo.Cursor{PageSize: -1, LastCreatedAt: time.Now()}
-	cursorWithNegativePageSize, err := cursor.Encode(c)
-	s.Require().NoError(err)
-
-	s.problemsRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).
-		Return(problemID, nil)
-	s.msgRepo.EXPECT().GetProblemMessages(s.Ctx, problemID, 0, messagesrepo.NewCursorMatcher(c)).
-		Return(nil, nil, messagesrepo.ErrInvalidCursor)
+	s.problemRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).
+		Return(types.ProblemIDNil, errors.New("something went wrong"))
 
 	req := getchathistory.Request{
 		ID:        types.NewRequestID(),
 		ManagerID: managerID,
 		ChatID:    chatID,
-		PageSize:  0,
-		Cursor:    cursorWithNegativePageSize,
+		PageSize:  10,
 	}
 
 	// Action.
 	resp, err := s.uCase.Handle(s.Ctx, req)
 
 	// Assert.
-	s.Require().ErrorIs(err, getchathistory.ErrInvalidCursor)
+	s.Require().Error(err)
 	s.Empty(resp.Messages)
 	s.Empty(resp.NextCursor)
 }
 
-func (s *UseCaseSuite) TestGetProblemMessages_SomeError() {
+func (s *UseCaseSuite) TestGetProblemMessages_Error() {
 	// Arrange.
 	managerID := types.NewUserID()
-	problemID := types.NewProblemID()
 	chatID := types.NewChatID()
-	errExpected := errors.New("any error")
+	problemID := types.NewProblemID()
+	s.problemRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).Return(problemID, nil)
 
-	s.problemsRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).
-		Return(problemID, nil)
-	s.msgRepo.EXPECT().GetProblemMessages(s.Ctx, problemID, 20, (*messagesrepo.Cursor)(nil)).
-		Return(nil, nil, errExpected)
+	s.msgRepo.EXPECT().GetProblemMessages(gomock.Any(), problemID, 10, (*messagesrepo.Cursor)(nil)).
+		Return(nil, nil, errors.New("something went wrong"))
 
 	req := getchathistory.Request{
 		ID:        types.NewRequestID(),
 		ManagerID: managerID,
 		ChatID:    chatID,
-		PageSize:  20,
+		PageSize:  10,
 	}
 
 	// Action.
@@ -145,14 +134,12 @@ func (s *UseCaseSuite) TestGetProblemMessages_Success_SinglePage() {
 	const messagesCount = 10
 	const pageSize = messagesCount + 1
 
-	clientID := types.NewUserID()
 	managerID := types.NewUserID()
-	problemID := types.NewProblemID()
 	chatID := types.NewChatID()
-	expectedMsgs := s.createMessages(messagesCount, clientID, chatID)
+	problemID := types.NewProblemID()
+	s.problemRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).Return(problemID, nil)
 
-	s.problemsRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).
-		Return(problemID, nil)
+	expectedMsgs := s.createMessages(messagesCount, chatID)
 	s.msgRepo.EXPECT().GetProblemMessages(s.Ctx, problemID, pageSize, (*messagesrepo.Cursor)(nil)).
 		Return(expectedMsgs, nil, nil)
 
@@ -184,16 +171,14 @@ func (s *UseCaseSuite) TestGetProblemMessages_Success_FirstPage() {
 	const messagesCount = 10
 	const pageSize = messagesCount + 1
 
-	clientID := types.NewUserID()
 	managerID := types.NewUserID()
-	problemID := types.NewProblemID()
 	chatID := types.NewChatID()
-	expectedMsgs := s.createMessages(messagesCount, clientID, chatID)
-	lastMsg := expectedMsgs[len(expectedMsgs)-1]
+	problemID := types.NewProblemID()
+	s.problemRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).Return(problemID, nil)
 
+	expectedMsgs := s.createMessages(messagesCount, chatID)
+	lastMsg := expectedMsgs[len(expectedMsgs)-1]
 	nextCursor := &messagesrepo.Cursor{PageSize: pageSize, LastCreatedAt: lastMsg.CreatedAt}
-	s.problemsRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).
-		Return(problemID, nil)
 	s.msgRepo.EXPECT().GetProblemMessages(s.Ctx, problemID, pageSize, (*messagesrepo.Cursor)(nil)).
 		Return(expectedMsgs, nextCursor, nil)
 
@@ -213,20 +198,18 @@ func (s *UseCaseSuite) TestGetProblemMessages_Success_FirstPage() {
 	s.Require().Len(resp.Messages, messagesCount)
 }
 
-func (s *UseCaseSuite) TestGetProblemMessages_Success_LastPage() {
+func (s *UseCaseSuite) TestGetClientChatMessages_Success_LastPage() {
 	// Arrange.
 	const messagesCount = 10
 	const pageSize = messagesCount + 1
 
-	clientID := types.NewUserID()
 	managerID := types.NewUserID()
-	problemID := types.NewProblemID()
 	chatID := types.NewChatID()
-	expectedMsgs := s.createMessages(messagesCount, clientID, chatID)
+	problemID := types.NewProblemID()
+	s.problemRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).Return(problemID, nil)
 
+	expectedMsgs := s.createMessages(messagesCount, chatID)
 	c := messagesrepo.Cursor{PageSize: pageSize, LastCreatedAt: time.Now()}
-	s.problemsRepo.EXPECT().GetAssignedProblemID(gomock.Any(), managerID, chatID).
-		Return(problemID, nil)
 	s.msgRepo.EXPECT().GetProblemMessages(s.Ctx, problemID, 0, messagesrepo.NewCursorMatcher(c)).
 		Return(expectedMsgs, nil, nil)
 
@@ -249,7 +232,7 @@ func (s *UseCaseSuite) TestGetProblemMessages_Success_LastPage() {
 	s.Require().Len(resp.Messages, messagesCount)
 }
 
-func (s *UseCaseSuite) createMessages(count int, authorID types.UserID, chatID types.ChatID) []messagesrepo.Message {
+func (s *UseCaseSuite) createMessages(count int, chatID types.ChatID) []messagesrepo.Message {
 	s.T().Helper()
 
 	result := make([]messagesrepo.Message, 0, count)
@@ -257,13 +240,14 @@ func (s *UseCaseSuite) createMessages(count int, authorID types.UserID, chatID t
 		result = append(result, messagesrepo.Message{
 			ID:                  types.NewMessageID(),
 			ChatID:              chatID,
-			AuthorID:            authorID,
+			AuthorID:            types.NewUserID(),
 			Body:                uuid.New().String(),
 			CreatedAt:           time.Now(),
 			IsVisibleForClient:  true,
 			IsVisibleForManager: true,
 			IsBlocked:           false,
 			IsService:           false,
+			InitialRequestID:    types.NewRequestID(),
 		})
 	}
 	return result

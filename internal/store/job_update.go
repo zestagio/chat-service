@@ -18,8 +18,9 @@ import (
 // JobUpdate is the builder for updating Job entities.
 type JobUpdate struct {
 	config
-	hooks    []Hook
-	mutation *JobMutation
+	hooks     []Hook
+	mutation  *JobMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // Where appends a list predicates to the JobUpdate builder.
@@ -105,6 +106,12 @@ func (ju *JobUpdate) check() error {
 	return nil
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (ju *JobUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *JobUpdate {
+	ju.modifiers = append(ju.modifiers, modifiers...)
+	return ju
+}
+
 func (ju *JobUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if err := ju.check(); err != nil {
 		return n, err
@@ -126,6 +133,7 @@ func (ju *JobUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := ju.mutation.ReservedUntil(); ok {
 		_spec.SetField(job.FieldReservedUntil, field.TypeTime, value)
 	}
+	_spec.AddModifiers(ju.modifiers...)
 	if n, err = sqlgraph.UpdateNodes(ctx, ju.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{job.Label}
@@ -141,9 +149,10 @@ func (ju *JobUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // JobUpdateOne is the builder for updating a single Job entity.
 type JobUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *JobMutation
+	fields    []string
+	hooks     []Hook
+	mutation  *JobMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // SetAttempts sets the "attempts" field.
@@ -236,6 +245,12 @@ func (juo *JobUpdateOne) check() error {
 	return nil
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (juo *JobUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *JobUpdateOne {
+	juo.modifiers = append(juo.modifiers, modifiers...)
+	return juo
+}
+
 func (juo *JobUpdateOne) sqlSave(ctx context.Context) (_node *Job, err error) {
 	if err := juo.check(); err != nil {
 		return _node, err
@@ -274,6 +289,7 @@ func (juo *JobUpdateOne) sqlSave(ctx context.Context) (_node *Job, err error) {
 	if value, ok := juo.mutation.ReservedUntil(); ok {
 		_spec.SetField(job.FieldReservedUntil, field.TypeTime, value)
 	}
+	_spec.AddModifiers(juo.modifiers...)
 	_node = &Job{config: juo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

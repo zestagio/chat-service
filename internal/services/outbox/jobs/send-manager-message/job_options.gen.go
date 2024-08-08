@@ -11,9 +11,9 @@ import (
 type OptOptionsSetter func(o *Options)
 
 func NewOptions(
+	chatsRepo chatsRepository,
 	eventStream eventStream,
 	msgProducer messageProducer,
-	chatsRepo chatRepository,
 	msgRepo messageRepository,
 	options ...OptOptionsSetter,
 ) Options {
@@ -21,11 +21,11 @@ func NewOptions(
 
 	// Setting defaults from field tag (if present)
 
+	o.chatsRepo = chatsRepo
+
 	o.eventStream = eventStream
 
 	o.msgProducer = msgProducer
-
-	o.chatsRepo = chatsRepo
 
 	o.msgRepo = msgRepo
 
@@ -37,11 +37,18 @@ func NewOptions(
 
 func (o *Options) Validate() error {
 	errs := new(errors461e464ebed9.ValidationErrors)
+	errs.Add(errors461e464ebed9.NewValidationError("chatsRepo", _validate_Options_chatsRepo(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("eventStream", _validate_Options_eventStream(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("msgProducer", _validate_Options_msgProducer(o)))
-	errs.Add(errors461e464ebed9.NewValidationError("chatsRepo", _validate_Options_chatsRepo(o)))
 	errs.Add(errors461e464ebed9.NewValidationError("msgRepo", _validate_Options_msgRepo(o)))
 	return errs.AsError()
+}
+
+func _validate_Options_chatsRepo(o *Options) error {
+	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.chatsRepo, "required"); err != nil {
+		return fmt461e464ebed9.Errorf("field `chatsRepo` did not pass the test: %w", err)
+	}
+	return nil
 }
 
 func _validate_Options_eventStream(o *Options) error {
@@ -54,13 +61,6 @@ func _validate_Options_eventStream(o *Options) error {
 func _validate_Options_msgProducer(o *Options) error {
 	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.msgProducer, "required"); err != nil {
 		return fmt461e464ebed9.Errorf("field `msgProducer` did not pass the test: %w", err)
-	}
-	return nil
-}
-
-func _validate_Options_chatsRepo(o *Options) error {
-	if err := validator461e464ebed9.GetValidatorFor(o).Var(o.chatsRepo, "required"); err != nil {
-		return fmt461e464ebed9.Errorf("field `chatsRepo` did not pass the test: %w", err)
 	}
 	return nil
 }

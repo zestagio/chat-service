@@ -10,9 +10,7 @@ import (
 type Message struct {
 	ID                  types.MessageID
 	ChatID              types.ChatID
-	ProblemID           types.ProblemID
 	AuthorID            types.UserID
-	ManagerID           types.UserID
 	Body                string
 	CreatedAt           time.Time
 	IsVisibleForClient  bool
@@ -23,17 +21,10 @@ type Message struct {
 }
 
 func adaptStoreMessage(m *store.Message) Message {
-	managerID := types.UserIDNil
-	if p := m.Edges.Problem; p != nil {
-		managerID = p.ManagerID
-	}
-
 	return Message{
 		ID:                  m.ID,
 		ChatID:              m.ChatID,
-		ProblemID:           m.ProblemID,
 		AuthorID:            m.AuthorID,
-		ManagerID:           managerID,
 		Body:                m.Body,
 		CreatedAt:           m.CreatedAt,
 		IsVisibleForClient:  m.IsVisibleForClient,
